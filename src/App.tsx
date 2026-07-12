@@ -49,6 +49,9 @@ import {
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
 import TrustPortal from './components/TrustPortal';
 import SmtpConfigPanel from './components/SmtpConfigPanel';
+import LoginPortal from './components/LoginPortal';
+import HomeTab from './components/HomeTab';
+import ServicesTab from './components/ServicesTab';
 
 enum OperationType {
   CREATE = 'create',
@@ -1335,7 +1338,7 @@ export default function App() {
       };
       await setDoc(doc(db, "system_stats", "global"), initialStats);
 
-      triggerToast(lang === 'ar' ? 'تم إعادة تعيين المحاكي وتفريغ قاعدة البيانات!' : 'Simulator reset and database cleared!', 'info');
+      triggerToast(lang === 'ar' ? 'تم إعادة تعيين الخدمة وتفريغ قاعدة البيانات!' : 'Simulator reset and database cleared!', 'info');
     } catch (err) {
       console.error(err);
     }
@@ -1390,7 +1393,7 @@ export default function App() {
         if (data.codeSimulator) {
           setSimulatedOtpCode(data.codeSimulator);
           triggerToast(lang === 'ar' 
-            ? 'تم إرسال رمز التحقق بنجاح! (وضع المحاكاة نشط)' 
+            ? 'تم إرسال رمز التحقق بنجاح! (وضع الخدمة السريعة نشط)' 
             : 'Verification code sent successfully! (Sandbox active)', 'success');
         } else {
           triggerToast(lang === 'ar' 
@@ -1525,306 +1528,42 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-[#031A17] text-white font-sans antialiased selection:bg-amber-500 selection:text-black flex flex-col justify-between relative overflow-hidden">
-        {/* Soft background ambient blurs (completely passive and non-blocking, behind text) */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <div className="absolute -top-[20%] left-[10%] w-[60%] h-[50%] rounded-full bg-cyan-500/8 blur-[130px]"></div>
-          <div className="absolute top-[30%] -right-[15%] w-[50%] h-[50%] rounded-full bg-teal-500/6 blur-[140px]"></div>
-          <div className="absolute -bottom-[10%] left-[15%] w-[45%] h-[45%] rounded-full bg-emerald-500/8 blur-[120px]"></div>
-        </div>
-
-        {/* Dynamic Toast Alerts inside Login Page */}
-        {toast && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 p-4 px-6 rounded-2xl border shadow-2xl backdrop-blur-md animate-fade-in transition-all bg-blue-500/20 border-blue-500/30 text-blue-200">
-            {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />}
-            {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 shrink-0 text-amber-400" />}
-            {toast.type === 'error' && <AlertCircle className="w-5 h-5 shrink-0 text-red-400" />}
-            {toast.type === 'info' && <Activity className="w-5 h-5 shrink-0 text-blue-400" />}
-            <span className="text-sm font-black font-sans">{toast.text}</span>
-          </div>
-        )}
-
-        {/* Floating Language Select */}
-        <div className="absolute top-4 right-4 z-10 select-none flex items-center gap-1 bg-sky-950/40 backdrop-blur-md border border-sky-500/20 p-1.5 rounded-2xl shadow-lg">
-          {[
-            { code: 'ar', label: 'عربي' },
-            { code: 'he', label: 'עברית' },
-            { code: 'en', label: 'English' }
-          ].map((item) => (
-            <button
-              key={item.code}
-              onClick={() => setLang(item.code as any)}
-              className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                lang === item.code
-                  ? 'bg-sky-500/20 text-sky-100 border border-sky-400/30 shadow-inner'
-                  : 'text-sky-300/60 hover:text-sky-200 hover:bg-sky-500/10'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Central Logo & Brand Header Area */}
-        <main className="flex-1 flex flex-col items-center justify-center p-4 relative z-10 pt-16 md:pt-20">
-          <div className="flex flex-col items-center gap-6 text-center w-full max-w-md">
-            
-            {/* Interactive 3D/Glassmorphic Systro Icon */}
-            <div className="flex flex-col items-center gap-3 select-none mb-2 animate-fade-in">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 relative rounded-[28px] sm:rounded-[32px] overflow-hidden p-[2px] bg-gradient-to-tr from-sky-400 via-teal-300 to-emerald-400 shadow-[0_15px_35px_rgba(6,182,212,0.25)] flex items-center justify-center">
-                {/* High-quality internal background gradient with glass overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-[#0CC1C6] via-[#029FA5] to-[#01686C] rounded-[26px] sm:rounded-[30px] overflow-hidden">
-                  {/* Glossy overlay */}
-                  <div className="absolute top-0 inset-x-0 h-1/2 bg-white/20 rounded-t-[26px] sm:rounded-[30px] filter blur-[0.5px]"></div>
-                </div>
-                
-                {/* Styled fluid "S" SVG with glowing nodes matching the uploaded screenshot */}
-                <svg className="w-16 h-16 sm:w-20 sm:h-20 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-                      <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#014A4D" floodOpacity="0.5" />
-                    </filter>
-                    <linearGradient id="sGrad" x1="10%" y1="0%" x2="90%" y2="100%">
-                      <stop offset="0%" stopColor="#FFFFFF" />
-                      <stop offset="50%" stopColor="#E0FAFC" />
-                      <stop offset="100%" stopColor="#A5F3FC" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Fluid glowing particles/lines trails in background */}
-                  <path d="M15 70 C 35 85, 70 65, 85 40" stroke="#FFFFFF" strokeWidth="1.5" strokeOpacity="0.25" strokeDasharray="3 3" />
-                  <path d="M20 55 C 40 70, 75 55, 80 25" stroke="#00F5FF" strokeWidth="1.2" strokeOpacity="0.4" />
-                  
-                  {/* Floating glowing nodes (glowing circles matching screenshot) */}
-                  <circle cx="85" cy="40" r="3.5" fill="#FFFFFF" />
-                  <circle cx="80" cy="25" r="2.5" fill="#00F5FF" />
-                  <circle cx="20" cy="55" r="3" fill="#00F5FF" />
-                  <circle cx="33" cy="67" r="4" fill="#E0FAFC" />
-                  <circle cx="15" cy="70" r="2" fill="#FFFFFF" />
-                  <circle cx="68" cy="35" r="4.5" fill="#FFFFFF" />
-
-                  {/* Main Stylized "S" wave curves - thick flowing design */}
-                  <path 
-                    d="M 75,32 
-                       C 70,22  45,22  32,28 
-                       C 20,34  22,46  38,48 
-                       C 58,50  78,48  74,68 
-                       C 70,82  42,84  25,74" 
-                    stroke="url(#sGrad)" 
-                    strokeWidth="11" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                    filter="url(#shadow)"
-                  />
-                  
-                  {/* Inner highlight line to add premium 3D glass sheen to S */}
-                  <path 
-                    d="M 70,30 
-                       C 66,24  46,24  35,29 
-                       C 25,34  26,44  39,46 
-                       C 56,48  73,46  71,64 
-                       C 68,76  44,78  28,70" 
-                    stroke="#FFFFFF" 
-                    strokeWidth="3" 
-                    strokeLinecap="round"
-                    strokeOpacity="0.8"
-                  />
-                </svg>
-              </div>
-              
-              {/* Brand Name text below the logo - bold, beautiful turquoise matching the image */}
-              <span className="text-3xl sm:text-4xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#38BDF8] via-[#06B6D4] to-[#2DD4BF] select-none font-sans filter drop-shadow-[0_2px_10px_rgba(6,182,212,0.2)]">
-                Systro
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center gap-3 animate-fade-in">
-              <div className="flex items-center gap-2.5">
-                {/* Glowing Orange Dot */}
-                <span className="w-3.5 h-3.5 rounded-full bg-[#FCAD62] shadow-[0_0_12px_rgba(252,173,98,0.7)] shrink-0 animate-pulse"></span>
-                {/* Elegant cream/beige text */}
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wide text-[#FDF6E2] select-none">
-                  {lang === 'ar' ? 'لننطلق' : lang === 'he' ? 'בואו נתחיל' : "Let's Go"}
-                </h1>
-              </div>
-              <p className="text-xs sm:text-sm text-emerald-100/70 font-semibold max-w-sm leading-relaxed select-none filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
-                {lang === 'ar' 
-                  ? 'مرحباً بك في شبكة سيسترو لإنقاذ السيارات - بوابتك الآمنة متوفرة الآن بنقرة واحدة' 
-                  : 'Welcome to Systro Rescue Network - Your secure entrance is now one click away'}
-              </p>
-            </div>
-          </div>
-        </main>
-
-        {/* Elegant Bottom Sheet Container (matches bottom sheet on screenshot 2) */}
-        <div className="w-full max-w-[460px] mx-auto px-4 pb-10 md:pb-14 shrink-0 -mt-4">
-          <div className="bg-[#0B1513] border border-emerald-950 rounded-[36px] pt-10 pb-8 px-8 sm:pt-12 sm:pb-10 sm:px-10 space-y-8 shadow-[0_25px_60px_rgba(0,0,0,0.6)] relative overflow-hidden">
-            <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#FCAD62]/5 rounded-full blur-xl"></div>
-            
-            {/* Tooltip Badge on Top of the Sheet */}
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#2563EB] text-white text-[11px] sm:text-xs font-black px-5 py-2 rounded-full shadow-lg flex items-center gap-1 shrink-0 select-none animate-bounce">
-              <span>{lang === 'ar' ? 'عملية تسجيل الدخول السابقة' : lang === 'he' ? 'תהליך התחברות קודם' : 'Previous session active'}</span>
-              <div className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-[#2563EB] rotate-45"></div>
-            </div>
-
-            <div className="pt-2 space-y-5">
-              <div className="text-center space-y-2.5">
-                <h4 className="text-lg sm:text-xl font-black text-[#FDF6E2]">
-                  {lang === 'ar' ? 'تسجيل دخول موحد عبر Google' : 'Google Single Sign-On'}
-                </h4>
-                <p className="text-xs sm:text-sm text-emerald-300 font-extrabold leading-relaxed">
-                  {lang === 'ar' 
-                    ? 'اضغط للمتابعة الفورية والتوصيل الآمن لحسابك بنظام سيسترو المعزز' 
-                    : 'Click to authenticate instantly and sync with secure Systro portal'}
-                </p>
-              </div>
-
-              {/* Main Google Button */}
-              <button
-                onClick={handleRealGoogleSignIn}
-                className="w-full py-4.5 bg-white hover:bg-slate-50 text-slate-800 font-extrabold rounded-2xl text-sm sm:text-[15px] transition-all flex items-center justify-center gap-3 shadow-xl border border-slate-100 hover:shadow-2xl cursor-pointer"
-              >
-                <svg className="w-5.5 h-5.5 shrink-0" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                <span className="font-sans font-black tracking-wide text-slate-800">
-                  {lang === 'ar' ? 'المتابعة باستخدام حساب Google' : lang === 'he' ? 'המשך באמצעות חשבון Google' : 'Continue with Google Account'}
-                </span>
-              </button>
-
-              {/* Security and Protection Note */}
-              <div className="pt-4 border-t border-emerald-950/40 flex items-center justify-center gap-1.5 text-xs text-emerald-300/80 font-bold select-none uppercase tracking-widest text-center">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>{lang === 'ar' ? 'بوابة مشفرة بالكامل بواسطة Google OAuth 2.0' : 'Fully secure and encrypted by Google OAuth 2.0'}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Google Chooser Fallback Dialog (matches user screenshot 1) */}
-        {showGoogleFallbackModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white border border-slate-100 rounded-t-[28px] sm:rounded-[28px] max-w-sm w-full p-6 space-y-6 shadow-2xl text-slate-800 relative animate-scale-up">
-              
-              {/* Top Close Button (matches layout) */}
-              <button 
-                onClick={() => setShowGoogleFallbackModal(false)}
-                className="absolute top-4 left-4 p-1.5 hover:bg-slate-100 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <div className="space-y-4 pt-2">
-                {/* Google multi-color G logo */}
-                <div className="flex flex-col items-center gap-2 text-center">
-                  <svg className="w-7 h-7" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span className="text-[11px] font-bold text-slate-500 tracking-wide font-sans">
-                    {lang === 'ar' ? 'تسجيل الدخول باستخدام حساب Google' : lang === 'he' ? 'התחברות באמצעות חשבון Google' : 'Sign in with Google'}
-                  </span>
-                </div>
-
-                <div className="space-y-1 text-center">
-                  <h2 className="text-lg font-bold text-slate-900 tracking-tight leading-tight select-none">
-                    {lang === 'ar' ? 'اختيار حساب لتسجيل الدخول إلى "Systro"' : lang === 'he' ? 'בחירת חשבון להתחברות אל "Systro"' : 'Choose an account to continue to "Systro"'}
-                  </h2>
-                </div>
-              </div>
-
-              {/* Profiles List */}
-              <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-slate-50/50">
-                {[
-                  { 
-                    name: 'לוגו אדם', 
-                    email: 'adam.atooun2@gmail.com', 
-                    avatarType: 'text', 
-                    avatarText: 'לוגו אדם',
-                    avatarBg: 'bg-indigo-50 text-indigo-700 border-indigo-100'
-                  },
-                  { 
-                    name: 'Adam.atooun', 
-                    email: 'adam.atooun@gmail.com', 
-                    avatarType: 'image', 
-                    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&fit=crop&q=80' // handsome beard & sunglasses profile image
-                  },
-                  { 
-                    name: 'رائد مسعود', 
-                    email: 'raid.masoud@gmail.com', 
-                    avatarType: 'image', 
-                    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&fit=crop&q=80' 
-                  },
-                  { 
-                    name: 'حساب عميل سيسترو', 
-                    email: 'client@systro.live', 
-                    avatarType: 'image', 
-                    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&fit=crop&q=80' 
-                  }
-                ].map((profile, i) => (
-                  <button
-                    key={i}
-                    onClick={async () => {
-                      setShowGoogleFallbackModal(false);
-                      await handleGoogleSignIn(profile.email, profile.name);
-                      triggerToast(lang === 'ar' ? 'تم الدخول الآمن بحساب Google!' : 'Secure signed in with Google!', 'success');
-                    }}
-                    className={`w-full p-3.5 hover:bg-slate-50 flex ${lang === 'ar' || lang === 'he' ? 'flex-row-reverse text-right' : 'flex-row text-left'} items-center justify-between gap-3 cursor-pointer transition-all`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {profile.avatarType === 'text' ? (
-                        <div className={`w-9 h-9 rounded-full ${profile.avatarBg} border flex items-center justify-center text-[8px] font-black tracking-tighter shadow-sm select-none shrink-0`}>
-                          {profile.avatarText}
-                        </div>
-                      ) : (
-                        <img src={profile.avatarUrl} alt={profile.name} referrerPolicy="no-referrer" className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0 select-none" />
-                      )}
-                      <div className={`${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}>
-                        <p className="text-xs font-black text-slate-800 leading-tight">{profile.name}</p>
-                        <p className="text-[10px] font-mono text-slate-400 font-bold leading-normal">{profile.email}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Bottom blue action */}
-              <div className="pt-2 text-center select-none">
-                <span className="text-xs font-black text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
-                  {lang === 'ar' ? 'خيارات تسجيل الدخول' : lang === 'he' ? 'אפשרויות התחברות נוספות' : 'Sign-in options'}
-                </span>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-      </div>
+      <LoginPortal
+        lang={lang}
+        setLang={setLang}
+        toast={toast}
+        enteredName={enteredName}
+        setEnteredName={setEnteredName}
+        enteredEmail={enteredEmail}
+        setEnteredEmail={setEnteredEmail}
+        showGoogleFallbackModal={showGoogleFallbackModal}
+        setShowGoogleFallbackModal={setShowGoogleFallbackModal}
+        handleRealGoogleSignIn={handleRealGoogleSignIn}
+        handleGoogleSignIn={handleGoogleSignIn}
+        triggerToast={triggerToast}
+        t={t}
+      />
     );
   }
 
   return (
     <div className="min-h-screen bg-[#050505] text-[#E2E8F0] font-sans antialiased selection:bg-amber-500 selection:text-black pb-24 md:pb-0">
       
-      {/* Top Website Redirection Banner */}
-      <div 
-        onClick={() => window.open('https://systro.ai.studio', '_blank')}
-        className="w-full bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:brightness-110 text-black text-xs font-black text-center py-3.5 px-4 flex items-center justify-center gap-2 cursor-pointer transition-all select-none shadow-xl relative z-50 animate-pulse border-b border-amber-400"
-      >
-        <span className="p-1 bg-black/15 rounded text-sm leading-none shrink-0">📡</span>
-        <span className="font-sans tracking-wide">
-          {lang === 'ar' 
-            ? 'تم تحديث رابط موقعنا رسميّاً! اضغط هنا للانتقال فوراً لزيارة موقعنا المحدث على: https://systro.ai.studio' 
-            : 'Our official website URL has been updated! Click here to navigate instantly to our updated portal at: https://systro.ai.studio'}
+      {/* Custom Top Announcement Bar Featuring Ali */}
+      <div id="ali-premium-top-banner" className="relative z-50 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-b border-amber-500/20 py-2.5 px-4 text-center select-none flex items-center justify-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
         </span>
-        <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-1" />
+        <span className="text-[11px] sm:text-xs font-black text-amber-400 tracking-wide">
+          {lang === 'ar' 
+            ? 'بإشراف وإدارة م. علي | المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
+            : lang === 'he'
+            ? 'בפיקוח ובניהול אינג\' עלי | פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
+            : 'Supervised & Managed by Eng. Ali | The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
+        </span>
       </div>
-      
+
       {/* Dynamic Toast Alerts */}
       {toast && (
         <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 p-4 px-6 rounded-2xl border shadow-2xl backdrop-blur-md animate-fade-in transition-all ${
@@ -1849,29 +1588,82 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between gap-3">
           
           {/* Logo Brand matching Images */}
-          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
-            <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-              <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
+          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
+            <div className="w-11 h-11 relative rounded-xl overflow-hidden p-[1px] bg-gradient-to-tr from-sky-400 via-teal-300 to-emerald-400 shadow-sm flex items-center justify-center shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-b from-[#0CC1C6] via-[#029FA5] to-[#01686C] rounded-xl overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-1/2 bg-white/20 rounded-t-xl filter blur-[0.5px]"></div>
+              </div>
+              <svg className="w-7 h-7 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <filter id="shadow-nav" x="-10%" y="-10%" width="120%" height="120%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="1.5" floodColor="#014A4D" floodOpacity="0.5" />
+                  </filter>
+                  <linearGradient id="sGrad-nav" x1="10%" y1="0%" x2="90%" y2="100%">
+                    <stop offset="0%" stopColor="#FFFFFF" />
+                    <stop offset="50%" stopColor="#E0FAFC" />
+                    <stop offset="100%" stopColor="#A5F3FC" />
+                  </linearGradient>
+                </defs>
+                <path d="M15 70 C 35 85, 70 65, 85 40" stroke="#FFFFFF" strokeWidth="1.5" strokeOpacity="0.25" strokeDasharray="3 3" />
+                <path d="M20 55 C 40 70, 75 55, 80 25" stroke="#00F5FF" strokeWidth="1.2" strokeOpacity="0.4" />
+                <circle cx="85" cy="40" r="3.5" fill="#FFFFFF" />
+                <circle cx="80" cy="25" r="2.5" fill="#00F5FF" />
+                <circle cx="20" cy="55" r="3" fill="#00F5FF" />
+                <circle cx="33" cy="67" r="4" fill="#E0FAFC" />
+                <circle cx="15" cy="70" r="2" fill="#FFFFFF" />
+                <circle cx="68" cy="35" r="4.5" fill="#FFFFFF" />
+                <path 
+                  d="M 75,32 
+                     C 70,22  45,22  32,28 
+                     C 20,34  22,46  38,48 
+                     C 58,50  78,48  74,68 
+                     C 70,82  42,84  25,74" 
+                  stroke="url(#sGrad-nav)" 
+                  strokeWidth="11" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                  filter="url(#shadow-nav)"
+                />
+                <path 
+                  d="M 70,30 
+                     C 66,24  46,24  35,29 
+                     C 25,34  26,44  39,46 
+                     C 56,48  73,46  71,64 
+                     C 68,76  44,78  28,70" 
+                  stroke="#FFFFFF" 
+                  strokeWidth="3" 
+                  strokeLinecap="round"
+                  strokeOpacity="0.8"
+                />
+              </svg>
             </div>
-            <div>
-              <h1 className="text-base sm:text-xl font-black text-white tracking-wide">
-                {t.logoTitle} <span className="text-amber-500">{t.logoRescue}</span>
-              </h1>
-              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-gray-500 block">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 drop-shadow-[0_1px_2px_rgba(6,182,212,0.1)]">
+                  {t.logoTitle} <span className="text-[#029FA5] font-black">{t.logoRescue}</span>
+                </h1>
+                {/* Custom glowing supervisor badge for Ali */}
+                <span className="px-2 py-0.5 text-[9px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-md animate-pulse">
+                  {lang === 'ar' ? 'بإشراف علي' : lang === 'he' ? 'בפיקוח עלי' : 'Eng. Ali'}
+                </span>
+              </div>
+              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-gray-400 block uppercase">
                 {t.logoSub}
               </span>
             </div>
           </div>
 
-          {/* Live Secure Domain Indicator */}
-          <button 
-            onClick={() => setIsTrustPortalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl text-[9px] sm:text-[10px] font-black transition-all cursor-pointer shrink-0"
-          >
-            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shrink-0"></span>
-            <span className="hidden sm:inline">{lang === 'ar' ? `نطاق موثق: ${customDomain}` : `Verified: ${customDomain}`}</span>
-            <span className="sm:hidden">{customDomain} 📡</span>
-          </button>
+          {/* Live Secure Domain Indicator - Hidden from customers, visible only when viewing the unlocked Admin panel */}
+          {activeTab === 'admin' && isAdminUnlocked && (
+            <button 
+              onClick={() => setIsTrustPortalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl text-[9px] sm:text-[10px] font-black transition-all cursor-pointer shrink-0 animate-fade-in"
+            >
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shrink-0"></span>
+              <span className="hidden sm:inline">{lang === 'ar' ? `نطاق موثق: ${customDomain}` : `Verified: ${customDomain}`}</span>
+              <span className="sm:hidden">{customDomain} 📡</span>
+            </button>
+          )}
 
           {/* Center Navigation Links */}
           <nav className="hidden md:flex items-center gap-1 bg-[#111827]/60 p-1 rounded-xl border border-[#1E293B]/50 shrink-0">
@@ -1894,12 +1686,6 @@ export default function App() {
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'simulator' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'text-gray-400 hover:text-white'}`}
             >
               {t.simulator}
-            </button>
-            <button 
-              onClick={() => setActiveTab('admin')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'admin' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'text-gray-400 hover:text-white'}`}
-            >
-              {t.adminPortal}
             </button>
           </nav>
 
@@ -1986,7 +1772,11 @@ export default function App() {
             {/* Yellow Admin access button - Hidden on smallest screens to prevent overlap */}
             <button 
               onClick={() => setActiveTab('admin')}
-              className="hidden sm:flex px-4 h-11 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all items-center gap-1.5 shadow-lg shadow-amber-500/10 cursor-pointer shrink-0"
+              className={`hidden sm:flex px-4 h-11 text-xs font-extrabold rounded-xl transition-all items-center gap-1.5 shadow-lg cursor-pointer shrink-0 ${
+                activeTab === 'admin' 
+                  ? 'bg-amber-500/20 text-amber-400 border-2 border-amber-500 shadow-amber-500/20' 
+                  : 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/10'
+              }`}
             >
               <Lock className="w-3.5 h-3.5" />
               <span>{lang === 'ar' ? 'بوابة الإدارة' : 'Admin Gate'}</span>
@@ -1995,673 +1785,141 @@ export default function App() {
         </div>
       </header>
 
+      {/* TWO MAIN USER ROLE CHANNELS (عميل مقطوع vs مقدم خدمة صناعي) */}
+      {activeTab === 'home' && (
+        <div id="systro-primary-user-role-channels" className="max-w-7xl mx-auto px-4 md:px-8 pt-6 select-none animate-fade-in">
+          <div className="bg-gradient-to-r from-slate-950 via-[#0C111D] to-slate-950 p-5 rounded-3xl border border-[#1E293B]/90 flex flex-col lg:flex-row items-center justify-between gap-5 shadow-2xl">
+            <div className="flex items-center gap-3.5 text-right w-full lg:w-auto">
+              <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl animate-pulse shrink-0">
+                <Activity className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
+                  <span>{lang === 'ar' ? 'اختر بوابتك المباشرة للتعامل ⚡' : lang === 'he' ? 'בחר את ערוץ השירות המהיר ⚡' : 'Select Your Service Channel ⚡'}</span>
+                </h4>
+                <p className="text-[11px] sm:text-xs text-gray-400 font-bold leading-relaxed mt-1">
+                  {lang === 'ar' 
+                    ? 'اختر "عميل مقطوع" لطلب المساعدة الفورية على الطريق، أو "مقدم خدمة صناعي" للتسجيل وتقديم عروض أسعار للطلبات النشطة.' 
+                    : lang === 'he'
+                    ? 'בחר "לקוח תקוע" להזמנת סיוע מיידי בדרכים, أو "ספק שירות תעשייתי" להגשת הצעות מחיר לעבודות פעילות.' 
+                    : 'Select "Stranded Client" for immediate roadside rescue, or "Industrial Service Provider" to view active emergency requests and submit bids.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto shrink-0">
+              {/* Button 1: عميل مقطوع */}
+              <button
+                id="role-stranded-client-btn"
+                onClick={async () => {
+                  setUserRole('client');
+                  localStorage.setItem('systro_user_role', 'client');
+                  if (loggedInUserEmail) {
+                    try {
+                      await setDoc(doc(db, "users", loggedInUserEmail), { role: 'client' }, { merge: true });
+                    } catch (err) {
+                      console.error("Failed to update user role in firestore:", err);
+                    }
+                  }
+                  setActiveTab('simulator');
+                  triggerToast(
+                    lang === 'ar' 
+                      ? 'تم تفعيل وضع العميل المقطوع 🚨 تفضل بطلب الخدمة الفورية الآن!' 
+                      : lang === 'he'
+                      ? 'מצב לקוח תקוע הופעל 🚨 הזמן שירות מיידי כעת!'
+                      : 'Stranded Client Mode activated 🚨 Request rapid roadside assistance now!', 
+                    'success'
+                  );
+                }}
+                className={`w-full sm:w-auto px-7 py-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-3 cursor-pointer shadow-xl active:scale-95 ${
+                  userRole === 'client' 
+                    ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-black shadow-amber-500/20 scale-[1.03] font-black' 
+                    : 'bg-[#111827] hover:bg-gray-800 text-gray-300 border border-gray-800'
+                }`}
+              >
+                <span className="text-xl">🚗</span>
+                <span className="font-black">{lang === 'ar' ? 'عميل مقطوع' : lang === 'he' ? 'לקוח תקוע' : 'Stranded Client'}</span>
+                {userRole === 'client' && <span className="w-2.5 h-2.5 bg-black rounded-full animate-ping shrink-0"></span>}
+              </button>
+
+              {/* Button 2: مقدم خدمة صناعي */}
+              <button
+                id="role-industrial-provider-btn"
+                onClick={async () => {
+                  setUserRole('technician');
+                  localStorage.setItem('systro_user_role', 'technician');
+                  if (loggedInUserEmail) {
+                    try {
+                      await setDoc(doc(db, "users", loggedInUserEmail), { role: 'technician' }, { merge: true });
+                    } catch (err) {
+                      console.error("Failed to update user role in firestore:", err);
+                    }
+                  }
+                  setActiveTab('simulator');
+                  triggerToast(
+                    lang === 'ar' 
+                      ? 'تم تفعيل وضع مقدم الخدمة الصناعي 🛠️ تصفح طلبات العملاء وقدم عرض أسعارك فورا!' 
+                      : lang === 'he'
+                      ? 'מצב ספק שירות תעשייתי הופעל 🛠️ בדוק בקשות והגש הצעות מחיר!'
+                      : 'Industrial Service Provider Mode activated 🛠️ View requests and submit bids!', 
+                    'success'
+                  );
+                }}
+                className={`w-full sm:w-auto px-7 py-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-3 cursor-pointer shadow-xl active:scale-95 ${
+                  userRole === 'technician' 
+                    ? 'bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 text-black shadow-cyan-500/20 scale-[1.03] font-black' 
+                    : 'bg-[#111827] hover:bg-gray-800 text-gray-300 border border-gray-800'
+                }`}
+              >
+                <span className="text-xl">🛠️</span>
+                <span className="font-black">{lang === 'ar' ? 'مقدم خدمة صناعي' : lang === 'he' ? 'ספק שירות תעשייתי' : 'Industrial Service Provider'}</span>
+                {userRole === 'technician' && <span className="w-2.5 h-2.5 bg-black rounded-full animate-ping shrink-0"></span>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* CORE HERO LANDING VIEW (Home) */}
       {activeTab === 'home' && (
-        <div className="animate-fade-in">
-          
-          {/* Main Hero Header Section */}
-          <section className="relative overflow-hidden pt-12 md:pt-24 pb-16 md:pb-32 px-4 md:px-8 max-w-7xl mx-auto">
-            {/* Ambient glows */}
-            <div className="absolute top-20 left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl -z-10 animate-pulse"></div>
-            <div className="absolute bottom-10 right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl -z-10"></div>
-
-            <div className="text-center space-y-6 max-w-4xl mx-auto">
-              {/* Pre-heading Gold Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] md:text-xs font-bold text-amber-500 leading-none select-none tracking-wide">
-                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse-ring"></span>
-                <span>{t.heroPre}</span>
-              </div>
-
-              {/* Bold Typography matching Image 7 */}
-              <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-white leading-tight tracking-tight">
-                {t.heroTitle1} <br className="md:hidden" />
-                <span className="text-amber-500 underline decoration-amber-500/20 decoration-wavy">{t.heroTitleHighlighted}</span> {t.heroTitle2}
-              </h2>
-
-              {/* Paragraph details */}
-              <p className="text-sm md:text-base text-gray-400 leading-relaxed max-w-3xl mx-auto font-medium">
-                {t.heroDesc}
-              </p>
-
-              {/* Quick Actions (Launch Demo simulator) */}
-              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button 
-                  onClick={() => {
-                    setIsLoggedIn(true);
-                    setUserRole('guest');
-                    setActiveTab('simulator');
-                    triggerToast(lang === 'ar' ? 'تم الدخول ببوابة طلبات الطوارئ الرسمية بصفتك ضيف!' : 'Successfully signed in to the Official Emergency Portal as guest!', 'success');
-                  }}
-                  className="w-full sm:w-auto px-8 h-14 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-2xl shadow-xl shadow-amber-500/15 hover:scale-105 transition-all text-sm flex items-center justify-center gap-2"
-                >
-                  <span>{t.heroBtnSimulator}</span>
-                  <ChevronRight className="w-4 h-4 shrink-0" />
-                </button>
-
-                <button 
-                  onClick={() => setActiveTab('services')}
-                  className="w-full sm:w-auto px-8 h-14 bg-[#111827]/80 hover:bg-[#1E293B]/80 text-white font-bold rounded-2xl border border-gray-800 transition-all text-sm"
-                >
-                  {t.heroBtnServices}
-                </button>
-              </div>
-
-              {/* Tag Checklist */}
-              <div className="pt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs font-bold text-gray-400 select-none">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500" />
-                  <span>{t.bulletEscrow}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4.5 h-4.5 text-amber-500" />
-                  <span>{t.bulletEta}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <UserCheck className="w-4.5 h-4.5 text-blue-500" />
-                  <span>{t.bulletVerified}</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* DYNAMIC REAL-TIME STATS PANEL (Image 6 layout) */}
-          <section className="border-y border-[#1E293B]/60 bg-[#0A0B10]">
-            <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 divide-y-2 lg:divide-y-0 lg:divide-x-2 lg:divide-x-reverse divide-[#1E293B]/40">
-                
-                {/* Active Technicians */}
-                <div className="text-center space-y-2 p-4 lg:p-0">
-                  <div className="text-4xl md:text-5xl font-black text-amber-500 font-mono tracking-tight">
-                    {stats.activeTechnicians} / {stats.maxTechnicians}
-                  </div>
-                  <div className="text-xs md:text-sm font-bold text-gray-400">
-                    {t.statActiveTechs}
-                  </div>
-                </div>
-
-                {/* Completed Rescues */}
-                <div className="text-center space-y-2 p-4 lg:p-0 pt-8 lg:pt-0">
-                  <div className="text-4xl md:text-5xl font-black text-white font-mono tracking-tight">
-                    {stats.completedRescues}
-                  </div>
-                  <div className="text-xs md:text-sm font-bold text-gray-400">
-                    {t.statCompletedRescues}
-                  </div>
-                </div>
-
-                {/* Satisfaction Rate */}
-                <div className="text-center space-y-2 p-4 lg:p-0">
-                  <div className="text-4xl md:text-5xl font-black text-blue-400 font-mono tracking-tight">
-                    {stats.satisfactionRate}%
-                  </div>
-                  <div className="text-xs md:text-sm font-bold text-gray-400">
-                    {t.statSatisfaction}
-                  </div>
-                </div>
-
-                {/* Active Emergencies */}
-                <div className="text-center space-y-2 p-4 lg:p-0 pt-8 lg:pt-0">
-                  <div className="text-4xl md:text-5xl font-black text-emerald-400 font-mono tracking-tight">
-                    {stats.activeEmergencies}
-                  </div>
-                  <div className="text-xs md:text-sm font-bold text-gray-400">
-                    {t.statActiveEmergencies}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </section>
-
-          {/* ROAD SERVICES DESCRIPTION & GRID (Images 4 & 5) */}
-          <section className="py-16 md:py-28 px-4 md:px-8 max-w-7xl mx-auto">
-            <div className="space-y-4 text-center max-w-3xl mx-auto mb-16">
-              <span className="text-xs md:text-sm font-black uppercase text-amber-500 tracking-wider block">
-                {t.servicesHeader}
-              </span>
-              <h3 className="text-2xl md:text-4xl font-black text-white">
-                {t.servicesTitle}
-              </h3>
-              <p className="text-sm text-gray-400 leading-relaxed font-medium">
-                {t.servicesSub}
-              </p>
-            </div>
-
-            {/* Grid display */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {servicesList.map(service => {
-                const IconComponent = service.icon;
-                return (
-                  <div 
-                    key={service.id} 
-                    onClick={() => {
-                      setSelectedService(service.id);
-                      if (isLoggedIn) {
-                        setActiveTab('simulator');
-                      } else {
-                        const element = document.getElementById('login-portal-section');
-                        if (element) element.scrollIntoView({ behavior: 'smooth' });
-                        triggerToast(lang === 'ar' ? 'الرجاء تسجيل الدخول أولاً لطلب الخدمة المباشرة!' : 'Please sign in first to submit a live rescue request!', 'info');
-                      }
-                    }}
-                    className="p-6 bg-[#0F1424]/60 hover:bg-[#0F1424]/90 border border-gray-800 hover:border-gray-700 rounded-3xl transition-all duration-300 cursor-pointer flex flex-col justify-between group h-64"
-                  >
-                    <div className="space-y-4">
-                      {/* Icon */}
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${service.color}`}>
-                        <IconComponent className="w-6 h-6" />
-                      </div>
-
-                      {/* Header */}
-                      <h4 className="text-base md:text-lg font-black text-white group-hover:text-amber-500 transition-colors">
-                        {service.name}
-                      </h4>
-
-                      {/* Desc */}
-                      <p className="text-xs md:text-sm text-gray-400 leading-relaxed font-medium">
-                        {service.desc}
-                      </p>
-                    </div>
-
-                    <div className="text-xs font-bold text-amber-500 flex items-center gap-1.5 self-end">
-                      <span>{lang === 'ar' ? 'جرب الخدمة الآن' : 'Test service now'}</span>
-                      <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* FINANCIAL INNOVATION & ESCROW SAFEKEEPING (Images 2 & 3) */}
-          <section className="py-16 md:py-24 bg-[#0A0B10] border-t border-gray-900 px-4 md:px-8">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-              
-              {/* Left text instructions (Image 2) */}
-              <div className="lg:col-span-5 space-y-6">
-                <span className="text-xs md:text-sm font-black text-amber-500 uppercase tracking-widest block">
-                  {t.finPre}
-                </span>
-                
-                <h3 className="text-3xl md:text-4xl font-black text-white leading-tight">
-                  {t.finTitle}
-                </h3>
-
-                <p className="text-sm md:text-base text-gray-400 leading-relaxed font-medium">
-                  {t.finDesc}
-                </p>
-
-                {/* Sub features list */}
-                <div className="space-y-4">
-                  {/* Customer Protection */}
-                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#0F1424]/40 border border-gray-900 hover:border-gray-800 transition-colors">
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-xl mt-1">
-                      <ThumbsUp className="w-5 h-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-white">{t.custProtectionTitle}</h4>
-                      <p className="text-xs text-gray-400 leading-relaxed font-medium">{t.custProtectionDesc}</p>
-                    </div>
-                  </div>
-
-                  {/* Technician Protection */}
-                  <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#0F1424]/40 border border-gray-900 hover:border-gray-800 transition-colors">
-                    <div className="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-500 rounded-xl mt-1">
-                      <Lock className="w-5 h-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-white">{t.techRightTitle}</h4>
-                      <p className="text-xs text-gray-400 leading-relaxed font-medium">{t.techRightDesc}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Escrow Vault graphical model card (Image 3) */}
-              <div className="lg:col-span-7 bg-[#111827]/70 border border-gray-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative">
-                <div className="absolute -top-3 left-6">
-                  <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                    {t.vaultSecureBadge}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-base md:text-lg font-black text-white">{t.vaultTitle}</h4>
-                    <p className="text-xs text-gray-400 font-medium">{t.vaultSub}</p>
-                  </div>
-                  <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-2xl border border-emerald-500/20">
-                    <ShieldCheck className="w-6 h-6 animate-pulse" />
-                  </div>
-                </div>
-
-                <hr className="border-gray-800" />
-
-                {/* Vault Locked holding simulation display */}
-                <div className="p-5 bg-[#0F1424] border border-gray-800 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">{t.vaultResValue}</span>
-                    <span className="text-2xl font-black text-white font-mono">150 ₪ <span className="text-xs text-gray-400 font-bold font-sans">({lang === 'ar' ? 'شيكل' : 'Shekel'})</span></span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                    <span className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-extrabold px-3 py-1 rounded-full uppercase">
-                      {t.vaultReservedBadge}
-                    </span>
-                    <span className="text-xs text-gray-400 font-semibold">{t.vaultAwaiting}</span>
-                  </div>
-                </div>
-
-                {/* 3 columns list detailing payouts - Stack on mobile, grid on desktop */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Partner Technician details */}
-                  <div className="p-4 bg-[#0A0B10] border border-gray-950 rounded-xl text-center space-y-1">
-                    <span className="text-[9px] font-bold text-gray-500 uppercase block">{t.vaultPartnerTech}</span>
-                    <span className="text-xs md:text-sm font-black text-white block truncate">رائد مسعود</span>
-                  </div>
-
-                  {/* Systro Commission */}
-                  <div className="p-4 bg-[#0A0B10] border border-gray-950 rounded-xl text-center space-y-1">
-                    <span className="text-[9px] font-bold text-gray-500 uppercase block">{t.vaultCommission}</span>
-                    <span className="text-xs md:text-sm font-black text-amber-500 font-mono block">20% (30 ₪)</span>
-                  </div>
-
-                  {/* Net Profit */}
-                  <div className="p-4 bg-[#0A0B10] border border-gray-950 rounded-xl text-center space-y-1">
-                    <span className="text-[9px] font-bold text-gray-500 uppercase block">{t.vaultNetEarnings}</span>
-                    <span className="text-xs md:text-sm font-black text-emerald-400 font-mono block">120 ₪</span>
-                  </div>
-                </div>
-
-                {/* Bulbed mechanism guide */}
-                <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl flex gap-3 text-xs leading-relaxed text-gray-300 font-medium">
-                  <Lightbulb className="w-5 h-5 text-amber-500 shrink-0 mt-0.5 animate-bounce" />
-                  <p>
-                    <span className="font-extrabold text-amber-500">{t.vaultMechanismTitle}: </span>
-                    {t.vaultMechanismDesc}
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          </section>
-
-          {/* SECURITY PORTAL ACCESS GATE (Dynamic Google Login & Role Choice) */}
-          <section id="login-portal-section" className="py-20 md:py-28 bg-[#050505] px-4 md:px-8">
-            <div className="max-w-7xl mx-auto flex flex-col items-center justify-center">
-              
-              {/* Main Container */}
-              <div className="w-full max-w-lg bg-[#0F1424]/60 border border-gray-800 rounded-3xl p-6 md:p-8 space-y-8 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl"></div>
-
-                {!isLoggedIn ? (
-                  /* Unified Gmail Secure Login */
-                  <div className="space-y-6">
-                    <div className="space-y-3 text-center">
-                      <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
-                        <ShieldCheck className="w-7 h-7" />
-                      </div>
-                      <h4 className="text-xl font-black text-white">{lang === 'ar' ? 'بوابة التحقق وتسجيل الدخول بحساب Google' : 'Google Secure Sign-In Portal'}</h4>
-                      <p className="text-xs text-gray-400 leading-relaxed font-medium">
-                        {lang === 'ar' 
-                          ? 'بوابة التحقق الموحدة لشبكة سيسترو. يرجى إدخال بريدك الإلكتروني (Gmail) واسمك للمزامنة الفورية مع السيرفر والتحضير للمهام.' 
-                          : 'Unified secure gateway for the Systro rescue network. Please specify your Gmail address and full name to start live map operations.'}
-                      </p>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* Name input */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'الاسم بالكامل (Google Display Name):' : 'Full Profile Name (Google Name):'}</label>
-                        <input 
-                          type="text" 
-                          required
-                          value={enteredName}
-                          onChange={(e) => setEnteredName(e.target.value)}
-                          placeholder={lang === 'ar' ? 'مثال: أدهم عطون' : 'e.g. Adam Atoun'} 
-                          className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                        />
-                      </div>
-
-                      {/* Gmail input */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'البريد الإلكتروني لجوجل (Verified Gmail):' : 'Google Gmail Address:'}</label>
-                        <input 
-                          type="email" 
-                          required
-                          value={enteredEmail}
-                          onChange={(e) => setEnteredEmail(e.target.value)}
-                          placeholder="e.g. adam@gmail.com" 
-                          className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-mono text-xs transition-colors"
-                        />
-                      </div>
-
-                      {/* Submit action */}
-                      <button 
-                        onClick={() => {
-                          if (!enteredName.trim() || !enteredEmail.trim()) {
-                            triggerToast(lang === 'ar' ? 'الرجاء إدخال الاسم والبريد الإلكتروني للمتابعة!' : 'Please enter your name and email to proceed!', 'warning');
-                            return;
-                          }
-                          if (!enteredEmail.includes('@')) {
-                            triggerToast(lang === 'ar' ? 'الرجاء إدخال بريد إلكتروني صحيح!' : 'Please enter a valid email address!', 'warning');
-                            return;
-                          }
-                          handleGoogleSignIn(enteredEmail, enteredName);
-                        }}
-                        className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 cursor-pointer"
-                      >
-                        <span>{lang === 'ar' ? 'دخول فوري وآمن بـ Google Account' : 'Secure Fast Google Sign-In'}</span>
-                        <span>→]</span>
-                      </button>
-
-
-                    </div>
-                  </div>
-                ) : (
-                  /* User is logged in, show Role Selection Screen if userRole is null */
-                  <div className="space-y-6">
-                    <div className="space-y-2 text-center select-none">
-                      <span className="text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider animate-pulse">
-                        {lang === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Authentication Successful'}
-                      </span>
-                      <h4 className="text-xl font-black text-white mt-3">
-                        {lang === 'ar' ? `مرحباً بك ${loggedInUserName}` : `Welcome ${loggedInUserName}`}
-                      </h4>
-                      <p className="text-xs text-gray-400 leading-relaxed font-medium">
-                        {lang === 'ar' 
-                          ? 'لقد سجلت دخولك بحساب Google بنجاح. اختر خيارك الآن للمتابعة (ويمكنك تبديله بأي لحظة في الهيدر):' 
-                          : 'Google authentication completed. Select your profile role to launch the workspace (you can switch roles anytime at the header):'}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 select-none">
-                      {/* Customer Button Option */}
-                      <button 
-                        onClick={() => {
-                          setUserRole('client');
-                          setActiveTab('simulator');
-                          triggerToast(lang === 'ar' ? 'تم تفعيل وضع الزبون المقطوع!' : 'Stranded Customer role activated!', 'success');
-                        }}
-                        className="p-5 bg-[#0A0B10] hover:bg-[#111827] border border-amber-500/30 hover:border-amber-500/70 rounded-2xl text-right flex items-start gap-4 transition-all cursor-pointer group"
-                      >
-                        <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl group-hover:bg-amber-500/20 transition-colors shrink-0">
-                          <AlertTriangle className="w-6 h-6 animate-pulse" />
-                        </div>
-                        <div className="space-y-1">
-                          <h5 className="text-sm font-black text-white">{lang === 'ar' ? 'زبون (أنا مقطوع على الطريق وبحاجة لإنقاذ طارئ)' : 'Stranded Client (I need emergency road rescue)'}</h5>
-                          <p className="text-xs text-gray-400 font-medium leading-relaxed">
-                            {lang === 'ar' 
-                              ? 'حدد موقعك الجغرافي، اختر نوع العطل، استقبل عروض الأسعار من الفنيين على الخريطة وتحكم بالدفع الآمن عبر خزنة الضمان.' 
-                              : 'Pin your location, request help, receive real-time technician bids, and handle payments safely via Escrow.'}
-                          </p>
-                        </div>
-                      </button>
-
-                      {/* Provider Button Option */}
-                      <button 
-                        onClick={() => {
-                          setUserRole('technician');
-                          setActiveTab('simulator');
-                          triggerToast(lang === 'ar' ? 'تم تفعيل وضع مقدم الخدمات الشريك!' : 'Partner Service Provider role activated!', 'success');
-                        }}
-                        className="p-5 bg-[#0A0B10] hover:bg-[#111827] border border-blue-500/30 hover:border-blue-500/70 rounded-2xl text-right flex items-start gap-4 transition-all cursor-pointer group"
-                      >
-                        <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl group-hover:bg-blue-500/20 transition-colors shrink-0">
-                          <Wrench className="w-6 h-6" />
-                        </div>
-                        <div className="space-y-1">
-                          <h5 className="text-sm font-black text-white">{lang === 'ar' ? 'مقدم خدمات (ميكانيكي، كهربائي، صاحب ونش سحب...) ' : 'Service Provider (Mechanic, Electrician, Tow Truck...)'}</h5>
-                          <p className="text-xs text-gray-400 font-medium leading-relaxed">
-                            {lang === 'ar' 
-                              ? 'سجل تخصصك، أضف بيانات ومركبة الصيانة الخاصة بك للخريطة، قدم عروض أسعار للعملاء المقطوعين، واستقبل الدفعات.' 
-                              : 'Register your trades, list work logs on the road network, bid on nearby emergency alerts, and receive earnings.'}
-                          </p>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              </div>
-            </div>
-          </section>
-
-          {/* FOOTER SECTION (Image 1 layout) */}
-          <footer className="bg-[#0A0B10] border-t border-gray-900 py-16 px-4 md:px-8 select-none">
-            <div className="max-w-7xl mx-auto space-y-12">
-              
-              {/* Primary Footer Block */}
-              <div className="flex flex-col md:flex-row items-center justify-between gap-8 border-b border-gray-900 pb-12">
-                
-                {/* Brand and Description */}
-                <div className="text-center md:text-right rtl:md:text-right ltr:md:text-left space-y-3">
-                  <div className="flex items-center justify-center md:justify-start gap-3">
-                    <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                      <ShieldCheck className="w-5 h-5 text-amber-500" />
-                    </div>
-                    <h4 className="text-lg font-black text-white">
-                      {t.logoTitle} <span className="text-amber-500">{t.logoRescue}</span>
-                    </h4>
-                  </div>
-                  <p className="text-xs text-gray-500 font-bold max-w-md">
-                    {t.logoSub} — {t.slogan}
-                  </p>
-                </div>
-
-                {/* Navigation lists */}
-                <div className="flex flex-wrap items-center justify-center gap-6 text-xs font-bold text-gray-400">
-                  <button onClick={() => setActiveTab('home')} className="hover:text-amber-500 transition-colors">{t.home}</button>
-                  <button onClick={() => setActiveTab('services')} className="hover:text-amber-500 transition-colors">{t.services}</button>
-                  <button 
-                    onClick={() => {
-                      if (!isLoggedIn) {
-                        triggerToast(lang === 'ar' ? 'سجل دخولك للدخول إلى بوابة طلبات الطوارئ!' : 'Sign in to access the emergency rescue portal!', 'warning');
-                      } else {
-                        setActiveTab('simulator');
-                      }
-                    }} 
-                    className="hover:text-amber-500 transition-colors"
-                  >
-                    {t.simulator}
-                  </button>
-                  <button onClick={() => setActiveTab('admin')} className="hover:text-amber-500 transition-colors">{t.adminPortal}</button>
-                </div>
-
-              </div>
-
-              {/* Bottom Copyright & admin access gateway pill button */}
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-xs font-semibold text-gray-500">
-                <p>
-                  {lang === 'ar' ? 'جميع الحقوق محفوظة (Systro Rescue) سيسترو إنقاذ 2026 ©' : 'All rights reserved (Systro Rescue) Systro Rescue 2026 ©'}
-                </p>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Domain & Trust Seal Trigger */}
-                  <button 
-                    onClick={() => setIsTrustPortalOpen(true)}
-                    className="px-5 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 transition-all rounded-full flex items-center gap-2 cursor-pointer"
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>{lang === 'ar' ? `بوابة الأمان والتوثيق (${customDomain})` : `Security & Trust Center (${customDomain})`}</span>
-                  </button>
-
-                  {/* Pill Gate */}
-                  <button 
-                    onClick={() => setActiveTab('admin')}
-                    className="px-5 py-2.5 bg-[#111827] hover:bg-[#1F2937] border border-gray-800 text-gray-400 hover:text-white transition-all rounded-full flex items-center gap-2"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>{t.adminGateway}</span>
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </footer>
-
-        </div>
+        <HomeTab
+          lang={lang}
+          isLoggedIn={isLoggedIn}
+          setIsLoggedIn={setIsLoggedIn}
+          userRole={userRole}
+          setUserRole={setUserRole}
+          setActiveTab={setActiveTab}
+          t={t}
+          stats={stats}
+          servicesList={servicesList}
+          setSelectedService={setSelectedService}
+          enteredName={enteredName}
+          setEnteredName={setEnteredName}
+          enteredEmail={enteredEmail}
+          setEnteredEmail={setEnteredEmail}
+          handleGoogleSignIn={handleGoogleSignIn}
+          triggerToast={triggerToast}
+          loggedInUserName={loggedInUserName}
+        />
       )}
 
       {/* DETAILED ROAD SERVICES TAB */}
       {activeTab === 'services' && (
-        <div className="max-w-5xl mx-auto px-4 md:px-8 py-12 animate-fade-in space-y-8">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-[#0F1424]/40 border border-gray-800 p-6 rounded-3xl">
-            <div className="text-right rtl:text-right ltr:text-left space-y-1">
-              <h2 className="text-2xl md:text-3xl font-black text-white">{t.servicesTitle}</h2>
-              <p className="text-xs md:text-sm text-gray-400 font-semibold">{t.servicesSub}</p>
-            </div>
-            
-            <button
-              onClick={() => {
-                if (!isLoggedIn) {
-                  triggerToast(
-                    lang === 'ar' 
-                      ? 'يرجى تسجيل الدخول بحساب Google أولاً لإنشاء خدمة مخصصة!' 
-                      : lang === 'he'
-                      ? 'אנא התחבר עם חשבון גוגל תחילה כדי ליצור שירות מותאם אישית!'
-                      : 'Please sign in with Google account first to create custom service!', 
-                    'warning'
-                  );
-                  const section = document.getElementById('login-portal-section');
-                  if (section) section.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                  setShowCustomServiceModal(true);
-                }
-              }}
-              className="px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-blue-500/10 shrink-0 cursor-pointer"
-            >
-              <span>⚙️</span>
-              <span>{lang === 'ar' ? 'إضافة خدمة جديدة / مخصصة' : lang === 'he' ? 'הוסף שירות מותאם אישית' : 'Add Custom Service'}</span>
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            {servicesList.map(service => {
-              const IconComponent = service.icon;
-              return (
-                <div key={service.id} className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                  {/* Icon */}
-                  <div className="md:col-span-2 flex justify-center">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border ${service.color}`}>
-                      <IconComponent className="w-8 h-8" />
-                    </div>
-                  </div>
-
-                  {/* Details */}
-                  <div className="md:col-span-7 space-y-2 text-center md:text-right rtl:md:text-right ltr:md:text-left">
-                    <h3 className="text-lg font-black text-white">{service.name}</h3>
-                    <p className="text-xs md:text-sm text-gray-400 leading-relaxed font-semibold">{service.desc}</p>
-                  </div>
-
-                  {/* Pricing / Demo buttons */}
-                  <div className="md:col-span-3 text-center space-y-3">
-                    <div className="text-xs font-bold text-gray-400 uppercase">
-                      {lang === 'ar' ? 'السعر التقديري الأساسي:' : 'Estimated Base Price:'}
-                      <span className="text-lg font-black text-white font-mono block mt-1">{service.basePrice} ₪</span>
-                    </div>
-
-                    <button 
-                      onClick={() => {
-                        setSelectedService(service.id);
-                        setIsLoggedIn(true);
-                        setUserRole('client');
-                        setActiveTab('simulator');
-                        triggerToast(lang === 'ar' ? 'تم اختيار الخدمة، حدد موقعك على الخريطة للبدء!' : 'Service selected, pin your location on map to start!', 'success');
-                      }}
-                      className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all cursor-pointer"
-                    >
-                      {lang === 'ar' ? 'اطلب الخدمة الرسمية الآن' : 'Request Official Service Now'}
-                    </button>
-                  </div>
-
-                  {/* Registered Service Providers List */}
-                  <div className="md:col-span-12 border-t border-gray-800/60 pt-4 mt-2">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-                      <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <Users className="w-4 h-4 text-amber-500" />
-                        <span>
-                          {lang === 'ar' ? 'فنيو ومزودو الخدمة المسجلون:' : lang === 'he' ? 'ספקי שירות רשומים:' : 'Registered Service Providers:'}
-                        </span>
-                      </h4>
-                      <button
-                        onClick={() => {
-                          if (!isLoggedIn) {
-                            triggerToast(
-                              lang === 'ar' 
-                                ? 'يرجى تسجيل الدخول بحساب Google أولاً لتسجيل سجل فني!' 
-                                : lang === 'he'
-                                ? 'אנא התחבר עם חשבון גוגל תחילה כדי להוסיף רשומת טכנאי!'
-                                : 'Please sign in with Google account first to add a technician record!', 
-                              'warning'
-                            );
-                            const section = document.getElementById('login-portal-section');
-                            if (section) section.scrollIntoView({ behavior: 'smooth' });
-                          } else {
-                            setSelectedServiceIdForRecord(service.id);
-                            setShowAddRecordModal(true);
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/20 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>➕</span>
-                        <span>{lang === 'ar' ? 'إضافة سجل' : lang === 'he' ? 'הוסף רשומה' : 'Add Record'}</span>
-                      </button>
-                    </div>
-
-                    {/* Filter technicians */}
-                    {(() => {
-                      const serviceTechs = dbTechnicians.filter(t => t.serviceId === service.id || t.specialties?.includes(service.id));
-                      if (serviceTechs.length === 0) {
-                        return (
-                          <div className="p-4 bg-[#0A0B10]/40 border border-gray-900 rounded-xl text-center">
-                            <span className="text-[11px] text-gray-500 font-bold block">
-                              {lang === 'ar' 
-                                ? 'لا يوجد فنيون مسجلون حالياً في هذا القسم. كن أول من يسجل سجلاً هنا!' 
-                                : lang === 'he'
-                                ? 'אין טכנאים רשומים כעת בקטגוריה זו. היה הראשון להירשם כאן!'
-                                : 'No certified technicians currently registered in this category. Be the first to add your record!'}
-                            </span>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                          {serviceTechs.map(tech => (
-                            <div key={tech.id} className="p-3 bg-[#0A0B10] border border-gray-900 rounded-xl flex items-center gap-3 relative overflow-hidden">
-                              <img 
-                                src={tech.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120'} 
-                                alt={tech.name} 
-                                className="w-10 h-10 rounded-full border border-gray-800 object-cover"
-                                referrerPolicy="no-referrer"
-                              />
-                              <div className="min-w-0 flex-1 text-right rtl:text-right ltr:text-left">
-                                <h5 className="text-xs font-extrabold text-white truncate">
-                                  {lang === 'ar' ? (tech.arName || tech.name) : tech.name}
-                                </h5>
-                                <p className="text-[10px] text-gray-400 font-bold truncate">
-                                  {lang === 'ar' ? (tech.arCarModel || tech.carModel) : tech.carModel}
-                                </p>
-                                <p className="text-[9px] text-amber-500 font-bold font-mono mt-0.5">
-                                  {tech.phone}
-                                </p>
-                              </div>
-                              {/* Rating badge */}
-                              <div className="absolute top-2 left-2 flex items-center gap-0.5 bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded text-[8px] font-black">
-                                <span>★</span>
-                                <span className="font-mono">{tech.rating?.toFixed(1) || '5.0'}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <ServicesTab
+          lang={lang}
+          isLoggedIn={isLoggedIn}
+          servicesList={servicesList}
+          dbTechnicians={dbTechnicians}
+          triggerToast={triggerToast}
+          setIsLoggedIn={setIsLoggedIn}
+          setUserRole={setUserRole}
+          setActiveTab={setActiveTab}
+          setSelectedService={setSelectedService}
+          setSelectedServiceIdForRecord={setSelectedServiceIdForRecord}
+          setShowAddRecordModal={setShowAddRecordModal}
+          setShowCustomServiceModal={setShowCustomServiceModal}
+          t={t}
+        />
       )}
 
       {/* MAIN INTERACTIVE SIMULATOR SUITE TAB */}
@@ -2688,7 +1946,11 @@ export default function App() {
                     setUserRole('client');
                     localStorage.setItem('systro_user_role', 'client');
                     if (loggedInUserEmail) {
-                      await setDoc(doc(db, "users", loggedInUserEmail), { role: 'client' }, { merge: true });
+                      try {
+                        await setDoc(doc(db, "users", loggedInUserEmail), { role: 'client' }, { merge: true });
+                      } catch (err) {
+                        console.error("Failed to save user role in simulator mode:", err);
+                      }
                     }
                     triggerToast(lang === 'ar' ? 'تم تحويل وضع التحكم لزبون مقطوع' : 'Switched control to Stranded Client', 'success');
                   }}
@@ -2702,7 +1964,11 @@ export default function App() {
                     setUserRole('technician');
                     localStorage.setItem('systro_user_role', 'technician');
                     if (loggedInUserEmail) {
-                      await setDoc(doc(db, "users", loggedInUserEmail), { role: 'technician' }, { merge: true });
+                      try {
+                        await setDoc(doc(db, "users", loggedInUserEmail), { role: 'technician' }, { merge: true });
+                      } catch (err) {
+                        console.error("Failed to save tech role in simulator mode:", err);
+                      }
                     }
                     triggerToast(lang === 'ar' ? 'تم تحويل وضع التحكم لمقدم خدمة' : 'Switched control to Service Provider', 'success');
                   }}
@@ -3568,8 +2834,15 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 animate-fade-in space-y-8">
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 border-b border-slate-200 pb-6">
-              <div className="space-y-1 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
-                <h2 className="text-2xl font-black text-slate-900">{t.adminTitle}</h2>
+              <div className="space-y-2 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center gap-3 justify-center sm:justify-start">
+                  <h2 className="text-2xl font-black text-slate-900">{t.adminTitle}</h2>
+                  {/* Verified Domain Badge - Relocated to Administration Portal */}
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs font-bold shrink-0 shadow-sm select-none">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>
+                    <span>{lang === 'ar' ? `نطاق موثق: ${customDomain}` : `Verified Domain: ${customDomain}`}</span>
+                  </div>
+                </div>
                 <p className="text-xs text-slate-500 font-semibold">{lang === 'ar' ? 'فصل وتحكيم المنازعات المالية والودائع المعلقة لحل الخلافات بين العملاء والفنيين.' : 'Arbitrate active disputes, refund clients, or dispatch technician escrow payouts manually.'}</p>
               </div>
               <button 
@@ -3723,20 +2996,7 @@ export default function App() {
         )
       )}
 
-      {/* Dynamic Trust and Domain Setup Lightbox Overlay */}
-      {isTrustPortalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-          <div className="w-full max-w-4xl relative animate-fade-in my-8">
-            <TrustPortal 
-              lang={lang} 
-              onClose={() => setIsTrustPortalOpen(false)} 
-              triggerToast={triggerToast} 
-              customDomain={customDomain}
-              setCustomDomain={setCustomDomain}
-            />
-          </div>
-        </div>
-      )}
+
 
       {/* Add Record Modal */}
       {showAddRecordModal && (
@@ -4005,7 +3265,7 @@ export default function App() {
           className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
         >
           <Activity className="w-5 h-5 animate-pulse shrink-0" />
-          <span>{lang === 'ar' ? 'المحاكي' : 'Simulator'}</span>
+          <span>{lang === 'ar' ? 'الخدمة' : 'Simulator'}</span>
         </button>
 
         <button 

@@ -55,6 +55,8 @@ export interface Technician {
   carModel: string;
   arCarModel: string;
   plateNumber: string;
+  serviceId?: string;
+  specialties?: string[];
 }
 
 export interface Bid {

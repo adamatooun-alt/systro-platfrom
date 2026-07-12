@@ -130,18 +130,10 @@ export default function SmtpConfigPanel({
               {lang === 'ar' ? 'أداة التحكم بخادم الـ SMTP والبريد الحقيقي 📨' : lang === 'he' ? 'בקרת שרת SMTP ואימייל אמיתי 📨' : 'SMTP Server & Live Email Engine 📨'}
             </h3>
             <p className="text-[11px] text-slate-500 font-bold">
-              {lang === 'ar' ? 'متابعة وتأكيد إرسال رسائل التحقق (OTP) وعقود الأمان مباشرة لعملاء سيسترو.' : lang === 'he' ? 'מעקב ואימות שליחת קודי אימות (OTP) וחוזי אבטחה ישירות ללקוחות.' : 'Manage live secure delivery of instant verification codes & escrow contracts.'}
+              {lang === 'ar' ? 'متابعة وتأكيد إرسال رسائل التحقق (OTP) وعقود الأمان مباشرة لعملاء سيسترو.' : lang === 'he' ? 'מעקב ואימות שליחת קודי אימות (OTP) וחוזי אבטחה ישירות ללקוחות סיסטרו.' : 'Monitor and verify actual SMTP dispatch of verification OTPs and secure contracts.'}
             </p>
           </div>
         </div>
-
-        <button
-          onClick={onRefresh}
-          className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>{lang === 'ar' ? 'تحديث الحالة' : lang === 'he' ? 'רענן מצב' : 'Refresh'}</span>
-        </button>
       </div>
 
       {/* Connection Status Indicator */}
@@ -162,7 +154,7 @@ export default function SmtpConfigPanel({
               <div className="flex items-center gap-2 mt-1.5">
                 <div className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></div>
                 <span className="text-xs font-black text-amber-600 uppercase">
-                  {lang === 'ar' ? 'صندوق المحاكاة' : lang === 'he' ? 'מצב סימולטור' : 'Simulator Active'}
+                  {lang === 'ar' ? 'صندوق الخدمة' : lang === 'he' ? 'מצב סימולטור' : 'Simulator Active'}
                 </span>
               </div>
             )}
@@ -171,7 +163,7 @@ export default function SmtpConfigPanel({
           <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
             {status?.configured 
               ? (lang === 'ar' ? 'يقوم النظام حالياً بإرسال رسائل بريد إلكتروني حقيقية عبر الخادم الخاص بك.' : lang === 'he' ? 'המערכת שולחת כעת אימיילים אמיתיים דרך השרת שלך.' : 'System is currently dispatching real, authorized emails through your custom server gateway.')
-              : (lang === 'ar' ? 'صندوق المحاكاة السريع نشط. يتم طباعة رموز الـ OTP مباشرة على الشاشة لسهولة التجربة.' : lang === 'he' ? 'תיבת הסימולטור פעילה. קודי אימות מוצגים על המסך לצורך בדיקות פשוטות.' : 'Local sandbox simulation active. Temporary verification keys are printed directly on screen.')
+              : (lang === 'ar' ? 'صندوق الخدمة السريع نشط. يتم طباعة رموز الـ OTP مباشرة على الشاشة لسهولة التجربة.' : lang === 'he' ? 'תיבת הסימולטור פעילה. קודי אימות מוצגים על המסך לצורך בדיקות פשוטות.' : 'Local sandbox simulation active. Temporary verification keys are printed directly on screen.')
             }
           </p>
         </div>
