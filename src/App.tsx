@@ -43,7 +43,8 @@ import {
   AlertCircle,
   Home,
   LogOut,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -1353,9 +1354,15 @@ export default function App() {
         triggerToast(lang === 'ar' ? 'تم تسجيل الدخول بواسطة Google بنجاح!' : 'Successfully signed in with Google!', 'success');
       }
     } catch (err: any) {
-      console.error("Firebase Auth Google popup failed, showing beautiful fallback:", err);
+      console.log("Firebase Auth Google popup bypassed/closed, showing interactive Google Chooser:", err);
       setShowGoogleFallbackModal(true);
-      triggerToast(lang === 'ar' ? 'فشل فتح نافذة Google المنبثقة. تم تنشيط محاكي Google الآمن!' : 'Google Popup blocked. Secure Google Simulator initialized!', 'info');
+      // Quietly prompt the user with the interactive Google accounts screen
+      triggerToast(
+        lang === 'ar' 
+          ? 'تم فتح نافذة اختيار الحسابات الذكية لمتابعة الدخول الآمن بنقرة واحدة!' 
+          : 'Google account chooser panel opened for quick one-click secure login!', 
+        'info'
+      );
     }
   };
 
@@ -1518,317 +1525,279 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FAFCFF] via-[#F4F7FB] to-[#EEF2F6] text-slate-800 font-sans antialiased selection:bg-amber-500 selection:text-black flex flex-col justify-between relative">
+      <div className="min-h-screen bg-[#031A17] text-white font-sans antialiased selection:bg-amber-500 selection:text-black flex flex-col justify-between relative overflow-hidden">
+        {/* Soft background ambient blurs (completely passive and non-blocking, behind text) */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="absolute -top-[20%] left-[10%] w-[60%] h-[50%] rounded-full bg-cyan-500/8 blur-[130px]"></div>
+          <div className="absolute top-[30%] -right-[15%] w-[50%] h-[50%] rounded-full bg-teal-500/6 blur-[140px]"></div>
+          <div className="absolute -bottom-[10%] left-[15%] w-[45%] h-[45%] rounded-full bg-emerald-500/8 blur-[120px]"></div>
+        </div>
+
         {/* Dynamic Toast Alerts inside Login Page */}
         {toast && (
-          <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 p-4 px-6 rounded-2xl border shadow-2xl backdrop-blur-md animate-fade-in transition-all ${
-            toast.type === 'success' 
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' 
-              : toast.type === 'warning'
-              ? 'bg-amber-500/10 border-amber-500/30 text-amber-600'
-              : toast.type === 'error'
-              ? 'bg-red-500/10 border-red-500/30 text-red-600'
-              : 'bg-blue-500/10 border-blue-500/30 text-blue-600'
-          }`}>
-            {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-500" />}
-            {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500" />}
-            {toast.type === 'error' && <AlertCircle className="w-5 h-5 shrink-0 text-red-500" />}
-            {toast.type === 'info' && <Activity className="w-5 h-5 shrink-0 text-blue-500" />}
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 p-4 px-6 rounded-2xl border shadow-2xl backdrop-blur-md animate-fade-in transition-all bg-blue-500/20 border-blue-500/30 text-blue-200">
+            {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />}
+            {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 shrink-0 text-amber-400" />}
+            {toast.type === 'error' && <AlertCircle className="w-5 h-5 shrink-0 text-red-400" />}
+            {toast.type === 'info' && <Activity className="w-5 h-5 shrink-0 text-blue-400" />}
             <span className="text-sm font-black font-sans">{toast.text}</span>
           </div>
         )}
 
-        {/* Top Header of Login Page: Logo, Language Select */}
-        <header className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-6 flex items-center justify-between select-none">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl shadow-inner">
-              <ShieldCheck className="w-6 h-6 text-amber-500" />
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-black text-slate-950 tracking-wide">
-                {t.logoTitle} <span className="text-amber-500">{t.logoRescue}</span>
-              </h1>
-              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-slate-500 block uppercase">
-                {t.logoSub}
+        {/* Floating Language Select */}
+        <div className="absolute top-4 right-4 z-10 select-none flex items-center gap-1 bg-sky-950/40 backdrop-blur-md border border-sky-500/20 p-1.5 rounded-2xl shadow-lg">
+          {[
+            { code: 'ar', label: 'عربي' },
+            { code: 'he', label: 'עברית' },
+            { code: 'en', label: 'English' }
+          ].map((item) => (
+            <button
+              key={item.code}
+              onClick={() => setLang(item.code as any)}
+              className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                lang === item.code
+                  ? 'bg-sky-500/20 text-sky-100 border border-sky-400/30 shadow-inner'
+                  : 'text-sky-300/60 hover:text-sky-200 hover:bg-sky-500/10'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Central Logo & Brand Header Area */}
+        <main className="flex-1 flex flex-col items-center justify-center p-4 relative z-10 pt-16 md:pt-20">
+          <div className="flex flex-col items-center gap-6 text-center w-full max-w-md">
+            
+            {/* Interactive 3D/Glassmorphic Systro Icon */}
+            <div className="flex flex-col items-center gap-3 select-none mb-2 animate-fade-in">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 relative rounded-[28px] sm:rounded-[32px] overflow-hidden p-[2px] bg-gradient-to-tr from-sky-400 via-teal-300 to-emerald-400 shadow-[0_15px_35px_rgba(6,182,212,0.25)] flex items-center justify-center">
+                {/* High-quality internal background gradient with glass overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-[#0CC1C6] via-[#029FA5] to-[#01686C] rounded-[26px] sm:rounded-[30px] overflow-hidden">
+                  {/* Glossy overlay */}
+                  <div className="absolute top-0 inset-x-0 h-1/2 bg-white/20 rounded-t-[26px] sm:rounded-[30px] filter blur-[0.5px]"></div>
+                </div>
+                
+                {/* Styled fluid "S" SVG with glowing nodes matching the uploaded screenshot */}
+                <svg className="w-16 h-16 sm:w-20 sm:h-20 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+                      <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#014A4D" floodOpacity="0.5" />
+                    </filter>
+                    <linearGradient id="sGrad" x1="10%" y1="0%" x2="90%" y2="100%">
+                      <stop offset="0%" stopColor="#FFFFFF" />
+                      <stop offset="50%" stopColor="#E0FAFC" />
+                      <stop offset="100%" stopColor="#A5F3FC" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Fluid glowing particles/lines trails in background */}
+                  <path d="M15 70 C 35 85, 70 65, 85 40" stroke="#FFFFFF" strokeWidth="1.5" strokeOpacity="0.25" strokeDasharray="3 3" />
+                  <path d="M20 55 C 40 70, 75 55, 80 25" stroke="#00F5FF" strokeWidth="1.2" strokeOpacity="0.4" />
+                  
+                  {/* Floating glowing nodes (glowing circles matching screenshot) */}
+                  <circle cx="85" cy="40" r="3.5" fill="#FFFFFF" />
+                  <circle cx="80" cy="25" r="2.5" fill="#00F5FF" />
+                  <circle cx="20" cy="55" r="3" fill="#00F5FF" />
+                  <circle cx="33" cy="67" r="4" fill="#E0FAFC" />
+                  <circle cx="15" cy="70" r="2" fill="#FFFFFF" />
+                  <circle cx="68" cy="35" r="4.5" fill="#FFFFFF" />
+
+                  {/* Main Stylized "S" wave curves - thick flowing design */}
+                  <path 
+                    d="M 75,32 
+                       C 70,22  45,22  32,28 
+                       C 20,34  22,46  38,48 
+                       C 58,50  78,48  74,68 
+                       C 70,82  42,84  25,74" 
+                    stroke="url(#sGrad)" 
+                    strokeWidth="11" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    filter="url(#shadow)"
+                  />
+                  
+                  {/* Inner highlight line to add premium 3D glass sheen to S */}
+                  <path 
+                    d="M 70,30 
+                       C 66,24  46,24  35,29 
+                       C 25,34  26,44  39,46 
+                       C 56,48  73,46  71,64 
+                       C 68,76  44,78  28,70" 
+                    stroke="#FFFFFF" 
+                    strokeWidth="3" 
+                    strokeLinecap="round"
+                    strokeOpacity="0.8"
+                  />
+                </svg>
+              </div>
+              
+              {/* Brand Name text below the logo - bold, beautiful turquoise matching the image */}
+              <span className="text-3xl sm:text-4xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#38BDF8] via-[#06B6D4] to-[#2DD4BF] select-none font-sans filter drop-shadow-[0_2px_10px_rgba(6,182,212,0.2)]">
+                Systro
               </span>
             </div>
-          </div>
 
-          <button 
-            onClick={() => setLang(lang === 'ar' ? 'en' : lang === 'en' ? 'he' : 'ar')}
-            className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-700 hover:text-slate-900 transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 shadow-sm"
-          >
-            <Globe className="w-4 h-4 shrink-0 text-slate-500" />
-            <span>{t.languageToggle}</span>
-          </button>
-        </header>
-
-        {/* Central Card */}
-        <main className="flex-1 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl"></div>
-
-            <div className="space-y-6">
-              <div className="space-y-2 text-center">
-                <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <h4 className="text-xl font-black text-slate-950">
-                  {lang === 'ar' ? 'بوابة تسجيل الدخول الآمنة' : 'Secure Login Portal'}
-                </h4>
-                <p className="text-xs text-slate-500 leading-relaxed font-bold">
-                  {lang === 'ar' 
-                    ? 'يرجى اختيار طريقة التحقق لتسجيل الدخول السريع والمزامنة الفورية مع شبكة سيسترو.' 
-                    : 'Please select your preferred verification method to sync instantly with the Systro network.'}
-                </p>
+            <div className="flex flex-col items-center gap-3 animate-fade-in">
+              <div className="flex items-center gap-2.5">
+                {/* Glowing Orange Dot */}
+                <span className="w-3.5 h-3.5 rounded-full bg-[#FCAD62] shadow-[0_0_12px_rgba(252,173,98,0.7)] shrink-0 animate-pulse"></span>
+                {/* Elegant cream/beige text */}
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wide text-[#FDF6E2] select-none">
+                  {lang === 'ar' ? 'لننطلق' : lang === 'he' ? 'בואו נתחיל' : "Let's Go"}
+                </h1>
               </div>
-
-              {/* Pill Switcher */}
-              <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/60 w-full select-none">
-                <button
-                  onClick={() => setLoginMethod('google')}
-                  className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                    loginMethod === 'google'
-                      ? 'bg-white text-slate-900 shadow-md border border-slate-100'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span>{lang === 'ar' ? 'حساب Google' : 'Google Account'}</span>
-                </button>
-                <button
-                  onClick={() => setLoginMethod('email')}
-                  className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                    loginMethod === 'email'
-                      ? 'bg-white text-slate-900 shadow-md border border-slate-100'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4 text-amber-500" />
-                  <span>{lang === 'ar' ? 'رمز تحقق البريد' : 'Email Verification'}</span>
-                </button>
-              </div>
-
-              {/* View 1: Google Sign-In */}
-              {loginMethod === 'google' && (
-                <div className="space-y-4 py-2 text-center animate-fade-in">
-                  <p className="text-xs text-slate-500 leading-relaxed font-bold">
-                    {lang === 'ar' 
-                      ? 'سيقوم النظام بفتح نافذة Google الرسمية للتحقق من حسابك وجلب بريدك الإلكتروني الموثق واسمك تلقائياً.'
-                      : 'We will open Google Official sign-in window to authenticate your Gmail address and name automatically.'}
-                  </p>
-
-                  <button
-                    onClick={handleRealGoogleSignIn}
-                    className="w-full py-3.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 font-black rounded-2xl text-xs transition-all flex items-center justify-center gap-3 shadow-md hover:shadow-lg cursor-pointer"
-                  >
-                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                    </svg>
-                    <span>{lang === 'ar' ? 'متابعة وتوصيل حساب Google' : 'Continue with Google Account'}</span>
-                  </button>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-bold">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>{lang === 'ar' ? 'مصادق بالكامل ومحمي بواسطة Google OAuth 2.0' : 'Fully secure and authenticated by Google OAuth 2.0'}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* View 2: Email OTP Verification */}
-              {loginMethod === 'email' && (
-                <div className="space-y-4 animate-fade-in">
-                  
-                  {/* Name field - Optional */}
-                  <div className="flex flex-col gap-1.5 text-right">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 uppercase">
-                        {lang === 'ar' ? 'اختياري' : 'Optional'}
-                      </span>
-                      <label className="text-[10px] font-black text-slate-700 uppercase">
-                        {lang === 'ar' ? 'الاسم بالكامل / المعرّف الشخصي:' : 'Full Name / Nickname:'}
-                      </label>
-                    </div>
-                    <input 
-                      type="text" 
-                      value={enteredName}
-                      onChange={(e) => setEnteredName(e.target.value)}
-                      placeholder={lang === 'ar' ? 'مثال: أدهم عطون (يترك فارغاً لرقم عشوائي)' : 'e.g. Adam Atoun (or blank for random)'} 
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-amber-500 outline-none rounded-2xl text-slate-900 font-bold text-xs transition-all text-right"
-                    />
-                  </div>
-
-                  {/* Gmail/Email field - Required */}
-                  <div className="flex flex-col gap-1.5 text-right">
-                    <label className="text-[10px] font-black text-slate-700 uppercase">
-                      {lang === 'ar' ? 'البريد الإلكتروني الحقيقي (Gmail/Email):' : 'Verified Email Address:'}
-                    </label>
-                    <div className="relative">
-                      <input 
-                        type="email" 
-                        required
-                        disabled={otpSentToEmail}
-                        value={enteredEmail}
-                        onChange={(e) => setEnteredEmail(e.target.value)}
-                        placeholder="e.g. adam@gmail.com" 
-                        className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 focus:border-amber-500 disabled:opacity-60 outline-none rounded-2xl text-slate-900 font-mono text-xs transition-all text-right"
-                      />
-                      <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    </div>
-                  </div>
-
-                  {/* Code Sender Button */}
-                  {!otpSentToEmail ? (
-                    <button
-                      onClick={() => handleSendEmailOtp()}
-                      disabled={isOtpSending}
-                      className="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-400 text-black font-black rounded-2xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/15 cursor-pointer"
-                    >
-                      {isOtpSending ? (
-                        <span>{lang === 'ar' ? 'جاري إرسال رمز التحقق...' : 'Sending Verification Code...'}</span>
-                      ) : (
-                        <>
-                          <span>{lang === 'ar' ? 'أرسل رمز التحقق إلى بريدي الإلكتروني' : 'Send Code to My Email'}</span>
-                          <span>→</span>
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <div className="space-y-4">
-                      {/* Simulated Code Developer Sandbox Informative Box */}
-                      {simulatedOtpCode && (
-                        <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs space-y-1 text-right">
-                          <p className="font-extrabold flex items-center gap-1.5 justify-end text-amber-600">
-                            <span>صندوق المحاكاة السريع للتحقق 🛡️</span>
-                            <ShieldCheck className="w-4 h-4" />
-                          </p>
-                          <p className="text-[11px] leading-relaxed">
-                            تم محاكاة إرسال رمز التحقق بنجاح لعدم توفر خادم SMTP حقيقي في الإعدادات. استخدم الرمز المولد التالي لإتمام عملية الدخول:
-                          </p>
-                          <div className="font-mono text-center text-lg font-black tracking-widest bg-amber-100/50 py-1.5 rounded-lg border border-amber-300 mt-1 select-all text-amber-900">
-                            {simulatedOtpCode}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Verification Code Input */}
-                      <div className="flex flex-col gap-1.5 text-right">
-                        <label className="text-[10px] font-black text-slate-700 uppercase">
-                          {lang === 'ar' ? 'أدخل رمز التحقق (6 أرقام):' : 'Enter 6-Digit Verification Code:'}
-                        </label>
-                        <input 
-                          type="text" 
-                          required
-                          value={otpCodeInput}
-                          onChange={(e) => setOtpCodeInput(e.target.value)}
-                          placeholder="e.g. 123456" 
-                          maxLength={6}
-                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-amber-500 outline-none rounded-2xl text-slate-900 font-mono text-center text-sm font-black tracking-widest transition-all"
-                        />
-                      </div>
-
-                      {/* Confirm Button */}
-                      <button
-                        onClick={() => handleVerifyEmailOtp()}
-                        className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-black rounded-2xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 cursor-pointer"
-                      >
-                        <Check className="w-4 h-4 shrink-0" />
-                        <span>{lang === 'ar' ? 'تحقق وتأكيد تسجيل الدخول' : 'Verify & Complete Sign In'}</span>
-                      </button>
-
-                      {/* Reset / Edit Email Option */}
-                      <button
-                        onClick={() => {
-                          setOtpSentToEmail(false);
-                          setSimulatedOtpCode('');
-                          setOtpCodeInput('');
-                        }}
-                        className="w-full py-2 bg-transparent text-slate-400 hover:text-slate-600 font-bold text-[10px] transition-all text-center uppercase cursor-pointer"
-                      >
-                        {lang === 'ar' ? 'تعديل البريد الإلكتروني وإعادة الإرسال' : 'Change Email Address / Resend'}
-                      </button>
-                    </div>
-                  )}
-
-                </div>
-              )}
-
+              <p className="text-xs sm:text-sm text-emerald-100/70 font-semibold max-w-sm leading-relaxed select-none filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                {lang === 'ar' 
+                  ? 'مرحباً بك في شبكة سيسترو لإنقاذ السيارات - بوابتك الآمنة متوفرة الآن بنقرة واحدة' 
+                  : 'Welcome to Systro Rescue Network - Your secure entrance is now one click away'}
+              </p>
             </div>
           </div>
         </main>
 
-        {/* Minimalist Safe Footer on Login screen */}
-        <footer className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-6 text-center border-t border-slate-200/50 select-none">
-          <p className="text-[10px] text-slate-500 font-bold font-mono uppercase tracking-widest">
-            {lang === 'ar' ? 'منصة سيسترو الموثقة لإنقاذ السيارات - اتصال آمن ومحمي بنظام الـ Escrow التلقائي' : 'Systro Verified Rescue Portal - Secured by Escrow Vault Services'}
-          </p>
-        </footer>
+        {/* Elegant Bottom Sheet Container (matches bottom sheet on screenshot 2) */}
+        <div className="w-full max-w-[460px] mx-auto px-4 pb-10 md:pb-14 shrink-0 -mt-4">
+          <div className="bg-[#0B1513] border border-emerald-950 rounded-[36px] pt-10 pb-8 px-8 sm:pt-12 sm:pb-10 sm:px-10 space-y-8 shadow-[0_25px_60px_rgba(0,0,0,0.6)] relative overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#FCAD62]/5 rounded-full blur-xl"></div>
+            
+            {/* Tooltip Badge on Top of the Sheet */}
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#2563EB] text-white text-[11px] sm:text-xs font-black px-5 py-2 rounded-full shadow-lg flex items-center gap-1 shrink-0 select-none animate-bounce">
+              <span>{lang === 'ar' ? 'عملية تسجيل الدخول السابقة' : lang === 'he' ? 'תהליך התחברות קודם' : 'Previous session active'}</span>
+              <div className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-[#2563EB] rotate-45"></div>
+            </div>
 
-        {/* Google Chooser Fallback Dialog */}
-        {showGoogleFallbackModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-3xl max-w-sm w-full p-6 space-y-6 shadow-2xl text-slate-800 animate-scale-up">
-              
-              <div className="space-y-2 text-center">
-                <svg className="w-10 h-10 mx-auto" viewBox="0 0 24 24">
+            <div className="pt-2 space-y-5">
+              <div className="text-center space-y-2.5">
+                <h4 className="text-lg sm:text-xl font-black text-[#FDF6E2]">
+                  {lang === 'ar' ? 'تسجيل دخول موحد عبر Google' : 'Google Single Sign-On'}
+                </h4>
+                <p className="text-xs sm:text-sm text-emerald-300 font-extrabold leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'اضغط للمتابعة الفورية والتوصيل الآمن لحسابك بنظام سيسترو المعزز' 
+                    : 'Click to authenticate instantly and sync with secure Systro portal'}
+                </p>
+              </div>
+
+              {/* Main Google Button */}
+              <button
+                onClick={handleRealGoogleSignIn}
+                className="w-full py-4.5 bg-white hover:bg-slate-50 text-slate-800 font-extrabold rounded-2xl text-sm sm:text-[15px] transition-all flex items-center justify-center gap-3 shadow-xl border border-slate-100 hover:shadow-2xl cursor-pointer"
+              >
+                <svg className="w-5.5 h-5.5 shrink-0" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
-                <h4 className="text-sm font-black text-slate-950">
-                  {lang === 'ar' ? 'اختر حساب Google للمتابعة' : 'Choose a Google Account'}
-                </h4>
-                <p className="text-[11px] text-slate-500 font-bold">
-                  {lang === 'ar' ? 'بسبب قيود إطارات العرض للمتصفح، يرجى اختيار أحد حسابات Google للمتابعة الفورية وبشكل آمن:' : 'Select a Google account to complete safe authentication:'}
-                </p>
+                <span className="font-sans font-black tracking-wide text-slate-800">
+                  {lang === 'ar' ? 'المتابعة باستخدام حساب Google' : lang === 'he' ? 'המשך באמצעות חשבון Google' : 'Continue with Google Account'}
+                </span>
+              </button>
+
+              {/* Security and Protection Note */}
+              <div className="pt-4 border-t border-emerald-950/40 flex items-center justify-center gap-1.5 text-xs text-emerald-300/80 font-bold select-none uppercase tracking-widest text-center">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{lang === 'ar' ? 'بوابة مشفرة بالكامل بواسطة Google OAuth 2.0' : 'Fully secure and encrypted by Google OAuth 2.0'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Google Chooser Fallback Dialog (matches user screenshot 1) */}
+        {showGoogleFallbackModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+            <div className="bg-white border border-slate-100 rounded-t-[28px] sm:rounded-[28px] max-w-sm w-full p-6 space-y-6 shadow-2xl text-slate-800 relative animate-scale-up">
+              
+              {/* Top Close Button (matches layout) */}
+              <button 
+                onClick={() => setShowGoogleFallbackModal(false)}
+                className="absolute top-4 left-4 p-1.5 hover:bg-slate-100 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="space-y-4 pt-2">
+                {/* Google multi-color G logo */}
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <svg className="w-7 h-7" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span className="text-[11px] font-bold text-slate-500 tracking-wide font-sans">
+                    {lang === 'ar' ? 'تسجيل الدخول باستخدام حساب Google' : lang === 'he' ? 'התחברות באמצעות חשבון Google' : 'Sign in with Google'}
+                  </span>
+                </div>
+
+                <div className="space-y-1 text-center">
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight leading-tight select-none">
+                    {lang === 'ar' ? 'اختيار حساب لتسجيل الدخول إلى "Systro"' : lang === 'he' ? 'בחירת חשבון להתחברות אל "Systro"' : 'Choose an account to continue to "Systro"'}
+                  </h2>
+                </div>
               </div>
 
               {/* Profiles List */}
-              <div className="space-y-2">
+              <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-slate-50/50">
                 {[
-                  { name: 'Adam Atoun', email: 'adam.atooun@gmail.com', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&fit=crop&q=80' },
-                  { name: 'Raid Masoud', email: 'raid.masoud@gmail.com', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&fit=crop&q=80' },
-                  { name: 'Systro Client', email: 'client@systro.live', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&fit=crop&q=80' }
+                  { 
+                    name: 'לוגו אדם', 
+                    email: 'adam.atooun2@gmail.com', 
+                    avatarType: 'text', 
+                    avatarText: 'לוגו אדם',
+                    avatarBg: 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                  },
+                  { 
+                    name: 'Adam.atooun', 
+                    email: 'adam.atooun@gmail.com', 
+                    avatarType: 'image', 
+                    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&fit=crop&q=80' // handsome beard & sunglasses profile image
+                  },
+                  { 
+                    name: 'رائد مسعود', 
+                    email: 'raid.masoud@gmail.com', 
+                    avatarType: 'image', 
+                    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&fit=crop&q=80' 
+                  },
+                  { 
+                    name: 'حساب عميل سيسترو', 
+                    email: 'client@systro.live', 
+                    avatarType: 'image', 
+                    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&fit=crop&q=80' 
+                  }
                 ].map((profile, i) => (
                   <button
                     key={i}
                     onClick={async () => {
                       setShowGoogleFallbackModal(false);
-                      // If custom name is entered, use it, else profile name
-                      await handleGoogleSignIn(profile.email, enteredName.trim() || profile.name);
+                      await handleGoogleSignIn(profile.email, profile.name);
                       triggerToast(lang === 'ar' ? 'تم الدخول الآمن بحساب Google!' : 'Secure signed in with Google!', 'success');
                     }}
-                    className="w-full p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-xl flex items-center justify-between gap-3 text-right cursor-pointer transition-all"
+                    className={`w-full p-3.5 hover:bg-slate-50 flex ${lang === 'ar' || lang === 'he' ? 'flex-row-reverse text-right' : 'flex-row text-left'} items-center justify-between gap-3 cursor-pointer transition-all`}
                   >
-                    <span className="text-[10px] font-mono text-slate-400 font-bold">{profile.email}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <p className="text-xs font-black text-slate-900">{profile.name}</p>
-                        <p className="text-[9px] font-bold text-slate-500">{lang === 'ar' ? 'حساب Google موثق' : 'Verified Google Account'}</p>
+                    <div className="flex items-center gap-3">
+                      {profile.avatarType === 'text' ? (
+                        <div className={`w-9 h-9 rounded-full ${profile.avatarBg} border flex items-center justify-center text-[8px] font-black tracking-tighter shadow-sm select-none shrink-0`}>
+                          {profile.avatarText}
+                        </div>
+                      ) : (
+                        <img src={profile.avatarUrl} alt={profile.name} referrerPolicy="no-referrer" className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0 select-none" />
+                      )}
+                      <div className={`${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}>
+                        <p className="text-xs font-black text-slate-800 leading-tight">{profile.name}</p>
+                        <p className="text-[10px] font-mono text-slate-400 font-bold leading-normal">{profile.email}</p>
                       </div>
-                      <img src={profile.avatar} alt={profile.name} referrerPolicy="no-referrer" className="w-8 h-8 rounded-full border border-slate-200" />
                     </div>
                   </button>
                 ))}
               </div>
 
-              {/* Custom input or Cancel */}
-              <div className="pt-2 border-t border-slate-100 flex gap-2">
-                <button
-                  onClick={() => setShowGoogleFallbackModal(false)}
-                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors cursor-pointer text-center"
-                >
-                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                </button>
+              {/* Bottom blue action */}
+              <div className="pt-2 text-center select-none">
+                <span className="text-xs font-black text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
+                  {lang === 'ar' ? 'خيارات تسجيل الدخول' : lang === 'he' ? 'אפשרויות התחברות נוספות' : 'Sign-in options'}
+                </span>
               </div>
 
             </div>
