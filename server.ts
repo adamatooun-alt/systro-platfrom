@@ -134,6 +134,93 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // GET endpoint to check current SMTP configuration status
+  app.get('/api/smtp-status', (req, res) => {
+    res.json({
+      configured: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
+      host: process.env.SMTP_HOST || '',
+      port: process.env.SMTP_PORT || '',
+      user: process.env.SMTP_USER || '',
+      from: process.env.SMTP_FROM || 'Systro Rescue Network <no-reply@systro.live>',
+      hasPass: !!process.env.SMTP_PASS
+    });
+  });
+
+  // POST endpoint to send a test email using configured SMTP
+  app.post('/api/test-smtp', async (req, res) => {
+    const { testEmail } = req.body;
+    if (!testEmail || !testEmail.includes('@')) {
+      res.status(400).json({ error: 'Please provide a valid recipient email address' });
+      return;
+    }
+
+    const host = process.env.SMTP_HOST;
+    const port = process.env.SMTP_PORT;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.SMTP_FROM || 'Systro Rescue Network <no-reply@systro.live>';
+
+    if (!host || !user || !pass) {
+      res.status(400).json({ 
+        error: 'SMTP credentials are not fully configured. Please add SMTP_HOST, SMTP_USER, and SMTP_PASS to your environment.' 
+      });
+      return;
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port: Number(port) || 587,
+        secure: Number(port) === 465,
+        auth: { user, pass }
+      });
+
+      // Verify connection first
+      await transporter.verify();
+
+      // Send test email
+      await transporter.sendMail({
+        from,
+        to: testEmail.trim(),
+        subject: 'Systro Real SMTP Test Email ✅',
+        text: `Congratulations! Your real SMTP server is working perfectly with Systro. Connected successfully to ${host}.`,
+        html: `
+          <div style="direction: ltr; text-align: left; font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 16px; background-color: #F8FAFC;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h1 style="color: #F59E0B; margin: 0; font-size: 28px;">SYSTRO SMTP TEST</h1>
+              <p style="color: #64748B; font-size: 12px; margin-top: 5px;">Secure Email Delivery Engine</p>
+            </div>
+            <div style="background-color: #FFFFFF; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
+              <h3 style="color: #0F172A; margin-top: 0; color: #10B981;">SMTP Server Verified Successfully! ✅</h3>
+              <p style="color: #334155; font-size: 14px; line-height: 1.6;">
+                This is a real test email confirming that your <strong>Systro</strong> portal is successfully connected to:
+              </p>
+              <div style="background-color: #F1F5F9; padding: 15px; border-radius: 8px; margin: 15px 0; font-family: monospace; font-size: 13px; color: #1E293B;">
+                <strong>Host:</strong> ${host}<br/>
+                <strong>Port:</strong> ${port || '587'}<br/>
+                <strong>Username:</strong> ${user}<br/>
+                <strong>Sender (From):</strong> ${from}
+              </div>
+              <p style="color: #64748B; font-size: 12px;">
+                You can now log in securely using real instant OTP codes sent straight to your users' email inboxes!
+              </p>
+            </div>
+            <div style="text-align: center; margin-top: 20px; color: #94A3B8; font-size: 11px;">
+              Systro Rescue Network &copy; 2026
+            </div>
+          </div>
+        `
+      });
+
+      res.json({ success: true, message: `Test email sent successfully to ${testEmail}!` });
+    } catch (error: any) {
+      console.error("Test SMTP error:", error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to authenticate or send email via SMTP server.' 
+      });
+    }
+  });
+
   // Setup Vite middleware in development or serve static files in production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

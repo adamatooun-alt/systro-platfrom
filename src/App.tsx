@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
 import TrustPortal from './components/TrustPortal';
+import SmtpConfigPanel from './components/SmtpConfigPanel';
 
 enum OperationType {
   CREATE = 'create',
@@ -136,6 +137,37 @@ export default function App() {
   const [customDomain, setCustomDomain] = useState(() => {
     return localStorage.getItem('systro_custom_domain') || 'systro.live';
   });
+
+  // SMTP Live Configurations & Testing
+  const [smtpStatus, setSmtpStatus] = useState<{
+    configured: boolean;
+    host: string;
+    port: string;
+    user: string;
+    from: string;
+    hasPass: boolean;
+  } | null>(null);
+  const [testEmailInput, setTestEmailInput] = useState('');
+  const [isTestingSmtp, setIsTestingSmtp] = useState(false);
+
+  const fetchSmtpStatus = async () => {
+    try {
+      const response = await fetch('/api/smtp-status');
+      if (response.ok) {
+        const data = await response.json();
+        setSmtpStatus(data);
+      }
+    } catch (err) {
+      console.error("Error fetching SMTP status:", err);
+    }
+  };
+
+  // Fetch SMTP status on tab selection
+  useEffect(() => {
+    if (activeTab === 'admin') {
+      fetchSmtpStatus();
+    }
+  }, [activeTab]);
 
   // Brand New Gmail Sign-In & Role State
   const [enteredEmail, setEnteredEmail] = useState('');
@@ -1621,7 +1653,7 @@ export default function App() {
                       <span className="text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 uppercase">
                         {lang === 'ar' ? 'اختياري' : 'Optional'}
                       </span>
-                      <label className="text-[10px] font-black text-slate-500 uppercase">
+                      <label className="text-[10px] font-black text-slate-700 uppercase">
                         {lang === 'ar' ? 'الاسم بالكامل / المعرّف الشخصي:' : 'Full Name / Nickname:'}
                       </label>
                     </div>
@@ -1636,7 +1668,7 @@ export default function App() {
 
                   {/* Gmail/Email field - Required */}
                   <div className="flex flex-col gap-1.5 text-right">
-                    <label className="text-[10px] font-black text-slate-500 uppercase">
+                    <label className="text-[10px] font-black text-slate-700 uppercase">
                       {lang === 'ar' ? 'البريد الإلكتروني الحقيقي (Gmail/Email):' : 'Verified Email Address:'}
                     </label>
                     <div className="relative">
@@ -1689,7 +1721,7 @@ export default function App() {
 
                       {/* Verification Code Input */}
                       <div className="flex flex-col gap-1.5 text-right">
-                        <label className="text-[10px] font-black text-slate-500 uppercase">
+                        <label className="text-[10px] font-black text-slate-700 uppercase">
                           {lang === 'ar' ? 'أدخل رمز التحقق (6 أرقام):' : 'Enter 6-Digit Verification Code:'}
                         </label>
                         <input 
@@ -3611,6 +3643,14 @@ export default function App() {
             triggerToast={triggerToast} 
             customDomain={customDomain}
             setCustomDomain={setCustomDomain}
+          />
+
+          {/* Real-time SMTP Connection & Diagnostics Panel */}
+          <SmtpConfigPanel 
+            lang={lang}
+            status={smtpStatus}
+            onRefresh={fetchSmtpStatus}
+            triggerToast={triggerToast}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -58,9 +58,14 @@ body,
 
 /* Input fields overrides */
 input, select, textarea {
-  background-color: #FFFFFF !important;
-  border-color: #CBD5E1 !important;
+  background-color: #FFFFFF;
+  border-color: #CBD5E1;
   color: #1E293B !important;
+}
+input:disabled, select:disabled, textarea:disabled {
+  background-color: #F1F5F9 !important;
+  color: #64748B !important;
+  cursor: not-allowed;
 }
 input:focus, select:focus, textarea:focus {
   border-color: #F59E0B !important;
@@ -95,7 +100,6 @@ footer.border-t {
 
 /* Headings text colors - Deep Premium Slate */
 h1, h2, h3, h4,
-.text-white,
 .text-gray-100 {
   color: #0F172A !important;
 }
