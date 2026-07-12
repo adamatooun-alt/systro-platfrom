@@ -16,3 +16,151 @@
 .animate-pulse-ring {
   animation: pulse-ring 2s infinite ease-in-out;
 }
+
+/* =========================================================
+   PREMIUM CHEERFUL BRIGHT LIGHT THEME OVERRIDES (WHITE THEME)
+   ========================================================= */
+
+/* Global backgrounds and layout wrappers */
+body, 
+.min-h-screen,
+.bg-\[\#050505\],
+.bg-\[\#050505\]\/95 {
+  background-color: #F8FAFC !important;
+  color: #334155 !important;
+}
+
+/* Crisp white cards, components, sections, and modals */
+.bg-\[\#0A0B10\],
+.bg-\[\#0A0B10\]\/95,
+.bg-\[\#0E0F17\],
+.bg-slate-900,
+.bg-gray-900,
+.bg-black\/40 {
+  background-color: #FFFFFF !important;
+  box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.08), 0 2px 8px -1px rgba(148, 163, 184, 0.04) !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Inner tables, interactive lists, details blocks, custom tabs */
+.bg-\[\#0F1424\],
+.bg-\[\#0F1424\]\/60,
+.bg-\[\#0E1322\],
+.bg-\[\#111827\],
+.bg-\[\#111827\]\/60,
+.bg-\[\#111827\]\/85,
+.bg-\[\#1E293B\],
+.bg-\[\#1F2937\],
+.bg-\[\#334155\] {
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Input fields overrides */
+input, select, textarea {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #1E293B !important;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #F59E0B !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15) !important;
+}
+
+/* Header and navigation bar styles */
+header.sticky,
+header {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+/* Footer border */
+footer,
+footer.border-t {
+  border-top-color: #E2E8F0 !important;
+}
+
+/* Border overrides */
+.border-gray-800,
+.border-gray-850,
+.border-gray-900,
+.border-gray-950,
+.border-\[\#1E293B\],
+.border-\[\#1E293B\]\/40,
+.border-\[\#1E293B\]\/50,
+.border-\[\#1E293B\]\/70 {
+  border-color: #E2E8F0 !important;
+}
+
+/* Headings text colors - Deep Premium Slate */
+h1, h2, h3, h4,
+.text-white,
+.text-gray-100 {
+  color: #0F172A !important;
+}
+
+/* Secondary text colors - Readable Slate */
+.text-\[\#E2E8F0\],
+.text-gray-200,
+.text-gray-300 {
+  color: #334155 !important;
+}
+
+/* Subtext colors */
+.text-gray-400,
+.text-gray-500 {
+  color: #64748B !important;
+}
+
+/* Specific text color hover states for navigation links */
+.text-gray-400:hover,
+.hover\:text-white:hover {
+  color: #0F172A !important;
+}
+
+/* Fix active and inactive colors for bottom navbar (Mobile) */
+.fixed.bottom-0 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-top: 1px solid #E2E8F0 !important;
+  box-shadow: 0 -4px 15px rgba(148, 163, 184, 0.1) !important;
+}
+
+/* Ambient glow accents */
+.bg-amber-500\/10 {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+}
+.border-amber-500\/20 {
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+.bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+.border-emerald-500\/20 {
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+.bg-blue-500\/10 {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+.border-blue-500\/20 {
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.bg-red-500\/10 {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+.border-red-500\/20 {
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Adjust map overlay color for Light Theme */
+.absolute.inset-0.bg-black\/60 {
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(1px) !important;
+}
+.absolute.inset-0.bg-black\/60 p {
+  color: #0F172A !important;
+}
+
