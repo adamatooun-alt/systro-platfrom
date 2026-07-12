@@ -1,0 +1,159 @@
+{
+  "$schema": "https://firebase.google.com/schemas/firestore-blueprint/v1.json",
+  "collections": {
+    "requests": {
+      "description": "Rescue requests submitted by clients",
+      "documents": {
+        "requestId": {
+          "fields": {
+            "id": { "type": "string" },
+            "clientName": { "type": "string" },
+            "clientPhone": { "type": "string" },
+            "locationLat": { "type": "number" },
+            "locationLng": { "type": "number" },
+            "locationName": { "type": "string" },
+            "arLocationName": { "type": "string" },
+            "serviceType": { "type": "string" },
+            "description": { "type": "string" },
+            "status": { "type": "string" },
+            "escrowAmount": { "type": "number" },
+            "selectedTechnicianId": { "type": "string", "nullable": true },
+            "timestamp": { "type": "string" }
+          }
+        }
+      }
+    },
+    "bids": {
+      "description": "Technician bids for rescue requests",
+      "documents": {
+        "bidId": {
+          "fields": {
+            "id": { "type": "string" },
+            "requestId": { "type": "string" },
+            "technicianId": { "type": "string" },
+            "technicianName": { "type": "string" },
+            "technicianArName": { "type": "string" },
+            "price": { "type": "number" },
+            "etaMinutes": { "type": "number" },
+            "rating": { "type": "number" },
+            "avatar": { "type": "string" }
+          }
+        }
+      }
+    },
+    "chats": {
+      "description": "Chat messages between client and technician",
+      "documents": {
+        "chatId": {
+          "fields": {
+            "id": { "type": "string" },
+            "requestId": { "type": "string" },
+            "sender": { "type": "string" },
+            "text": { "type": "string" },
+            "timestamp": { "type": "string" },
+            "createdTime": { "type": "number" }
+          }
+        }
+      }
+    },
+    "disputes": {
+      "description": "Financial disputes for admin arbitration",
+      "documents": {
+        "disputeId": {
+          "fields": {
+            "id": { "type": "string" },
+            "requestId": { "type": "string" },
+            "clientName": { "type": "string" },
+            "techName": { "type": "string" },
+            "serviceType": { "type": "string" },
+            "amount": { "type": "number" },
+            "reason": { "type": "string" },
+            "status": { "type": "string" }
+          }
+        }
+      }
+    },
+    "escrows": {
+      "description": "Active or finalized escrow holdings",
+      "documents": {
+        "escrowId": {
+          "fields": {
+            "id": { "type": "string" },
+            "requestId": { "type": "string" },
+            "clientName": { "type": "string" },
+            "techName": { "type": "string" },
+            "amount": { "type": "number" },
+            "serviceType": { "type": "string" },
+            "status": { "type": "string" }
+          }
+        }
+      }
+    },
+    "services": {
+      "description": "Available emergency rescue services (both default and custom added by providers)",
+      "documents": {
+        "serviceId": {
+          "fields": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "arName": { "type": "string" },
+            "description": { "type": "string" },
+            "arDescription": { "type": "string" },
+            "icon": { "type": "string" },
+            "basePrice": { "type": "number" }
+          }
+        }
+      }
+    },
+    "technicians": {
+      "description": "Registered roadside assistance providers/technicians",
+      "documents": {
+        "technicianId": {
+          "fields": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "arName": { "type": "string" },
+            "phone": { "type": "string" },
+            "rating": { "type": "number" },
+            "reviewsCount": { "type": "number" },
+            "isOnline": { "type": "boolean" },
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "avatar": { "type": "string" },
+            "carModel": { "type": "string" },
+            "arCarModel": { "type": "string" },
+            "plateNumber": { "type": "string" },
+            "serviceId": { "type": "string" }
+          }
+        }
+      }
+    },
+    "system_stats": {
+      "description": "Live system metrics dashboard statistics",
+      "documents": {
+        "statsId": {
+          "fields": {
+            "activeTechnicians": { "type": "number" },
+            "maxTechnicians": { "type": "number" },
+            "completedRescues": { "type": "number" },
+            "satisfactionRate": { "type": "number" },
+            "activeEmergencies": { "type": "number" }
+          }
+        }
+      }
+    },
+    "settings": {
+      "description": "System settings and domain configuration",
+      "documents": {
+        "settingId": {
+          "fields": {
+            "customDomain": { "type": "string" },
+            "dnsVerified": { "type": "boolean" },
+            "dnsRecordsJson": { "type": "string" },
+            "hostingDomainsJson": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

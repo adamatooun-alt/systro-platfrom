@@ -1,0 +1,6 @@
+{
+  "name": "Systro Live",
+  "description": "Systro Rescue (سيسترو إنقاذ) - Leading Roadside Assistance and Safe Escrow Financial Guarantee Platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
