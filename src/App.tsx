@@ -1248,7 +1248,18 @@ export default function App() {
       });
 
       triggerToast(lang === 'ar' ? 'شكراً على ملاحظتك، سوف نتابع الأمر.' : 'Thank you for the note, we will follow up on the matter.', 'success');
+      
+      // Clear tracking state and return user to the previous page / main request state
+      setActiveRequestId(null);
+      setSimStatus('idle');
+      setPinnedLocation(null);
+      setSelectedBid(null);
+      setIncomingBids([]);
+      setTechCoordinates(null);
+      setProblemDescription('');
+      setChatMessages([]);
       setShowDisputeForm(false);
+      setDisputeReason('');
     } catch (err) {
       console.error(err);
     }
@@ -2667,6 +2678,81 @@ export default function App() {
                                       {lang === 'ar' ? 'متابعة وفتح المحادثة مع العميل 💬' : 'Monitor & Open Chat 💬'}
                                     </button>
                                   </div>
+
+                                  {/* Expandable Live Tracking & Chat Panel for Technician */}
+                                  {activeRequestId === req.id && (
+                                    <div className="mt-4 pt-4 border-t border-gray-900 space-y-4 animate-fade-in text-right">
+                                      <div className="flex items-center justify-between border-b border-gray-950 pb-2">
+                                        <button 
+                                          onClick={() => {
+                                            setActiveRequestId(null);
+                                            setSelectedBid(null);
+                                          }}
+                                          className="text-[10px] text-red-400 hover:text-red-300 font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
+                                        >
+                                          <span>✖</span>
+                                          <span>{lang === 'ar' ? 'إغلاق المحادثة' : 'Close Chat'}</span>
+                                        </button>
+                                        
+                                        <h5 className="text-[11px] font-black text-amber-500 flex items-center gap-1.5 justify-end">
+                                          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                                          <span>{lang === 'ar' ? 'المحادثة والمتابعة المباشرة مع العميل' : 'Live Chat & Tracking'}</span>
+                                        </h5>
+                                      </div>
+
+                                      {/* Chat Messages Display */}
+                                      <div className="bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between h-52">
+                                        <div className="flex-1 overflow-y-auto space-y-2.5 pb-2.5 pr-1 text-[11px] font-semibold text-right">
+                                          {chatMessages.length === 0 ? (
+                                            <div className="h-full flex items-center justify-center text-gray-500 font-bold text-center">
+                                              {lang === 'ar' ? 'لا توجد رسائل حالياً. ابدأ المحادثة مع العميل!' : 'No messages yet. Start chatting with client!'}
+                                            </div>
+                                          ) : (
+                                            chatMessages.map(msg => {
+                                              const isSystem = msg.sender === 'system';
+                                              const isTech = msg.sender === 'technician';
+                                              return (
+                                                <div key={msg.id} className={`flex ${isSystem ? 'justify-center' : isTech ? 'justify-end' : 'justify-start'}`}>
+                                                  <div className={`p-2 max-w-[85%] rounded-xl font-semibold leading-relaxed ${
+                                                    isSystem 
+                                                      ? 'bg-gray-900 text-gray-400 text-[9px] text-center max-w-full font-sans border border-gray-850' 
+                                                      : isTech 
+                                                      ? 'bg-amber-500 text-black rounded-tr-none' 
+                                                      : 'bg-[#1F2937] text-gray-200 rounded-tl-none border border-gray-850'
+                                                  }`}>
+                                                    {msg.text}
+                                                  </div>
+                                                </div>
+                                              );
+                                            })
+                                          )}
+                                        </div>
+
+                                        {/* Chat Entry Form */}
+                                        <form 
+                                          onSubmit={(e) => {
+                                            e.preventDefault();
+                                            handleChatSend(e);
+                                          }} 
+                                          className="pt-2 border-t border-gray-900 flex items-center gap-2"
+                                        >
+                                          <input 
+                                            type="text" 
+                                            value={chatInput}
+                                            onChange={(e) => setChatInput(e.target.value)}
+                                            placeholder={lang === 'ar' ? 'أرسل رسالة فورية للزبون...' : 'Send messages to client...'}
+                                            className="flex-1 px-3 py-1.5 bg-[#111827] border border-gray-850 rounded-lg outline-none text-[11px] text-white"
+                                          />
+                                          <button 
+                                            type="submit"
+                                            className="p-1.5 bg-amber-500 hover:bg-amber-400 text-black rounded-lg transition-colors cursor-pointer"
+                                          >
+                                            <Send className="w-3.5 h-3.5" />
+                                          </button>
+                                        </form>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
