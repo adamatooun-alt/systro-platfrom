@@ -32,6 +32,18 @@ export default function LoginPortal({
   triggerToast,
   t,
 }: LoginPortalProps) {
+  const [showCustomAccountForm, setShowCustomAccountForm] = React.useState(false);
+  const [customName, setCustomName] = React.useState('');
+  const [customEmail, setCustomEmail] = React.useState('');
+
+  React.useEffect(() => {
+    if (!showGoogleFallbackModal) {
+      setShowCustomAccountForm(false);
+      setCustomName('');
+      setCustomEmail('');
+    }
+  }, [showGoogleFallbackModal]);
+
   return (
     <div className="min-h-screen bg-[#031A17] text-white font-sans antialiased selection:bg-amber-500 selection:text-black flex flex-col justify-between relative overflow-hidden">
       
@@ -268,60 +280,171 @@ export default function LoginPortal({
               </div>
             </div>
 
-            {/* Profiles List */}
-            <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-slate-50/50">
-              {[
-                { 
-                  name: 'לוגו אדם', 
-                  email: 'adam.atooun2@gmail.com', 
-                  avatarType: 'text', 
-                  avatarText: 'לוגו אדם',
-                  avatarBg: 'bg-indigo-50 text-indigo-700 border-indigo-100'
-                },
-                { 
-                  name: 'Adam.atooun', 
-                  email: 'adam.atooun@gmail.com', 
-                  avatarType: 'image', 
-                  avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&fit=crop&q=80'
-                },
-                { 
-                  name: 'رائد مسعود', 
-                  email: 'raid.masoud@gmail.com', 
-                  avatarType: 'image', 
-                  avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&fit=crop&q=80' 
-                },
-                { 
-                  name: 'حساب عميل سيسترو', 
-                  email: 'client@systro.live', 
-                  avatarType: 'image', 
-                  avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&fit=crop&q=80' 
-                }
-              ].map((profile, i) => (
-                <button
-                  key={i}
-                  onClick={async () => {
-                    setShowGoogleFallbackModal(false);
-                    await handleGoogleSignIn(profile.email, profile.name);
-                    triggerToast(lang === 'ar' ? 'تم الدخول الآمن بحساب Google!' : 'Secure signed in with Google!', 'success');
-                  }}
-                  className={`w-full p-3.5 hover:bg-slate-50 flex ${lang === 'ar' || lang === 'he' ? 'flex-row-reverse text-right' : 'flex-row text-left'} items-center justify-between gap-3 cursor-pointer transition-all`}
-                >
-                  <div className="flex items-center gap-3">
-                    {profile.avatarType === 'text' ? (
-                      <div className={`w-9 h-9 rounded-full ${profile.avatarBg} border flex items-center justify-center text-[8px] font-black tracking-tighter shadow-sm select-none shrink-0`}>
-                        {profile.avatarText}
+            {/* Profiles List or Custom Account Form */}
+            {!showCustomAccountForm ? (
+              <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-slate-50/50">
+                {[
+                  { 
+                    name: 'לוגו אדם', 
+                    email: 'adam.atooun2@gmail.com', 
+                    avatarType: 'text', 
+                    avatarText: 'לוגו אדם',
+                    avatarBg: 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                  },
+                  { 
+                    name: 'Adam.atooun', 
+                    email: 'adam.atooun@gmail.com', 
+                    avatarType: 'image', 
+                    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&fit=crop&q=80'
+                  },
+                  { 
+                    name: 'رائد مسعود', 
+                    email: 'raid.masoud@gmail.com', 
+                    avatarType: 'image', 
+                    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&fit=crop&q=80' 
+                  },
+                  { 
+                    name: 'حساب عميل سيسترو', 
+                    email: 'client@systro.live', 
+                    avatarType: 'image', 
+                    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&fit=crop&q=80' 
+                  }
+                ].map((profile, i) => (
+                  <button
+                    key={i}
+                    onClick={async () => {
+                      setShowGoogleFallbackModal(false);
+                      await handleGoogleSignIn(profile.email, profile.name);
+                      triggerToast(lang === 'ar' ? 'تم الدخول الآمن بحساب Google!' : 'Secure signed in with Google!', 'success');
+                    }}
+                    className={`w-full p-3.5 hover:bg-slate-50 flex ${lang === 'ar' || lang === 'he' ? 'flex-row-reverse text-right' : 'flex-row text-left'} items-center justify-between gap-3 cursor-pointer transition-all`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {profile.avatarType === 'text' ? (
+                        <div className={`w-9 h-9 rounded-full ${profile.avatarBg} border flex items-center justify-center text-[8px] font-black tracking-tighter shadow-sm select-none shrink-0`}>
+                          {profile.avatarText}
+                        </div>
+                      ) : (
+                        <img src={profile.avatarUrl} alt={profile.name} referrerPolicy="no-referrer" className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0 select-none" />
+                      )}
+                      <div className={`${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}>
+                        <p className="text-xs font-black text-slate-800 leading-tight">{profile.name}</p>
+                        <p className="text-[10px] font-mono text-slate-400 font-bold leading-normal">{profile.email}</p>
                       </div>
-                    ) : (
-                      <img src={profile.avatarUrl} alt={profile.name} referrerPolicy="no-referrer" className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0 select-none" />
-                    )}
-                    <div className={`${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}>
-                      <p className="text-xs font-black text-slate-800 leading-tight">{profile.name}</p>
-                      <p className="text-[10px] font-mono text-slate-400 font-bold leading-normal">{profile.email}</p>
                     </div>
+                  </button>
+                ))}
+
+                {/* "Use another account" button */}
+                <button
+                  onClick={() => setShowCustomAccountForm(true)}
+                  className={`w-full p-3.5 hover:bg-slate-100 flex ${lang === 'ar' || lang === 'he' ? 'flex-row-reverse text-right' : 'flex-row text-left'} items-center gap-3 cursor-pointer transition-all bg-sky-500/5 text-sky-600`}
+                >
+                  <div className="w-9 h-9 rounded-full bg-sky-100 border border-sky-200 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-black text-sky-700">
+                      {lang === 'ar' ? 'استخدام حساب آخر' : lang === 'he' ? 'שימוש בחשבון אחר' : 'Use another account'}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-bold">
+                      {lang === 'ar' ? 'تسجيل الدخول بحساب جوجل المخصص لك' : lang === 'he' ? 'התחברות עם חשבון גוגל האישי שלך' : 'Sign in with your own custom Google account'}
+                    </p>
                   </div>
                 </button>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const trimmedName = customName.trim();
+                  const trimmedEmail = customEmail.trim();
+                  if (!trimmedName || !trimmedEmail) {
+                    triggerToast(
+                      lang === 'ar' 
+                        ? 'الرجاء تعبئة جميع الحقول بشكل صحيح!' 
+                        : lang === 'he'
+                        ? 'אנא מלא את כל השדות בצורה נכונה!'
+                        : 'Please fill in all fields correctly!', 
+                      'warning'
+                    );
+                    return;
+                  }
+                  if (!trimmedEmail.includes('@')) {
+                    triggerToast(
+                      lang === 'ar' 
+                        ? 'الرجاء إدخال بريد إلكتروني صحيح!' 
+                        : lang === 'he'
+                        ? 'אנא הזן כתובת אימייל תקינה!'
+                        : 'Please enter a valid email address!', 
+                      'warning'
+                    );
+                    return;
+                  }
+                  setShowGoogleFallbackModal(false);
+                  await handleGoogleSignIn(trimmedEmail, trimmedName);
+                  triggerToast(
+                    lang === 'ar' 
+                      ? `تم تسجيل الدخول بنجاح بحسابك: ${trimmedName}` 
+                      : lang === 'he'
+                      ? `התחברת בהצלחה עם החשבון: ${trimmedName}`
+                      : `Successfully logged in under your account: ${trimmedName}`, 
+                    'success'
+                  );
+                }}
+                className="space-y-4 animate-fade-in"
+              >
+                <div className="space-y-1 text-left">
+                  <label className={`block text-[11px] font-bold text-slate-500 uppercase tracking-wide ${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}>
+                    {lang === 'ar' ? 'الاسم الكامل' : lang === 'he' ? 'שם מלא' : 'Full Name'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder={lang === 'ar' ? 'أدخل اسمك الكريم' : lang === 'he' ? 'הכנס את שמך המלא' : 'Enter your full name'}
+                    className={`w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-sky-500 font-bold ${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}
+                  />
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <label className={`block text-[11px] font-bold text-slate-500 uppercase tracking-wide ${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}>
+                    {lang === 'ar' ? 'البريد الإلكتروني للـ Google' : lang === 'he' ? 'כתובת אימייל של גוגל' : 'Google Email Address'}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={customEmail}
+                    onChange={(e) => setCustomEmail(e.target.value)}
+                    placeholder="example@gmail.com"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-sky-500 font-mono text-left"
+                  />
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomAccountForm(false);
+                      setCustomName('');
+                      setCustomEmail('');
+                    }}
+                    className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
+                  >
+                    {lang === 'ar' ? 'إلغاء' : lang === 'he' ? 'ביטול' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl text-xs shadow-md shadow-sky-600/10 transition-colors cursor-pointer text-center"
+                  >
+                    {lang === 'ar' ? 'متابعة الدخول' : lang === 'he' ? 'המשך התחברות' : 'Continue'}
+                  </button>
+                </div>
+              </form>
+            )}
 
             {/* Bottom blue action */}
             <div className="pt-2 text-center select-none">
