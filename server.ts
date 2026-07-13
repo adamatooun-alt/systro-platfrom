@@ -306,25 +306,28 @@ async function startServer() {
       switch (type) {
         case 'fuel': return 'توصيل وقود طارئ ⛽';
         case 'locksmith': return 'فتح أقفال سيارات 🔑';
-        case 'mechanic': return 'صيانة وميكانيك طريق 🛠️';
-        case 'towing': return 'ونش سحب وإنقاذ 🚚';
-        case 'battery': return 'شحن بطارية المركبة ⚡';
-        default: return type;
+        case 'mechanic': return 'صيانة وميكانيك سيارات 🛠️';
+        case 'battery': return 'اشتراك بطارية 🔋';
+        case 'tire': return 'تبديل إطار 🚗';
+        case 'towing': return 'ونش سحب وسحب مركبات 🚚';
+        default: return 'خدمة إنقاذ مخصصة 🔧';
       }
     };
 
     const getServiceEnName = (type: string) => {
       switch (type) {
-        case 'fuel': return 'Fuel Delivery ⛽';
-        case 'locksmith': return 'Car Locksmith 🔑';
-        case 'mechanic': return 'Roadside Mechanic 🛠️';
-        case 'towing': return 'Towing Service 🚚';
-        case 'battery': return 'Battery Jumpstart ⚡';
-        default: return type;
+        case 'fuel': return 'Emergency Fuel Delivery ⛽';
+        case 'locksmith': return 'Car Locksmith Services 🔑';
+        case 'mechanic': return 'Roadside Mechanical Service 🛠️';
+        case 'battery': return 'Battery Jump Start 🔋';
+        case 'tire': return 'Flat Tire Replacement 🚗';
+        case 'towing': return 'Towing & Vehicle Recovery 🚚';
+        default: return 'Custom Specialty Service 🔧';
       }
     };
 
     const serviceName = lang === 'ar' ? getServiceArName(requestDetails.serviceType) : getServiceEnName(requestDetails.serviceType);
+    const displayedPrice = requestDetails.basePrice || 120;
 
     for (const tech of technicians) {
       // 1. Send Email Alert (SMTP)
@@ -341,9 +344,9 @@ async function startServer() {
             from,
             to: tech.email.trim(),
             subject: lang === 'ar' 
-              ? `🚨 نداء استغاثة عاجل: مطلوب ${serviceName} في موقعك!` 
-              : `🚨 Live Dispatch Alert: Emergency ${serviceName} requested!`,
-            text: `نداء استغاثة جديد من العميل ${requestDetails.clientName}. للتفاصيل يرجى مراجعة بوابة فنيي سيسترو.`,
+              ? `🚨 نداء استغاثة عاجل [السعر: ${displayedPrice} ₪]: مطلوب ${serviceName} في موقعك!` 
+              : `🚨 Live Dispatch Alert [Price: ${displayedPrice} ₪]: Emergency ${serviceName} requested!`,
+            text: `نداء استغاثة جديد من العميل ${requestDetails.clientName}. السعر المقدر: ${displayedPrice} ₪. للتفاصيل يرجى مراجعة بوابة فنيي سيسترو.`,
             html: `
               <div style="direction: ${lang === 'ar' ? 'rtl' : 'ltr'}; text-align: ${lang === 'ar' ? 'right' : 'left'}; font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 20px; background-color: #0F1424; color: #FFFFFF;">
                 <div style="text-align: center; margin-bottom: 25px; border-bottom: 1px solid #1E293B; padding-bottom: 15px;">
@@ -362,6 +365,10 @@ async function startServer() {
                     <tr>
                       <td style="padding: 6px 0; color: #64748B; width: 120px;"><strong>${lang === 'ar' ? 'الخدمة المطلوبة:' : 'Service Type:'}</strong></td>
                       <td style="padding: 6px 0; font-weight: bold; color: #F59E0B;">${serviceName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 6px 0; color: #64748B;"><strong>${lang === 'ar' ? 'السعر المقدر:' : 'Estimated Price:'}</strong></td>
+                      <td style="padding: 6px 0; font-weight: bold; color: #10B981; font-size: 20px; background-color: #052e16; padding: 4px 10px; border-radius: 8px; display: inline-block;">${displayedPrice} ₪</td>
                     </tr>
                     <tr>
                       <td style="padding: 6px 0; color: #64748B;"><strong>${lang === 'ar' ? 'اسم العميل:' : 'Client Name:'}</strong></td>
@@ -407,11 +414,16 @@ async function startServer() {
       if (tech.notifyWhatsapp && tech.phone && whatsappInstanceId && whatsappToken) {
         try {
           const messageText = lang === 'ar' 
-            ? `🚨 *إشعار طوارئ عاجل من شبكة سيسترو للإنقاذ* 🚨\n\nأهلاً بك يا *${tech.name}*، تم تقديم نداء استغاثة جديد يتطلب تخصصك الفني:\n\n🔧 *الخدمة المطلوبة:* ${serviceName}\n👤 *اسم العميل:* ${requestDetails.clientName}\n📞 *هاتف العميل:* ${requestDetails.clientPhone}\n📍 *الموقع:* ${lang === 'ar' ? requestDetails.arLocationName || requestDetails.locationName : requestDetails.locationName}\n📝 *تفاصيل العطل:* ${requestDetails.description || 'لا توجد'}\n\nالرجاء الضغط على الرابط التالي فوراً لتقديم عرض السعر الفوري ومساعدة العميل:\n🔗 ${appUrl || 'https://systro.live'}?tab=home\n\nشكراً لجهودكم وسرعة استجابتكم!`
-            : `🚨 *Live Rescue Alert: Systro Dispatch Network* 🚨\n\nHello *${tech.name}*, a new emergency request requires your specialty:\n\n🔧 *Service:* ${serviceName}\n👤 *Client:* ${requestDetails.clientName}\n📞 *Phone:* ${requestDetails.clientPhone}\n📍 *Location:* ${requestDetails.locationName}\n📝 *Details:* ${requestDetails.description || 'N/A'}\n\nTap the link below to submit a live bid and dispatch:\n🔗 ${appUrl || 'https://systro.live'}?tab=home\n\nThank you for your rapid response!`;
+            ? `🚨 *إشعار طوارئ عاجل من شبكة سيسترو للإنقاذ* 🚨\n\nأهلاً بك يا *${tech.name}*، تم تقديم نداء استغاثة جديد يتطلب تخصصك الفني:\n\n🔧 *الخدمة المطلوبة:* ${serviceName}\n💰 *سعر الخدمة المقدر:* [ *${displayedPrice} ₪* ]\n👤 *اسم العميل:* ${requestDetails.clientName}\n📞 *هاتف العميل:* ${requestDetails.clientPhone}\n📍 *الموقع:* ${lang === 'ar' ? requestDetails.arLocationName || requestDetails.locationName : requestDetails.locationName}\n📝 *تفاصيل العطل:* ${requestDetails.description || 'لا توجد'}\n\nالرجاء الضغط على الرابط التالي فوراً لتقديم عرض السعر الفوري ومساعدة العميل:\n🔗 ${appUrl || 'https://systro.live'}?tab=home\n\nشكراً لجهودكم وسرعة استجابتكم!`
+            : `🚨 *Live Rescue Alert: Systro Dispatch Network* 🚨\n\nHello *${tech.name}*, a new emergency request requires your specialty:\n\n🔧 *Service:* ${serviceName}\n💰 *Estimated Price:* [ *${displayedPrice} ₪* ]\n👤 *Client:* ${requestDetails.clientName}\n📞 *Phone:* ${requestDetails.clientPhone}\n📍 *Location:* ${requestDetails.locationName}\n📝 *Details:* ${requestDetails.description || 'N/A'}\n\nTap the link below to submit a live bid and dispatch:\n🔗 ${appUrl || 'https://systro.live'}?tab=home\n\nThank you for your rapid response!`;
 
-          // Format phone to clean international format (remove spaces, plus, dashes)
-          const formattedPhone = tech.phone.replace(/[\s\+\-]/g, '');
+          // Format phone to clean international format (remove spaces, plus, dashes, leading zeroes)
+          let formattedPhone = tech.phone.replace(/[\s\+\-]/g, '');
+          if (formattedPhone.startsWith('05')) {
+            formattedPhone = '972' + formattedPhone.substring(1);
+          } else if (formattedPhone.startsWith('5')) {
+            formattedPhone = '972' + formattedPhone;
+          }
 
           const response = await fetch(`${whatsappApiUrl}/${whatsappInstanceId}/messages/chat`, {
             method: 'POST',
@@ -442,6 +454,8 @@ async function startServer() {
       success: true,
       emailsSent,
       whatsappsSent,
+      smtpConfigured: !!(host && user && pass),
+      whatsappConfigured: !!(whatsappInstanceId && whatsappToken),
       errors: errors.length > 0 ? errors : null
     });
   });

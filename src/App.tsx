@@ -56,7 +56,8 @@ import {
   X,
   CreditCard,
   Mail,
-  MessageCircle
+  MessageCircle,
+  Volume2
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -388,6 +389,9 @@ export default function App() {
   // Reported website issues / bug reports state
   const [websiteIssues, setWebsiteIssues] = useState<{ id: string; name?: string; phone?: string; issue: string; createdAt?: any }[]>([]);
 
+  // Pending custom specialties/services awaiting Admin approval
+  const [pendingServices, setPendingServices] = useState<{ id: string; name: string; arName: string; description: string; arDescription: string; basePrice: number; requestedBy?: string; requestedByName?: string; status: string; createdAt?: any }[]>([]);
+
   // Current simulation rating state
   const [simRating, setSimRating] = useState<number>(5);
 
@@ -411,6 +415,55 @@ export default function App() {
     return localStorage.getItem('systro_notify_email') === 'true';
   });
   const [prevPendingCount, setPrevPendingCount] = useState<number>(0);
+
+  // Synthesized emergency radar alarm sound for new pending rescue tasks
+  const playRescueAlertSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+      
+      // High Chime
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(950, now);
+      gain1.gain.setValueAtTime(0.35, now);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.25);
+
+      // Low Chime delayed by 120ms
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(760, now + 0.12);
+      gain2.gain.setValueAtTime(0.35, now + 0.12);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.12);
+      osc2.stop(now + 0.42);
+
+      // Sub-pulse delayed by 250ms for the "radar dispatch" feeling
+      const osc3 = ctx.createOscillator();
+      const gain3 = ctx.createGain();
+      osc3.type = 'triangle';
+      osc3.frequency.setValueAtTime(600, now + 0.25);
+      gain3.gain.setValueAtTime(0.2, now + 0.25);
+      gain3.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+      osc3.connect(gain3);
+      gain3.connect(ctx.destination);
+      osc3.start(now + 0.25);
+      osc3.stop(now + 0.65);
+
+    } catch (err) {
+      console.warn("Audio Context blocked or not supported:", err);
+    }
+  };
 
   // Toast System
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'warning' | 'info' | 'error' } | null>(null);
@@ -575,6 +628,9 @@ export default function App() {
     if (pendingReqs.length > prevPendingCount) {
       const newestReq = pendingReqs[0]; // sorted by newest first
       if (newestReq) {
+        // Play custom dispatch sound alert
+        playRescueAlertSound();
+
         // Trigger simulated notifications
         if (notifyWhatsapp) {
           setTimeout(() => {
@@ -747,6 +803,73 @@ export default function App() {
     } catch (err: any) {
       console.error("Error deleting website issue:", err);
       triggerToast(lang === 'ar' ? 'فشل حذف البلاغ.' : 'Failed to delete issue report.', 'error');
+    }
+  };
+
+  // Listen for pending custom specialties/services (Admin review)
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "pending_services"), (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      list.sort((a, b) => {
+        const tA = a.createdAt?.seconds || a.createdAt || 0;
+        const tB = b.createdAt?.seconds || b.createdAt || 0;
+        return tB - tA;
+      });
+      setPendingServices(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, "pending_services");
+    });
+    return () => unsub();
+  }, []);
+
+  const handleApprovePendingService = async (service: any) => {
+    try {
+      // 1. Create standard service document
+      const newService = {
+        id: service.id,
+        name: service.name,
+        arName: service.arName,
+        description: service.description,
+        arDescription: service.arDescription,
+        icon: service.icon || 'wrench',
+        basePrice: service.basePrice || 150
+      };
+      await setDoc(doc(db, "services", service.id), newService);
+
+      // 2. If requestedBy is a technician, register them for it automatically
+      if (service.requestedBy && service.requestedBy !== 'Unknown') {
+        const techRef = doc(db, "technicians", service.requestedBy);
+        const techSnap = await getDoc(techRef);
+        if (techSnap.exists()) {
+          const techData = techSnap.data();
+          const currentSpecs = techData.specialties || [];
+          if (!currentSpecs.includes(service.id)) {
+            await updateDoc(techRef, {
+              specialties: [...currentSpecs, service.id]
+            });
+          }
+        }
+      }
+
+      // 3. Remove from pending
+      await deleteDoc(doc(db, "pending_services", service.id));
+      triggerToast(lang === 'ar' ? `تمت الموافقة على التخصص [${service.arName || service.name}] ونشره بالشبكة بنجاح! 🎉` : `Specialty [${service.name}] has been approved and published! 🎉`, 'success');
+    } catch (err: any) {
+      console.error("Error approving custom specialty:", err);
+      triggerToast(lang === 'ar' ? 'فشل قبول وتنشير التخصص.' : 'Failed to approve custom specialty.', 'error');
+    }
+  };
+
+  const handleRejectPendingService = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "pending_services", id));
+      triggerToast(lang === 'ar' ? 'تم رفض وحذف طلب التخصص بنجاح.' : 'Specialty request rejected and deleted successfully.', 'success');
+    } catch (err: any) {
+      console.error("Error rejecting custom specialty:", err);
+      triggerToast(lang === 'ar' ? 'فشل رفض وحذف طلب التخصص.' : 'Failed to reject and delete request.', 'error');
     }
   };
 
@@ -2282,26 +2405,17 @@ export default function App() {
                 </span>
               </div>
 
-              {/* Precise Auto-GPS locator button */}
-              <button
-                onClick={() => {
-                  if (navigator.geolocation) {
-                    triggerToast(lang === 'ar' ? 'جاري الحصول على موقعك الدقيق من الـ GPS... 📡' : 'Fetching accurate GPS location... 📡', 'info');
-                    navigator.geolocation.getCurrentPosition(
-                      (position) => {
-                        const { latitude, longitude } = position.coords;
-                        const { lat: latPct, lng: lngPct } = latLngToMapPct(latitude, longitude);
-                        
-                        if (userRole === 'technician') {
-                          setProviderLat(latPct);
-                          setProviderLng(lngPct);
-                          triggerToast(
-                            lang === 'ar' 
-                              ? `تم تحديد موقع مركبتك بدقة! الإحداثيات: Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}` 
-                              : `Service vehicle location pinned via GPS! Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`, 
-                            'success'
-                          );
-                        } else {
+              {/* Precise Auto-GPS locator button - Hidden for technicians, active for clients */}
+              {userRole !== 'technician' && (
+                <button
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      triggerToast(lang === 'ar' ? 'جاري الحصول على موقعك الدقيق من الـ GPS... 📡' : 'Fetching accurate GPS location... 📡', 'info');
+                      navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                          const { latitude, longitude } = position.coords;
+                          const { lat: latPct, lng: lngPct } = latLngToMapPct(latitude, longitude);
+                          
                           if (simStatus !== 'idle') {
                             triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during active request!', 'warning');
                             return;
@@ -2313,32 +2427,30 @@ export default function App() {
                               : `Breakdown location pinned via GPS! Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`, 
                             'success'
                           );
-                        }
-                      },
-                      (error) => {
-                        console.error("Geolocation error:", error);
-                        triggerToast(
-                          lang === 'ar' 
-                            ? 'فشل الحصول على إحداثيات الموقع. يرجى السماح بالوصول لموقعك الجغرافي أو تفعيل الـ GPS.' 
-                            : 'Could not fetch GPS coordinates. Please allow location permissions or turn on GPS.', 
-                          'error'
-                        );
-                      },
-                      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                    );
-                  } else {
-                    triggerToast(lang === 'ar' ? 'متصفحك لا يدعم نظام تحديد المواقع العالمي.' : 'Your browser does not support GPS location systems.', 'error');
-                  }
-                }}
-                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-[11px] md:text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-blue-500/30 group active:scale-[0.98]"
-              >
-                <MapPin className="w-4 h-4 text-amber-400 animate-bounce group-hover:scale-110 transition-transform" />
-                <span>
-                  {userRole === 'technician' 
-                    ? (lang === 'ar' ? 'تحديد موقع مركبتي الحالي تلقائياً (GPS) 🛠️' : 'Auto-Detect My Vehicle Location (GPS) 🛠️')
-                    : (lang === 'ar' ? 'تحديد موقعي الحالي بدقة تلقائياً (GPS) 📍' : 'Auto-Detect My Current Location (GPS) 📍')}
-                </span>
-              </button>
+                        },
+                        (error) => {
+                          console.error("Geolocation error:", error);
+                          triggerToast(
+                            lang === 'ar' 
+                              ? 'فشل الحصول على إحداثيات الموقع. يرجى السماح بالوصول لموقعك الجغرافي أو تفعيل الـ GPS.' 
+                              : 'Could not fetch GPS coordinates. Please allow location permissions or turn on GPS.', 
+                            'error'
+                          );
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                      );
+                    } else {
+                      triggerToast(lang === 'ar' ? 'متصفحك لا يدعم نظام تحديد المواقع العالمي.' : 'Your browser does not support GPS location systems.', 'error');
+                    }
+                  }}
+                  className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-[11px] md:text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-blue-500/30 group active:scale-[0.98]"
+                >
+                  <MapPin className="w-4 h-4 text-amber-400 animate-bounce group-hover:scale-110 transition-transform" />
+                  <span>
+                    {lang === 'ar' ? 'تحديد موقعي الحالي بدقة تلقائياً (GPS) 📍' : 'Auto-Detect My Current Location (GPS) 📍'}
+                  </span>
+                </button>
+              )}
 
               {/* Real Live Google Maps rendering using @vis.gl/react-google-maps */}
               <div className="relative aspect-square w-full bg-[#0F1424] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">
@@ -2348,27 +2460,17 @@ export default function App() {
                     defaultZoom={pinnedLocation ? 13 : 11}
                     mapId="DEMO_MAP_ID"
                     onClick={(e: any) => {
+                      if (userRole === 'technician') return; // Do not allow technician to pin or modify location via map click
                       if (!e.detail.latLng) return;
                       const { lat, lng } = e.detail.latLng;
                       const { lat: latPct, lng: lngPct } = latLngToMapPct(lat, lng);
 
-                      if (userRole === 'technician') {
-                        setProviderLat(latPct);
-                        setProviderLng(lngPct);
-                        triggerToast(
-                          lang === 'ar' 
-                            ? `تم تحديد موقع مركبتك بنجاح عند الإحداثيات: Lat: ${latPct}, Lng: ${lngPct}` 
-                            : `Service vehicle location pinned at: Lat: ${latPct}, Lng: ${lngPct}`, 
-                          'success'
-                        );
-                      } else {
-                        if (simStatus !== 'idle') {
-                          triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during an active request!', 'warning');
-                          return;
-                        }
-                        setPinnedLocation({ lat: latPct, lng: lngPct });
-                        triggerToast(lang === 'ar' ? 'تم تحديد موقع سيارتك بنجاح!' : 'Breakdown location pinned successfully!', 'success');
+                      if (simStatus !== 'idle') {
+                        triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during an active request!', 'warning');
+                        return;
                       }
+                      setPinnedLocation({ lat: latPct, lng: lngPct });
+                      triggerToast(lang === 'ar' ? 'تم تحديد موقع سيارتك بنجاح!' : 'Breakdown location pinned successfully!', 'success');
                     }}
                     internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
                     style={{ width: '100%', height: '100%' }}
@@ -2420,7 +2522,7 @@ export default function App() {
                 </APIProvider>
 
                 {/* Pin guidance instruction Overlay overlaying when idle */}
-                {simStatus === 'idle' && !pinnedLocation && (
+                {simStatus === 'idle' && !pinnedLocation && userRole !== 'technician' && (
                   <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-gray-800 text-center select-none pointer-events-none shrink-0 z-10 max-w-xs">
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-amber-500 animate-bounce" />
@@ -2583,9 +2685,9 @@ export default function App() {
 
                         {/* Location pin alert badge */}
                         <div className="text-center sm:text-right rtl:sm:text-right ltr:sm:text-left bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl">
-                          <span className="text-[9px] text-blue-400 font-bold block uppercase">{lang === 'ar' ? 'تعديل تموضع المركبة:' : 'GPS Position:'}</span>
+                          <span className="text-[9px] text-blue-400 font-bold block uppercase">{lang === 'ar' ? 'تموضع المركبة المباشر:' : 'Live Vehicle GPS:'}</span>
                           <span className="text-[10px] text-white font-extrabold font-mono block">
-                            {providerLat ? `Lat: ${providerLat}, Lng: ${providerLng}` : (lang === 'ar' ? '📌 انقر على الخريطة لتحديد موقعك' : '📌 Click map to pin position')}
+                            {providerLat ? `Lat: ${providerLat.toFixed(2)}, Lng: ${providerLng?.toFixed(2)}` : (lang === 'ar' ? 'متصل بالـ GPS 📡' : 'Connected to GPS 📡')}
                           </span>
                         </div>
                       </div>
@@ -2703,6 +2805,26 @@ export default function App() {
                             </div>
                           </button>
                         </div>
+
+                        {/* Test Notification Sound */}
+                        <div className="pt-2 select-none">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playRescueAlertSound();
+                              triggerToast(
+                                lang === 'ar'
+                                  ? '🔊 تم تشغيل نغمة رادار الإنقاذ العاجل للتجربة بنجاح!'
+                                  : '🔊 Emergency Radar alarm chime played for testing successfully!',
+                                'success'
+                              );
+                            }}
+                            className="w-full py-2.5 bg-[#171C2F] hover:bg-[#1E253F] text-amber-400 hover:text-amber-300 border border-amber-500/10 hover:border-amber-500/25 rounded-xl text-[11px] font-black tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                          >
+                            <Volume2 className="w-4 h-4" />
+                            <span>{lang === 'ar' ? '🔊 تجربة نغمة التنبيه المخصصة للشبكة' : '🔊 Test Site Custom Notification Sound'}</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Registering specialties ("يا نقدم خدمات تكتبلهم شو خدماتهم بكل قائمة نكتب إضافة سجل") */}
@@ -2787,34 +2909,37 @@ export default function App() {
                             }
                             const customId = 'specialty-' + Math.random().toString(36).substring(2, 9);
                             try {
-                              const newService = {
+                              const newPending = {
                                 id: customId,
                                 name: customSpecialtyName,
                                 arName: customSpecialtyName,
                                 description: customSpecialtyDesc,
                                 arDescription: customSpecialtyDesc,
                                 icon: 'wrench',
-                                basePrice: customSpecialtyPrice
+                                basePrice: customSpecialtyPrice || 150,
+                                requestedBy: loggedInUserEmail || 'Unknown',
+                                requestedByName: loggedInUserName || 'Unknown',
+                                status: 'pending',
+                                createdAt: Date.now()
                               };
-                              await setDoc(doc(db, "services", customId), newService);
+                              await setDoc(doc(db, "pending_services", customId), newPending);
                               
-                              // Automatically register this tech under this new custom service
-                              const specialtiesList = activeTechDoc.specialties || [];
-                              await updateDoc(doc(db, "technicians", loggedInUserEmail), {
-                                specialties: [...specialtiesList, customId]
-                              });
-
                               setCustomSpecialtyName('');
                               setCustomSpecialtyDesc('');
-                              triggerToast(lang === 'ar' ? `تهانينا! تم إدراج تخصصك الجديد [${customSpecialtyName}] في قاعدة بيانات سيسترو وتم تسجيلك فيه كفني معتمد!` : `Success! Custom trade registered and saved!`, 'success');
+                              triggerToast(
+                                lang === 'ar' 
+                                  ? `تم تقديم طلب التخصص [${customSpecialtyName}] للمسؤول علي بنجاح! سيتم مراجعته وتفعيله قريباً.` 
+                                  : `Success! Custom trade request [${customSpecialtyName}] submitted to administrator for approval.`, 
+                                'success'
+                              );
                             } catch (err) {
                               console.error(err);
-                              triggerToast(lang === 'ar' ? 'حدث خطأ في إضافة التخصص' : 'Error registering custom service', 'error');
+                              triggerToast(lang === 'ar' ? 'حدث خطأ في تقديم طلب التخصص' : 'Error submitting custom service request', 'error');
                             }
                           }}
                           className="w-full py-2 bg-[#1E293B] hover:bg-[#334155] text-amber-400 font-extrabold text-xs rounded-xl border border-amber-500/10 transition-all flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          <span>{lang === 'ar' ? 'إضافة وتسجيل التخصص الجديد بالشبكة 🚀' : 'Register Custom Specialty 🚀'}</span>
+                          <span>{lang === 'ar' ? 'إرسال طلب التخصص الجديد للموافقة والنشير 🚀' : 'Submit Specialty Request for Approval 🚀'}</span>
                         </button>
                       </div>
 
@@ -4133,6 +4258,78 @@ export default function App() {
             )}
           </div>
 
+          {/* New: Pending Specialty / Service Requests Panel for Admin */}
+          <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-850 pb-3">
+              <div className="text-right">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 justify-start">
+                  <span className="w-2.5 h-2.5 bg-cyan-500 rounded-full animate-pulse shrink-0"></span>
+                  <span>{lang === 'ar' ? 'طلبات إضافة تخصصات جديدة معلقة ⏳' : 'Pending Custom Specialty Requests ⏳'}</span>
+                </h3>
+                <p className="text-[10px] text-gray-400 font-semibold mt-1">
+                  {lang === 'ar' 
+                    ? 'هنا تجد جميع طلبات الخدمات والتخصصات المخصصة المقترحة من الفنيين والمستخدمين. وافق عليها لنشرها مباشرة بالموقع.' 
+                    : 'Manage custom trade & service requests. Approving them will publish them directly on the platform.'}
+                </p>
+              </div>
+              <span className="bg-cyan-500/15 text-cyan-500 border border-cyan-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
+                {lang === 'ar' ? `طلبات معلقة: ${pendingServices.length}` : `Pending: ${pendingServices.length}`}
+              </span>
+            </div>
+
+            {pendingServices.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-10 font-semibold">
+                {lang === 'ar' ? 'لا توجد أي طلبات تخصصات معلقة حالياً! ✨' : 'No pending specialty requests! ✨'}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pendingServices.map((service) => {
+                  return (
+                    <div key={service.id} className="p-5 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-4 text-right relative animate-fade-in">
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black text-white">{service.arName || service.name}</h4>
+                          <span className="text-[9px] font-mono text-gray-500 block">ID: {service.id}</span>
+                        </div>
+                        
+                        <p className="text-xs text-gray-400 font-medium leading-relaxed bg-[#0F1424]/50 p-3 rounded-xl border border-gray-900">
+                          "{service.arDescription || service.description}"
+                        </p>
+
+                        <div className="text-[10px] space-y-1 text-gray-500">
+                          <div>
+                            {lang === 'ar' ? 'السعر المقترح:' : 'Proposed Price:'} <span className="text-white font-bold">{service.basePrice} ₪</span>
+                          </div>
+                          <div>
+                            {lang === 'ar' ? 'بواسطة:' : 'By:'} <span className="text-white font-bold">{service.requestedByName || service.requestedBy || 'Anonymous'}</span>
+                          </div>
+                          <div className="text-[9px] text-gray-600 block truncate">
+                            {service.requestedBy}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-900">
+                        <button 
+                          onClick={() => handleApprovePendingService(service)}
+                          className="py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          ✅ {lang === 'ar' ? 'قبول ونشر' : 'Accept & Publish'}
+                        </button>
+                        <button 
+                          onClick={() => handleRejectPendingService(service.id)}
+                          className="py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          🗑️ {lang === 'ar' ? 'رفض وحذف' : 'Reject & Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
         </div>
         )
       )}
@@ -4368,27 +4565,36 @@ export default function App() {
                     return;
                   }
                   const newServiceId = `custom_${Date.now()}`;
-                  const newService = {
+                  const newPending = {
                     id: newServiceId,
                     name: customServiceNameEn,
                     arName: customServiceNameAr,
                     description: customServiceDescEn,
                     arDescription: customServiceDescAr,
                     icon: 'wrench',
-                    basePrice: customServicePrice
+                    basePrice: customServicePrice,
+                    requestedBy: loggedInUserEmail || 'Unknown',
+                    requestedByName: loggedInUserName || 'Unknown',
+                    status: 'pending',
+                    createdAt: Date.now()
                   };
-                  await setDoc(doc(db, "services", newServiceId), newService);
+                  await setDoc(doc(db, "pending_services", newServiceId), newPending);
                   setShowCustomServiceModal(false);
                   setCustomServiceNameAr('');
                   setCustomServiceNameEn('');
                   setCustomServiceDescAr('');
                   setCustomServiceDescEn('');
                   setCustomServicePrice(150);
-                  triggerToast(lang === 'ar' ? 'تم إضافة الخدمة المخصصة بنجاح!' : 'Custom service added successfully!', 'success');
+                  triggerToast(
+                    lang === 'ar' 
+                      ? 'تم إرسال اقتراح الخدمة المخصصة للمسؤول علي للموافقة عليها ونشرها بالشبكة قريباً!' 
+                      : 'Custom service proposal submitted to administrator Eng. Ali for review!', 
+                    'success'
+                  );
                 }}
                 className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black rounded-xl text-xs transition-colors cursor-pointer"
               >
-                {lang === 'ar' ? 'حفظ وتفعيل الخدمة' : 'Save & Publish Service'}
+                {lang === 'ar' ? 'إرسال الخدمة المخصصة للمراجعة والموافقة' : 'Submit Custom Service for Approval'}
               </button>
             </div>
           </div>
