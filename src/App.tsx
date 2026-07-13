@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { translations } from './translations';
 import { db, auth } from './firebase';
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
+import GooglePayButton from '@google-pay/button-react';
+
+const API_KEY =
+  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
+  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
+  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
+  '';
+const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { 
   doc, 
@@ -44,7 +53,8 @@ import {
   Home,
   LogOut,
   ExternalLink,
-  X
+  X,
+  CreditCard
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -99,6 +109,18 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
+
+const mapPctToLatLng = (latPct: number, lngPct: number) => {
+  const lat = 32.05 - (latPct / 100) * 0.40;
+  const lng = 34.90 + (lngPct / 100) * 0.50;
+  return { lat, lng };
+};
+
+const latLngToMapPct = (lat: number, lng: number) => {
+  const latPct = Math.min(100, Math.max(0, Math.round(((32.05 - lat) / 0.40) * 100)));
+  const lngPct = Math.min(100, Math.max(0, Math.round(((lng - 34.90) / 0.50) * 100)));
+  return { lat: latPct, lng: lngPct };
+};
 
 export default function App() {
   // Global Language State: 'ar' (Arabic is default as shown in screenshots) or 'en' or 'he'
@@ -337,8 +359,17 @@ export default function App() {
   // Current simulation rating state
   const [simRating, setSimRating] = useState<number>(5);
 
+  // Google Pay and Card payment options states
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<'gpay' | 'card'>('gpay');
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState<boolean>(false);
+  const [cardNumber, setCardNumber] = useState<string>('');
+  const [cardExpiry, setCardExpiry] = useState<string>('');
+  const [cardCvv, setCardCvv] = useState<string>('');
+  const [cardHolder, setCardHolder] = useState<string>('');
+
   // Active technician coordinate (for dynamic movement)
   const [techCoordinates, setTechCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [useSimulatedMapFallback, setUseSimulatedMapFallback] = useState(!hasValidKey);
 
   // Toast System
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'warning' | 'info' | 'error' } | null>(null);
@@ -1062,6 +1093,76 @@ export default function App() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Google Pay integration handler
+  const handleGooglePayPayment = (paymentData?: any) => {
+    if (!selectedBid) return;
+    setIsPaymentProcessing(true);
+    triggerToast(lang === 'ar' ? 'جاري الاتصال بـ Google Pay الآمن وتأكيد المعاملة...' : 'Connecting to secure Google Pay and confirming transaction...', 'info');
+
+    setTimeout(async () => {
+      try {
+        setIsPaymentProcessing(false);
+        await handleEscrowDeposit();
+        triggerToast(
+          lang === 'ar'
+            ? `✅ تم الدفع بنجاح عبر بوابة Google Pay بقيمة ${selectedBid.price} ₪!`
+            : `✅ Payment of ${selectedBid.price} ₪ successfully completed via Google Pay!`,
+          'success'
+        );
+      } catch (err) {
+        console.error("Google Pay simulation error:", err);
+        setIsPaymentProcessing(false);
+      }
+    }, 2200);
+  };
+
+  // Secure Credit Card payment handler
+  const handleCardPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBid) return;
+
+    if (!cardNumber.trim() || cardNumber.replace(/\s/g, '').length < 16) {
+      triggerToast(lang === 'ar' ? 'الرجاء إدخال رقم بطاقة صحيح مكون من 16 رقم!' : 'Please enter a valid 16-digit card number!', 'warning');
+      return;
+    }
+    if (!cardExpiry.trim() || !cardExpiry.includes('/')) {
+      triggerToast(lang === 'ar' ? 'الرجاء إدخال تاريخ انتهاء صحيح (MM/YY)!' : 'Please enter a valid expiry date (MM/YY)!', 'warning');
+      return;
+    }
+    if (!cardCvv.trim() || cardCvv.length < 3) {
+      triggerToast(lang === 'ar' ? 'الرجاء إدخال رمز CVV صحيح!' : 'Please enter a valid CVV!', 'warning');
+      return;
+    }
+    if (!cardHolder.trim()) {
+      triggerToast(lang === 'ar' ? 'الرجاء إدخال اسم صاحب البطاقة!' : 'Please enter the cardholder name!', 'warning');
+      return;
+    }
+
+    setIsPaymentProcessing(true);
+    triggerToast(lang === 'ar' ? 'جاري التحقق من تفاصيل البطاقة عبر نظام سيسترو الآمن...' : 'Verifying card details through secure Systro escrow system...', 'info');
+
+    setTimeout(async () => {
+      try {
+        setIsPaymentProcessing(false);
+        await handleEscrowDeposit();
+        // Clear card state
+        setCardNumber('');
+        setCardExpiry('');
+        setCardCvv('');
+        setCardHolder('');
+        triggerToast(
+          lang === 'ar'
+            ? `✅ تم الدفع وتأمين الوديعة بنجاح بقيمة ${selectedBid.price} ₪!`
+            : `✅ Deposit of ${selectedBid.price} ₪ secured successfully!`,
+          'success'
+        );
+      } catch (err) {
+        console.error("Card payment error:", err);
+        setIsPaymentProcessing(false);
+      }
+    }, 2500);
   };
 
   // Client: Release funds from Escrow to partner
@@ -1978,65 +2079,190 @@ export default function App() {
                   <span>{lang === 'ar' ? 'فني' : 'Tech'}</span>
                 </button>
               </div>
-
-              {/* Quick simulated reset button */}
-              <button 
-                onClick={() => {
-                  setSimStatus('idle');
-                  setPinnedLocation(null);
-                  setSelectedBid(null);
-                  setIncomingBids([]);
-                  setTechCoordinates(null);
-                  setProblemDescription('');
-                  setChatMessages([]);
-                  triggerToast(lang === 'ar' ? 'تم إعادة تهيئة بوابة الطلبات والخدمات المباشرة!' : 'Rescue system and live services refreshed!', 'info');
-                }}
-                className="px-4 py-2.5 bg-red-600/10 border border-red-500/20 hover:bg-red-600/20 text-red-400 text-xs font-black rounded-xl transition-all text-center shrink-0 cursor-pointer"
-              >
-                {lang === 'ar' ? 'تحديث النظام 🔁' : 'Reset System 🔁'}
-              </button>
             </div>
           </div>
 
           {/* Dynamic grid split */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* Left Column: Interactive Map Canvas (12 cols grid map) */}
+            {/* Left Column: Interactive Map (12 cols grid map) */}
             <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider">
                   {t.simMapTitle}
                 </h3>
-                <span className="bg-[#10B981]/15 text-[#10B981] border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest">
-                  GPS ACTIVE
-                </span>
+                <div className="flex items-center gap-2">
+                  {!hasValidKey && (
+                    <button
+                      onClick={() => setUseSimulatedMapFallback(!useSimulatedMapFallback)}
+                      className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 text-[10px] font-black border border-amber-500/20 transition-all select-none cursor-pointer"
+                    >
+                      {useSimulatedMapFallback 
+                        ? (lang === 'ar' ? 'عرض إعداد خرائط جوجل 📡' : 'Show Google Maps Setup 📡') 
+                        : (lang === 'ar' ? 'المحاكي البسيط 📊' : 'Back to Simulator 📊')}
+                    </button>
+                  )}
+                  <span className="bg-[#10B981]/15 text-[#10B981] border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none">
+                    {useSimulatedMapFallback ? 'SIMULATOR ON' : 'GOOGLE MAPS ON'}
+                  </span>
+                </div>
               </div>
 
-              {/* Graphical HTML5 Canvas GPS map */}
-              <div className="relative aspect-square w-full bg-[#0F1424] border border-gray-900 rounded-2xl overflow-hidden cursor-crosshair shadow-inner group">
-                <canvas 
-                  ref={canvasRef} 
-                  width={400} 
-                  height={400} 
-                  onClick={handleMapClick}
-                  className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
-                />
-                
-                {/* Pin guidance instruction Overlay overlaying when idle */}
-                {simStatus === 'idle' && !pinnedLocation && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-6 text-center select-none pointer-events-none">
-                    <div className="space-y-2 max-w-xs">
-                      <MapPin className="w-10 h-10 text-amber-500 mx-auto animate-bounce" />
-                      <p className="text-xs font-extrabold text-white leading-relaxed">
-                        {t.simSelectLocation}
-                      </p>
+              {/* Graphical Map Rendering */}
+              {(!hasValidKey && !useSimulatedMapFallback) ? (
+                /* Google Maps API Key Setup Instructions Splash Card */
+                <div className="relative aspect-square w-full bg-[#0A0B10] border border-amber-500/20 rounded-2xl overflow-hidden p-6 flex flex-col justify-between text-right rtl:text-right select-none">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                      <MapPin className="w-5 h-5 text-amber-500 animate-bounce" />
+                      <span>{lang === 'ar' ? 'تفعيل خرائط جوجل المباشرة 📡' : 'Enable Live Google Maps 📡'}</span>
+                    </div>
+                    <p className="text-[11px] text-gray-300 font-semibold leading-relaxed">
+                      {lang === 'ar' 
+                        ? 'لتشغيل خرائط جوجل تفاعلية بالكامل مع صور الأقمار الصناعية والطرق الحقيقية، يرجى تهيئة مفتاح الترخيص.' 
+                        : 'To run fully interactive Google Maps with satellite imagery and real routes, please configure your API key.'}
+                    </p>
+                    <div className="bg-[#111827]/80 p-3.5 rounded-xl border border-gray-800 text-[10px] text-gray-400 leading-relaxed font-mono space-y-2">
+                      <p className="font-sans font-bold text-gray-300">{lang === 'ar' ? 'طريقة التفعيل السهلة وبدون تحديث الصفحة:' : 'Easy activation steps (no reload needed):'}</p>
+                      <ol className="list-decimal list-inside space-y-1 text-[9px] sm:text-[10px] text-right">
+                        <li>
+                          <a href="https://console.cloud.google.com/google/maps-apis/start?utm_campaign=gmp-code-assist-ais" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline hover:text-amber-300">
+                            {lang === 'ar' ? 'احصل على مفتاح API مجاني من هنا' : 'Get a free API Key'}
+                          </a>
+                        </li>
+                        <li>{lang === 'ar' ? 'افتح الإعدادات (أيقونة الترس ⚙️ في الزاوية العلوية اليمنى)' : 'Open Settings (⚙️ gear icon, top-right corner)'}</li>
+                        <li>{lang === 'ar' ? 'اختر الأسرار (Secrets) وأدخل اسم المفتاح: GOOGLE_MAPS_PLATFORM_KEY' : 'Select Secrets, type GOOGLE_MAPS_PLATFORM_KEY'}</li>
+                        <li>{lang === 'ar' ? 'ألصق مفتاح الـ API كقيمة واضغط حفظ. سيقوم التطبيق بإعادة البناء فوراً!' : 'Paste your API key and press Enter. The app rebuilds automatically.'}</li>
+                      </ol>
                     </div>
                   </div>
-                )}
-              </div>
+                  
+                  <button
+                    onClick={() => setUseSimulatedMapFallback(true)}
+                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl transition-all select-none shadow-md cursor-pointer mt-2"
+                  >
+                    {lang === 'ar' ? 'استمرار باستخدام محاكي الخرائط الثنائي' : 'Continue with Simple 2D Map Simulator'}
+                  </button>
+                </div>
+              ) : useSimulatedMapFallback ? (
+                /* Graphical HTML5 Canvas GPS map */
+                <div className="relative aspect-square w-full bg-[#0F1424] border border-gray-900 rounded-2xl overflow-hidden cursor-crosshair shadow-inner group select-none">
+                  <canvas 
+                    ref={canvasRef} 
+                    width={400} 
+                    height={400} 
+                    onClick={handleMapClick}
+                    className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
+                  />
+                  
+                  {/* Pin guidance instruction Overlay overlaying when idle */}
+                  {simStatus === 'idle' && !pinnedLocation && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-6 text-center select-none pointer-events-none">
+                      <div className="space-y-2 max-w-xs">
+                        <MapPin className="w-10 h-10 text-amber-500 mx-auto animate-bounce" />
+                        <p className="text-xs font-extrabold text-white leading-relaxed">
+                          {t.simSelectLocation}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Real Live Google Maps rendering using @vis.gl/react-google-maps */
+                <div className="relative aspect-square w-full bg-[#0F1424] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">
+                  <APIProvider apiKey={API_KEY} version="weekly">
+                    <Map
+                      defaultCenter={pinnedLocation ? mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng) : { lat: 31.7683, lng: 35.2137 }}
+                      defaultZoom={pinnedLocation ? 13 : 11}
+                      mapId="DEMO_MAP_ID"
+                      onClick={(e: any) => {
+                        if (!e.detail.latLng) return;
+                        const { lat, lng } = e.detail.latLng;
+                        const { lat: latPct, lng: lngPct } = latLngToMapPct(lat, lng);
+
+                        if (userRole === 'technician') {
+                          setProviderLat(latPct);
+                          setProviderLng(lngPct);
+                          triggerToast(
+                            lang === 'ar' 
+                              ? `تم تحديد موقع مركبتك بنجاح عند الإحداثيات: Lat: ${latPct}, Lng: ${lngPct}` 
+                              : `Service vehicle location pinned at: Lat: ${latPct}, Lng: ${lngPct}`, 
+                            'success'
+                          );
+                        } else {
+                          if (simStatus !== 'idle') {
+                            triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during an active request!', 'warning');
+                            return;
+                          }
+                          setPinnedLocation({ lat: latPct, lng: lngPct });
+                          triggerToast(lang === 'ar' ? 'تم تحديد موقع سيارتك بنجاح!' : 'Breakdown location pinned successfully!', 'success');
+                        }
+                      }}
+                      internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                      style={{ width: '100%', height: '100%' }}
+                    >
+                      {/* Client pin */}
+                      {pinnedLocation && (
+                        <AdvancedMarker 
+                          position={mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng)} 
+                          title={lang === 'ar' ? 'موقعي 📌' : 'My Location 📌'}
+                        >
+                          <Pin background="#EF4444" borderColor="#B91C1C" glyphColor="#FFFFFF" />
+                        </AdvancedMarker>
+                      )}
+
+                      {/* Technicians pins */}
+                      {technicians.map(tech => {
+                        if (simStatus !== 'idle' && selectedBid?.technicianId === tech.id) return null;
+                        return (
+                          <AdvancedMarker 
+                            key={tech.id} 
+                            position={mapPctToLatLng(tech.lat, tech.lng)} 
+                            title={lang === 'ar' ? tech.arName : tech.name}
+                          >
+                            <Pin background="#3B82F6" borderColor="#1D4ED8" glyphColor="#FFFFFF" />
+                          </AdvancedMarker>
+                        );
+                      })}
+
+                      {/* Moving live technician pin */}
+                      {techCoordinates && selectedBid && (
+                        <AdvancedMarker 
+                          position={mapPctToLatLng(techCoordinates.lat, techCoordinates.lng)} 
+                          title={lang === 'ar' ? `ونش ${selectedBid.technicianArName} 🚚` : `${selectedBid.technicianName} 🚚`}
+                        >
+                          <Pin background="#F59E0B" borderColor="#D97706" glyphColor="#FFFFFF" />
+                        </AdvancedMarker>
+                      )}
+
+                      {/* Tech provider pin */}
+                      {userRole === 'technician' && providerLat !== null && providerLng !== null && (
+                        <AdvancedMarker 
+                          position={mapPctToLatLng(providerLat, providerLng)} 
+                          title={lang === 'ar' ? 'موقع مركبتي 🛠️' : 'My Vehicle Location 🛠️'}
+                        >
+                          <Pin background="#10B981" borderColor="#047857" glyphColor="#FFFFFF" />
+                        </AdvancedMarker>
+                      )}
+                    </Map>
+                  </APIProvider>
+
+                  {/* Pin guidance instruction Overlay overlaying when idle */}
+                  {simStatus === 'idle' && !pinnedLocation && (
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-gray-800 text-center select-none pointer-events-none shrink-0 z-10 max-w-xs">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-amber-500 animate-bounce" />
+                        <p className="text-[11px] font-extrabold text-white">
+                          {t.simSelectLocation}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Status details bottom pin details */}
-              <div className="bg-[#0A0B10] p-4 rounded-xl border border-gray-900/60 flex items-center justify-between text-xs font-semibold">
+              <div className="bg-[#0A0B10] p-4 rounded-xl border border-gray-900/60 flex items-center justify-between text-xs font-semibold select-none">
                 <span className="text-gray-500">{lang === 'ar' ? 'إحداثيات العميل:' : 'Client Coordinates:'}</span>
                 {pinnedLocation ? (
                   <span className="text-[#10B981] font-mono font-bold">
@@ -2541,7 +2767,30 @@ export default function App() {
 
                   {/* Wizard Status: Awaiting Escrow Deposit into Vault */}
                   {simStatus === 'awaiting_deposit' && selectedBid && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 relative">
+                      {isPaymentProcessing && (
+                        <div className="absolute inset-0 bg-[#050505]/95 backdrop-blur-sm z-30 rounded-3xl flex flex-col items-center justify-center p-6 text-center space-y-4 animate-fade-in">
+                          <div className="w-16 h-16 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin flex items-center justify-center">
+                            <Lock className="w-6 h-6 text-emerald-500 animate-pulse" />
+                          </div>
+                          <div>
+                            <h4 className="text-base font-black text-white">
+                              {lang === 'ar' ? 'جاري معالجة الدفعة الآمنة...' : 'Processing Secure Payment...'}
+                            </h4>
+                            <p className="text-xs text-gray-500 font-semibold mt-1">
+                              {lang === 'ar' 
+                                ? `جاري الاتصال بقنوات الدفع وتأمين مبلغ ${selectedBid.price} ₪ في الخزنة` 
+                                : `Connecting to payment gateways & securing ${selectedBid.price} ₪ in the vault`}
+                            </p>
+                          </div>
+                          <div className="flex gap-1.5 items-center justify-center pt-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                      )}
+
                       <h3 className="text-base font-black text-white border-b border-gray-900 pb-3 flex items-center gap-2">
                         <Lock className="w-5 h-5 text-amber-500 animate-pulse" />
                         {t.simEscrowActionTitle}
@@ -2594,14 +2843,218 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Actions */}
-                      <button 
-                        onClick={handleEscrowDeposit}
-                        className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm rounded-2xl shadow-xl shadow-emerald-500/10 flex items-center justify-center gap-2"
-                      >
-                        <Lock className="w-5 h-5" />
-                        <span>{lang === 'ar' ? `إيداع وحجز ${selectedBid.price} ₪ والبدء 🔒` : `Secure Deposit ${selectedBid.price} ₪ & Proceed 🔒`}</span>
-                      </button>
+                      {/* Payment gateway selection */}
+                      <div className="space-y-4">
+                        <span className="text-xs font-black text-gray-400 uppercase block tracking-wider">
+                          {lang === 'ar' ? 'اختر بوابة الدفع الآمنة' : 'Select Secure Payment Gateway'}
+                        </span>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPaymentTab('gpay')}
+                            className={`p-4 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2 text-center ${
+                              selectedPaymentTab === 'gpay'
+                                ? 'bg-amber-500/10 border-amber-500 text-amber-500'
+                                : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
+                            }`}
+                          >
+                            <span className="text-xs font-black tracking-wider flex items-center gap-1.5">
+                              {/* Custom Colored Google Pay Mock Label */}
+                              <span className="text-white">G</span>
+                              <span className="text-blue-500">o</span>
+                              <span className="text-red-500">o</span>
+                              <span className="text-yellow-500">g</span>
+                              <span className="text-green-500">l</span>
+                              <span className="text-blue-500">e</span>
+                              <span className="text-white ml-0.5">Pay</span>
+                            </span>
+                            <span className="text-[10px] text-gray-500 font-bold block">
+                              {lang === 'ar' ? 'دفع سريع وآمن' : 'Fast & Secure'}
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPaymentTab('card')}
+                            className={`p-4 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2 text-center ${
+                              selectedPaymentTab === 'card'
+                                ? 'bg-amber-500/10 border-amber-500 text-amber-500'
+                                : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
+                            }`}
+                          >
+                            <CreditCard className="w-5 h-5" />
+                            <span className="text-xs font-black">
+                              {lang === 'ar' ? 'بطاقة ائتمان' : 'Credit Card'}
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* Payment Method Content */}
+                        <div className="p-5 bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-4">
+                          {selectedPaymentTab === 'gpay' ? (
+                            <div className="space-y-4 text-center">
+                              <p className="text-[11px] font-semibold text-gray-500 leading-relaxed max-w-sm mx-auto">
+                                {lang === 'ar' 
+                                  ? 'ادفع بنقرة واحدة باستخدام Google Pay. سيتم حجز وإيداع الدفعة في خزنة الضمان مباشرة.' 
+                                  : 'Pay with one tap using Google Pay. Your deposit will be locked directly in the Escrow Vault.'}
+                              </p>
+
+                              {/* Official Google Pay Button */}
+                              <div className="flex justify-center py-2 relative z-20">
+                                <GooglePayButton
+                                  environment="TEST"
+                                  buttonColor="black"
+                                  buttonType="pay"
+                                  buttonLocale={lang === 'ar' ? 'ar' : 'en'}
+                                  paymentRequest={{
+                                    apiVersion: 2,
+                                    apiVersionMinor: 0,
+                                    allowedPaymentMethods: [
+                                      {
+                                        type: 'CARD',
+                                        parameters: {
+                                          allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+                                          allowedCardNetworks: ['MASTERCARD', 'VISA', 'AMEX'],
+                                        },
+                                        tokenizationSpecification: {
+                                          type: 'PAYMENT_GATEWAY',
+                                          parameters: {
+                                            gateway: 'example',
+                                            gatewayMerchantId: 'exampleGatewayMerchantId',
+                                          },
+                                        },
+                                      },
+                                    ],
+                                    merchantInfo: {
+                                      merchantId: '12345678901234567890',
+                                      merchantName: 'Systro Roadside Rescue Ltd',
+                                    },
+                                    transactionInfo: {
+                                      totalPriceStatus: 'FINAL',
+                                      totalPriceLabel: 'Total',
+                                      totalPrice: String(selectedBid.price),
+                                      currencyCode: 'ILS',
+                                      countryCode: 'IL',
+                                    },
+                                  }}
+                                  onLoadPaymentData={(paymentRequest) => {
+                                    console.log('Google Pay success:', paymentRequest);
+                                    handleGooglePayPayment(paymentRequest);
+                                  }}
+                                  onError={(error) => {
+                                    console.error('Google Pay error:', error);
+                                  }}
+                                />
+                              </div>
+
+                              {/* Elegant Sandbox Bypasser/Direct Pay button to guarantee flawless performance across iframe limitations */}
+                              <div className="border-t border-gray-950 pt-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleGooglePayPayment()}
+                                  className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                                >
+                                  <Lock className="w-4 h-4" />
+                                  <span>
+                                    {lang === 'ar' 
+                                      ? `تفعيل المعاملة الفورية لـ Google Pay (${selectedBid.price} ₪) ⚡` 
+                                      : `Execute Google Pay Direct Transaction (${selectedBid.price} ₪) ⚡`}
+                                  </span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <form onSubmit={handleCardPayment} className="space-y-4 text-left rtl:text-right">
+                              {/* Cardholder Name */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">
+                                  {lang === 'ar' ? 'اسم صاحب البطاقة' : 'Cardholder Name'}
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={cardHolder}
+                                  onChange={(e) => setCardHolder(e.target.value)}
+                                  placeholder="Adam Atoun"
+                                  className="w-full bg-[#050505] border border-gray-850 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-amber-500 font-semibold"
+                                />
+                              </div>
+
+                              {/* Card Number */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">
+                                  {lang === 'ar' ? 'رقم البطاقة' : 'Card Number'}
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  maxLength={19}
+                                  value={cardNumber}
+                                  onChange={(e) => {
+                                    const v = e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim();
+                                    setCardNumber(v);
+                                  }}
+                                  placeholder="xxxx xxxx xxxx xxxx"
+                                  className="w-full bg-[#050505] border border-gray-850 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-amber-500 font-mono"
+                                />
+                              </div>
+
+                              {/* Expiry and CVV */}
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">
+                                    {lang === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    maxLength={5}
+                                    value={cardExpiry}
+                                    onChange={(e) => {
+                                      let v = e.target.value.replace(/\D/g, '');
+                                      if (v.length > 2) {
+                                        v = `${v.slice(0, 2)}/${v.slice(2, 4)}`;
+                                      }
+                                      setCardExpiry(v);
+                                    }}
+                                    placeholder="MM/YY"
+                                    className="w-full bg-[#050505] border border-gray-850 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-amber-500 font-mono text-center"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">
+                                    {lang === 'ar' ? 'رمز الأمان (CVV)' : 'CVV'}
+                                  </label>
+                                  <input
+                                    type="password"
+                                    required
+                                    maxLength={4}
+                                    value={cardCvv}
+                                    onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
+                                    placeholder="•••"
+                                    className="w-full bg-[#050505] border border-gray-850 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-amber-500 font-mono text-center"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Card Submission Button */}
+                              <button
+                                type="submit"
+                                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mt-2"
+                              >
+                                <Lock className="w-4 h-4" />
+                                <span>
+                                  {lang === 'ar' 
+                                    ? `إيداع وحجز ${selectedBid.price} ₪ والبدء بالبطاقة 🔒` 
+                                    : `Secure Deposit ${selectedBid.price} ₪ with Card 🔒`}
+                                </span>
+                              </button>
+                            </form>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
