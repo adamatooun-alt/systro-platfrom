@@ -57,7 +57,8 @@ import {
   CreditCard,
   Mail,
   MessageCircle,
-  Volume2
+  Volume2,
+  Ban
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -126,6 +127,19 @@ const latLngToMapPct = (lat: number, lng: number) => {
   const latPct = Math.min(100, Math.max(0, Math.round(((33.40 - lat) / 4.0) * 100)));
   const lngPct = Math.min(100, Math.max(0, Math.round(((lng - 34.10) / 1.8) * 100)));
   return { lat: latPct, lng: lngPct };
+};
+
+const convertArabicNumerals = (str: string): string => {
+  return str.replace(/[٠-٩]/g, (d) => {
+    return (d.charCodeAt(0) - 1632).toString();
+  }).replace(/[۰-۹]/g, (d) => {
+    return (d.charCodeAt(0) - 1776).toString();
+  });
+};
+
+const cleanInput = (val: string): string => {
+  const converted = convertArabicNumerals(val);
+  return converted.replace(/[^0-9]/g, '');
 };
 
 export default function App() {
@@ -258,7 +272,7 @@ export default function App() {
   const [customServiceNameEn, setCustomServiceNameEn] = useState('');
   const [customServiceDescAr, setCustomServiceDescAr] = useState('');
   const [customServiceDescEn, setCustomServiceDescEn] = useState('');
-  const [customServicePrice, setCustomServicePrice] = useState(150);
+  const [customServicePrice, setCustomServicePrice] = useState<string>('150');
 
   // Dynamic Live System Statistics
   const [stats, setStats] = useState<SystemStats>({
@@ -347,6 +361,14 @@ export default function App() {
 
   // Map & Simulator State
   const [pinnedLocation, setPinnedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showLocationPrompt, setShowLocationPrompt] = useState<boolean>(() => {
+    try {
+      const dismissed = sessionStorage.getItem('systro_location_prompt_dismissed');
+      return dismissed !== 'true';
+    } catch {
+      return true;
+    }
+  });
   const [selectedService, setSelectedService] = useState<ServiceType>('towing');
   const [problemDescription, setProblemDescription] = useState('');
   const [simStatus, setSimStatus] = useState<RequestStatus>('idle');
@@ -482,8 +504,8 @@ export default function App() {
   const [providerPlate, setProviderPlate] = useState('');
   const [activeTechDoc, setActiveTechDoc] = useState<any>(null);
   const [selectedBidRequest, setSelectedBidRequest] = useState<any>(null);
-  const [customBidPrice, setCustomBidPrice] = useState<number>(150);
-  const [customBidEta, setCustomBidEta] = useState<number>(15);
+  const [customBidPrice, setCustomBidPrice] = useState<string>('150');
+  const [customBidEta, setCustomBidEta] = useState<string>('15');
 
   // Provider position states for dynamic vehicle placement
   const [providerLat, setProviderLat] = useState<number | null>(null);
@@ -1168,6 +1190,124 @@ export default function App() {
     } catch (error) {
       console.error("Error creating request:", error);
       triggerToast(lang === 'ar' ? 'فشل إرسال الطلب لقاعدة البيانات!' : 'Failed to publish request!', 'error');
+    }
+  };
+
+  // Client: Cancel active rescue request, delete request and its bids, and reset state
+  const handleCancelRescueRequest = async () => {
+    try {
+      if (activeRequestId) {
+        // Delete request document from the database
+        try {
+          await deleteDoc(doc(db, "requests", activeRequestId));
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `requests/${activeRequestId}`);
+        }
+
+        // Also delete any associated bids from the database
+        try {
+          const bidsQuery = query(collection(db, "bids"), where("requestId", "==", activeRequestId));
+          const bidsSnap = await getDocs(bidsQuery);
+          bidsSnap.forEach(async (bidDoc) => {
+            await deleteDoc(bidDoc.ref);
+          });
+        } catch (error) {
+          handleFirestoreError(error, OperationType.DELETE, `bids?requestId=${activeRequestId}`);
+        }
+      }
+
+      // Decrement active emergencies if we can
+      if (stats.activeEmergencies > 0) {
+        try {
+          await updateDoc(doc(db, "system_stats", "global"), {
+            activeEmergencies: Math.max(0, stats.activeEmergencies - 1)
+          });
+        } catch (error) {
+          handleFirestoreError(error, OperationType.WRITE, "system_stats/global");
+        }
+      }
+
+      // Reset client's local states completely to return to standby (empty records/idle)
+      setActiveRequestId(null);
+      setSimStatus('idle');
+      setPinnedLocation(null);
+      setSelectedBid(null);
+      setIncomingBids([]);
+      setTechCoordinates(null);
+      setProblemDescription('');
+      setChatMessages([]);
+
+      triggerToast(
+        lang === 'ar'
+          ? '❌ تم إلغاء طلب الإنقاذ والعودة للرئيسية بنجاح.'
+          : '❌ Rescue request cancelled and returned to standby successfully.',
+        'success'
+      );
+    } catch (err) {
+      console.error("Error cancelling request:", err);
+      // Fallback local reset even if DB operations fail to ensure client doesn't get stuck
+      setActiveRequestId(null);
+      setSimStatus('idle');
+      setPinnedLocation(null);
+      setSelectedBid(null);
+      setIncomingBids([]);
+      setTechCoordinates(null);
+      setProblemDescription('');
+      setChatMessages([]);
+    }
+  };
+
+  // Universal GPS location detection helper
+  const detectCurrentLocation = (silent: boolean = false) => {
+    if (navigator.geolocation) {
+      if (!silent) {
+        triggerToast(lang === 'ar' ? 'جاري الحصول على موقعك الدقيق من الـ GPS... 📡' : 'Fetching accurate GPS location... 📡', 'info');
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const { lat: latPct, lng: lngPct } = latLngToMapPct(latitude, longitude);
+          
+          if (userRole === 'technician') {
+            setProviderLat(latPct);
+            setProviderLng(lngPct);
+            triggerToast(
+              lang === 'ar' 
+                ? `تم تحديد موقع مركبة الصيانة بنجاح عبر الـ GPS! الإحداثيات: Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}` 
+                : `Maintenance vehicle location pinned via GPS! Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`, 
+              'success'
+            );
+          } else {
+            if (simStatus !== 'idle') {
+              triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during active request!', 'warning');
+              return;
+            }
+            setPinnedLocation({ lat: latPct, lng: lngPct });
+            triggerToast(
+              lang === 'ar' 
+                ? `تم تحديد موقع تعطل سيارتك بدقة! الإحداثيات: Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}` 
+                : `Breakdown location pinned via GPS! Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`, 
+              'success'
+            );
+          }
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          if (!silent) {
+            triggerToast(
+              lang === 'ar' 
+                ? 'فشل الحصول على إحداثيات الموقع. يرجى السماح بالوصول لموقعك الجغرافي أو تفعيل الـ GPS.' 
+                : 'Could not fetch GPS coordinates. Please allow location permissions or turn on GPS.', 
+              'error'
+            );
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      if (!silent) {
+        triggerToast(lang === 'ar' ? 'متصفحك لا يدعم نظام تحديد المواقع العالمي.' : 'Your browser does not support GPS location systems.', 'error');
+      }
     }
   };
 
@@ -1993,6 +2133,70 @@ export default function App() {
         </div>
       )}
 
+      {/* Google Maps Style Custom Geolocation Prompt Banner */}
+      {showLocationPrompt && (
+        <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-8 md:w-[440px] z-50 bg-[#0C101F]/98 border border-amber-500/30 rounded-2xl p-5 shadow-2xl backdrop-blur-md animate-fade-in transition-all">
+          <div className="flex gap-4">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 border border-amber-500/20 animate-pulse">
+              <MapPin className="w-6 h-6 text-amber-400" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-sm font-black text-white font-sans">
+                  {t.locationPromptTitle}
+                </h4>
+                <button 
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
+                    } catch (e) {}
+                    setShowLocationPrompt(false);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-300 leading-relaxed font-sans font-medium">
+                {t.locationPromptDesc}
+              </p>
+              <div className="pt-2 flex flex-col sm:flex-row gap-2 select-none">
+                <button
+                  onClick={() => {
+                    detectCurrentLocation(false);
+                    try {
+                      sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
+                    } catch (e) {}
+                    setShowLocationPrompt(false);
+                  }}
+                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs rounded-xl shadow-md shadow-amber-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>{t.locationPromptAllow}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
+                    } catch (e) {}
+                    setShowLocationPrompt(false);
+                    triggerToast(
+                      lang === 'ar'
+                        ? 'ℹ️ حسناً، يمكنك الضغط يدوياً على الخريطة لتحديد موقعك بدقة.'
+                        : 'ℹ️ Alright, you can manually click on the map to set your location.',
+                      'info'
+                    );
+                  }}
+                  className="py-2.5 px-4 bg-[#171C2F] hover:bg-[#1E253F] text-gray-300 hover:text-white border border-gray-800 rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
+                >
+                  {t.locationPromptDecline}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TOP NAVBAR HEADER */}
       <header className="sticky top-0 z-40 bg-[#0A0B10]/95 backdrop-blur-md border-b border-[#1E293B]/70 select-none">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between gap-3">
@@ -2408,41 +2612,7 @@ export default function App() {
               {/* Precise Auto-GPS locator button - Hidden for technicians, active for clients */}
               {userRole !== 'technician' && (
                 <button
-                  onClick={() => {
-                    if (navigator.geolocation) {
-                      triggerToast(lang === 'ar' ? 'جاري الحصول على موقعك الدقيق من الـ GPS... 📡' : 'Fetching accurate GPS location... 📡', 'info');
-                      navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                          const { latitude, longitude } = position.coords;
-                          const { lat: latPct, lng: lngPct } = latLngToMapPct(latitude, longitude);
-                          
-                          if (simStatus !== 'idle') {
-                            triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during active request!', 'warning');
-                            return;
-                          }
-                          setPinnedLocation({ lat: latPct, lng: lngPct });
-                          triggerToast(
-                            lang === 'ar' 
-                              ? `تم تحديد موقع تعطل سيارتك بدقة! الإحداثيات: Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}` 
-                              : `Breakdown location pinned via GPS! Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`, 
-                            'success'
-                          );
-                        },
-                        (error) => {
-                          console.error("Geolocation error:", error);
-                          triggerToast(
-                            lang === 'ar' 
-                              ? 'فشل الحصول على إحداثيات الموقع. يرجى السماح بالوصول لموقعك الجغرافي أو تفعيل الـ GPS.' 
-                              : 'Could not fetch GPS coordinates. Please allow location permissions or turn on GPS.', 
-                            'error'
-                          );
-                        },
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                      );
-                    } else {
-                      triggerToast(lang === 'ar' ? 'متصفحك لا يدعم نظام تحديد المواقع العالمي.' : 'Your browser does not support GPS location systems.', 'error');
-                    }
-                  }}
+                  onClick={() => detectCurrentLocation(false)}
                   className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-[11px] md:text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-blue-500/30 group active:scale-[0.98]"
                 >
                   <MapPin className="w-4 h-4 text-amber-400 animate-bounce group-hover:scale-110 transition-transform" />
@@ -3232,9 +3402,11 @@ export default function App() {
                                         <div className="flex flex-col gap-1">
                                           <label className="text-[9px] text-gray-500 uppercase">{lang === 'ar' ? 'عرض السعر المقترح (₪):' : 'Bid Amount (₪):'}</label>
                                           <input 
-                                            type="number" 
+                                            type="text" 
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
                                             value={customBidPrice}
-                                            onChange={(e) => setCustomBidPrice(Number(e.target.value))}
+                                            onChange={(e) => setCustomBidPrice(cleanInput(e.target.value))}
                                             className="w-full px-3 py-2 bg-[#050505] border border-gray-900 rounded-lg text-white font-mono text-center"
                                           />
                                         </div>
@@ -3242,9 +3414,11 @@ export default function App() {
                                         <div className="flex flex-col gap-1">
                                           <label className="text-[9px] text-gray-500 uppercase">{lang === 'ar' ? 'الوقت المتوقع للوصول (دقيقة):' : 'ETA (Min):'}</label>
                                           <input 
-                                            type="number" 
+                                            type="text" 
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
                                             value={customBidEta}
-                                            onChange={(e) => setCustomBidEta(Number(e.target.value))}
+                                            onChange={(e) => setCustomBidEta(cleanInput(e.target.value))}
                                             className="w-full px-3 py-2 bg-[#050505] border border-gray-900 rounded-lg text-white font-mono text-center"
                                           />
                                         </div>
@@ -3252,7 +3426,9 @@ export default function App() {
 
                                       <button 
                                         onClick={async () => {
-                                          if (customBidPrice <= 0 || customBidEta <= 0) {
+                                          const priceNum = Number(customBidPrice);
+                                          const etaNum = Number(customBidEta);
+                                          if (isNaN(priceNum) || priceNum <= 0 || isNaN(etaNum) || etaNum <= 0) {
                                             triggerToast(lang === 'ar' ? 'يرجى إدخال قيم صحيحة!' : 'Please enter valid values!', 'warning');
                                             return;
                                           }
@@ -3265,8 +3441,8 @@ export default function App() {
                                               technicianName: loggedInUserName,
                                               technicianArName: loggedInUserName,
                                               phone: '+972 59-999-9999',
-                                              price: customBidPrice,
-                                              etaMinutes: customBidEta,
+                                              price: priceNum,
+                                              etaMinutes: etaNum,
                                               rating: activeTechDoc.rating || 5.0,
                                               avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120',
                                               carModel: activeTechDoc.carModel,
@@ -3279,7 +3455,9 @@ export default function App() {
                                               status: 'pending_bids'
                                             });
 
-                                            triggerToast(lang === 'ar' ? `تم إرسال عرض السعر بقيمة ${customBidPrice} ₪ للعميل بنجاح!` : `Bid of ${customBidPrice} ₪ submitted successfully!`, 'success');
+                                            triggerToast(lang === 'ar' ? `تم إرسال عرض السعر بقيمة ${priceNum} ₪ للعميل بنجاح!` : `Bid of ${priceNum} ₪ submitted successfully!`, 'success');
+                                            setCustomBidPrice('150');
+                                            setCustomBidEta('15');
                                             setSelectedBidRequest(null);
                                           } catch (err) {
                                             console.error(err);
@@ -3419,6 +3597,18 @@ export default function App() {
                           ))}
                         </div>
                       )}
+
+                      {/* Cancel Task Button */}
+                      <div className="pt-4 border-t border-gray-900/40 select-none">
+                        <button
+                          type="button"
+                          onClick={handleCancelRescueRequest}
+                          className="w-full py-4 bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 rounded-2xl text-xs font-black tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                        >
+                          <Ban className="w-5 h-5 animate-pulse" />
+                          <span>{t.simCancelTask}</span>
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -4550,18 +4740,21 @@ export default function App() {
                   {lang === 'ar' ? 'السعر الأساسي التقديري (₪):' : 'Base Price (₪):'}
                 </label>
                 <input 
-                  type="number" 
+                  type="text" 
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   required
                   value={customServicePrice}
-                  onChange={(e) => setCustomServicePrice(Number(e.target.value))}
+                  onChange={(e) => setCustomServicePrice(cleanInput(e.target.value))}
                   className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-mono text-xs transition-colors"
                 />
               </div>
 
               <button
                 onClick={async () => {
-                  if (!customServiceNameAr.trim() || !customServiceNameEn.trim() || !customServiceDescAr.trim() || !customServiceDescEn.trim()) {
-                    triggerToast(lang === 'ar' ? 'الرجاء تعبئة جميع الحقول!' : 'Please fill all fields!', 'warning');
+                  const priceNum = Number(customServicePrice);
+                  if (!customServiceNameAr.trim() || !customServiceNameEn.trim() || !customServiceDescAr.trim() || !customServiceDescEn.trim() || isNaN(priceNum) || priceNum <= 0) {
+                    triggerToast(lang === 'ar' ? 'الرجاء تعبئة جميع الحقول وإدخال سعر صحيح!' : 'Please fill all fields and enter a valid price!', 'warning');
                     return;
                   }
                   const newServiceId = `custom_${Date.now()}`;
@@ -4572,7 +4765,7 @@ export default function App() {
                     description: customServiceDescEn,
                     arDescription: customServiceDescAr,
                     icon: 'wrench',
-                    basePrice: customServicePrice,
+                    basePrice: priceNum,
                     requestedBy: loggedInUserEmail || 'Unknown',
                     requestedByName: loggedInUserName || 'Unknown',
                     status: 'pending',
@@ -4584,7 +4777,7 @@ export default function App() {
                   setCustomServiceNameEn('');
                   setCustomServiceDescAr('');
                   setCustomServiceDescEn('');
-                  setCustomServicePrice(150);
+                  setCustomServicePrice('150');
                   triggerToast(
                     lang === 'ar' 
                       ? 'تم إرسال اقتراح الخدمة المخصصة للمسؤول علي للموافقة عليها ونشرها بالشبكة قريباً!' 

@@ -107,6 +107,11 @@ export interface Dictionary {
   simDisputeOpened: string;
   simDisputeReasonPlaceholder: string;
   simSubmitDispute: string;
+  simCancelTask: string;
+  locationPromptTitle: string;
+  locationPromptDesc: string;
+  locationPromptAllow: string;
+  locationPromptDecline: string;
 
   // Admin Dashboard
   adminTitle: string;
@@ -226,6 +231,11 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     simDisputeOpened: "تم فتح بلاغ خلاف رسمي لدى الإدارة. سيتم تجميد الأموال في المحفظة حتى مراجعة المشرفين.",
     simDisputeReasonPlaceholder: "اكتب سبب الشكوى أو الخلاف الفني...",
     simSubmitDispute: "تقديم الشكوى للإدارة",
+    simCancelTask: "إلغاء طلب الإنقاذ والعودة للرئيسية ❌",
+    locationPromptTitle: "📍 تحديد موقعك التلقائي لتسريع الإنقاذ",
+    locationPromptDesc: "هل تسمح لسيسترو إنقاذ بمعرفة موقعك الحالي لتسريع استجابة الفنيين القريبين وعرض الخريطة بدقة؟",
+    locationPromptAllow: "نعم، اسمح وحدد موقعي تلقائياً 👍📍",
+    locationPromptDecline: "لا، سأحدد يدوياً على الخريطة ❌",
 
     // Admin Dashboard
     adminTitle: "بوابة التحكم والتحكيم المالي للمشرفين (Admin Portal)",
@@ -343,6 +353,11 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     simDisputeOpened: "Dispute opened. Funds are frozen in the vault until administrators resolve the case.",
     simDisputeReasonPlaceholder: "Write the technical complaint or dispute reason...",
     simSubmitDispute: "File Dispute with Administration",
+    simCancelTask: "Cancel Rescue Request & Return ❌",
+    locationPromptTitle: "📍 Auto-Detect Location for Faster Rescue",
+    locationPromptDesc: "Allow Systro Rescue to access your current GPS location to speed up nearby technicians' response and show your coordinates?",
+    locationPromptAllow: "Yes, Auto-Detect Location 👍📍",
+    locationPromptDecline: "No, I will select manually ❌",
 
     // Admin Dashboard
     adminTitle: "Admin Oversight & Arbitration Panel",
@@ -460,6 +475,11 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     simDisputeOpened: "נפתחה מחלוקת רשמית. הכספים מוקפאים בכספת עד שהמנהלים יפתרו את המקרה.",
     simDisputeReasonPlaceholder: "כתוב את סיבת המחלוקת או התלונה הטכנית...",
     simSubmitDispute: "הגש מחלוקת להנהלה",
+    simCancelTask: "ביטול קריאת החילוץ וחזרה ❌",
+    locationPromptTitle: "📍 זיהוי מיקום אוטומטי לחילוץ מהיר",
+    locationPromptDesc: "האם תרשה לסיסטרו חילוץ לגשת למיקום ה-GPS הנוכחי שלך כדי לזרז את תגובת הטכנאים ולהציג את המפה במדויק?",
+    locationPromptAllow: "כן, זהה מיקום אוטומטית 👍📍",
+    locationPromptDecline: "לא, אבחר ידנית ❌",
 
     // Admin Dashboard
     adminTitle: "פורטל פיקוח ובוררות של מנהלים (Admin Portal)",
