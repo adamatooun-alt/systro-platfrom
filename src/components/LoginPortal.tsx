@@ -35,19 +35,46 @@ export default function LoginPortal({
   return (
     <div className="min-h-screen bg-[#031A17] text-white font-sans antialiased selection:bg-amber-500 selection:text-black flex flex-col justify-between relative overflow-hidden">
       
-      {/* Custom Top Announcement Bar Featuring Ali */}
-      <div id="ali-premium-top-banner" className="w-full relative z-50 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-b border-amber-500/20 py-2.5 px-4 text-center select-none flex items-center justify-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-        </span>
-        <span className="text-[11px] sm:text-xs font-black text-amber-400 tracking-wide">
-          {lang === 'ar' 
-            ? 'بإشراف وإدارة م. علي | المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
-            : lang === 'he'
-            ? 'בפיקוח ובניהול אינג\' עלי | פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
-            : 'Supervised & Managed by Eng. Ali | The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
-        </span>
+      {/* Responsive Top Header Container (No overlaps on any screen width) */}
+      <div className="w-full relative z-50 flex flex-col items-center bg-[#051E1A]/80 backdrop-blur-md border-b border-amber-500/20">
+        
+        {/* Custom Top Announcement Bar Featuring Ali */}
+        <div id="ali-premium-top-banner" className="w-full bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 py-2.5 px-4 text-center select-none flex items-center justify-center gap-2">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+          </span>
+          <span className="text-[10px] sm:text-xs font-black text-amber-400 tracking-wide leading-relaxed">
+            {lang === 'ar' 
+              ? 'بإشراف وإدارة م. علي | المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
+              : lang === 'he'
+              ? 'בפיקוח ובניהול אינג\' עלי | פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
+              : 'Supervised & Managed by Eng. Ali | The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
+          </span>
+        </div>
+
+        {/* Clean Language Selector Bar placed directly under the announcement bar - no overlaps */}
+        <div className="w-full flex justify-center py-2 border-t border-[#031A17]/45 bg-[#031A17]/60">
+          <div className="flex items-center gap-1 bg-sky-950/45 border border-sky-500/15 p-1 rounded-2xl shadow-md">
+            {[
+              { code: 'ar', label: 'عربي' },
+              { code: 'he', label: 'עברית' },
+              { code: 'en', label: 'English' }
+            ].map((item) => (
+              <button
+                key={item.code}
+                onClick={() => setLang(item.code as any)}
+                className={`px-3 py-1 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                  lang === item.code
+                    ? 'bg-sky-500/25 text-sky-100 border border-sky-400/25 shadow-inner'
+                    : 'text-sky-300/60 hover:text-sky-200 hover:bg-sky-500/10'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Soft background ambient blurs (completely passive and non-blocking, behind text) */}
@@ -68,29 +95,8 @@ export default function LoginPortal({
         </div>
       )}
 
-      {/* Floating Language Select */}
-      <div className="absolute top-4 right-4 z-10 select-none flex items-center gap-1 bg-sky-950/40 backdrop-blur-md border border-sky-500/20 p-1.5 rounded-2xl shadow-lg">
-        {[
-          { code: 'ar', label: 'عربي' },
-          { code: 'he', label: 'עברית' },
-          { code: 'en', label: 'English' }
-        ].map((item) => (
-          <button
-            key={item.code}
-            onClick={() => setLang(item.code as any)}
-            className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all cursor-pointer ${
-              lang === item.code
-                ? 'bg-sky-500/20 text-sky-100 border border-sky-400/30 shadow-inner'
-                : 'text-sky-300/60 hover:text-sky-200 hover:bg-sky-500/10'
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
       {/* Central Logo & Brand Header Area */}
-      <main className="flex-1 flex flex-col items-center justify-center p-4 relative z-10 pt-16 md:pt-20">
+      <main className="flex-1 flex flex-col items-center justify-center p-4 relative z-10 pt-6 md:pt-12">
         <div className="flex flex-col items-center gap-6 text-center w-full max-w-md">
           
           {/* Interactive 3D/Glassmorphic Systro Icon */}
