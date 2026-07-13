@@ -369,7 +369,7 @@ export default function App() {
 
   // Active technician coordinate (for dynamic movement)
   const [techCoordinates, setTechCoordinates] = useState<{ lat: number; lng: number } | null>(null);
-  const [useSimulatedMapFallback, setUseSimulatedMapFallback] = useState(!hasValidKey);
+  const [useSimulatedMapFallback, setUseSimulatedMapFallback] = useState(false);
 
   // Toast System
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'warning' | 'info' | 'error' } | null>(null);
@@ -2091,175 +2091,102 @@ export default function App() {
                 <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider">
                   {t.simMapTitle}
                 </h3>
-                <div className="flex items-center gap-2">
-                  {!hasValidKey && (
-                    <button
-                      onClick={() => setUseSimulatedMapFallback(!useSimulatedMapFallback)}
-                      className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 text-[10px] font-black border border-amber-500/20 transition-all select-none cursor-pointer"
-                    >
-                      {useSimulatedMapFallback 
-                        ? (lang === 'ar' ? 'عرض إعداد خرائط جوجل 📡' : 'Show Google Maps Setup 📡') 
-                        : (lang === 'ar' ? 'المحاكي البسيط 📊' : 'Back to Simulator 📊')}
-                    </button>
-                  )}
-                  <span className="bg-[#10B981]/15 text-[#10B981] border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none">
-                    {useSimulatedMapFallback ? 'SIMULATOR ON' : 'GOOGLE MAPS ON'}
-                  </span>
-                </div>
+                <span className="bg-[#10B981]/15 text-[#10B981] border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none">
+                  {lang === 'ar' ? 'خرائط جوجل نشطة 📡' : 'GOOGLE MAPS LIVE 📡'}
+                </span>
               </div>
 
-              {/* Graphical Map Rendering */}
-              {(!hasValidKey && !useSimulatedMapFallback) ? (
-                /* Google Maps API Key Setup Instructions Splash Card */
-                <div className="relative aspect-square w-full bg-[#0A0B10] border border-amber-500/20 rounded-2xl overflow-hidden p-6 flex flex-col justify-between text-right rtl:text-right select-none">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-                      <MapPin className="w-5 h-5 text-amber-500 animate-bounce" />
-                      <span>{lang === 'ar' ? 'تفعيل خرائط جوجل المباشرة 📡' : 'Enable Live Google Maps 📡'}</span>
-                    </div>
-                    <p className="text-[11px] text-gray-300 font-semibold leading-relaxed">
-                      {lang === 'ar' 
-                        ? 'لتشغيل خرائط جوجل تفاعلية بالكامل مع صور الأقمار الصناعية والطرق الحقيقية، يرجى تهيئة مفتاح الترخيص.' 
-                        : 'To run fully interactive Google Maps with satellite imagery and real routes, please configure your API key.'}
-                    </p>
-                    <div className="bg-[#111827]/80 p-3.5 rounded-xl border border-gray-800 text-[10px] text-gray-400 leading-relaxed font-mono space-y-2">
-                      <p className="font-sans font-bold text-gray-300">{lang === 'ar' ? 'طريقة التفعيل السهلة وبدون تحديث الصفحة:' : 'Easy activation steps (no reload needed):'}</p>
-                      <ol className="list-decimal list-inside space-y-1 text-[9px] sm:text-[10px] text-right">
-                        <li>
-                          <a href="https://console.cloud.google.com/google/maps-apis/start?utm_campaign=gmp-code-assist-ais" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline hover:text-amber-300">
-                            {lang === 'ar' ? 'احصل على مفتاح API مجاني من هنا' : 'Get a free API Key'}
-                          </a>
-                        </li>
-                        <li>{lang === 'ar' ? 'افتح الإعدادات (أيقونة الترس ⚙️ في الزاوية العلوية اليمنى)' : 'Open Settings (⚙️ gear icon, top-right corner)'}</li>
-                        <li>{lang === 'ar' ? 'اختر الأسرار (Secrets) وأدخل اسم المفتاح: GOOGLE_MAPS_PLATFORM_KEY' : 'Select Secrets, type GOOGLE_MAPS_PLATFORM_KEY'}</li>
-                        <li>{lang === 'ar' ? 'ألصق مفتاح الـ API كقيمة واضغط حفظ. سيقوم التطبيق بإعادة البناء فوراً!' : 'Paste your API key and press Enter. The app rebuilds automatically.'}</li>
-                      </ol>
+              {/* Real Live Google Maps rendering using @vis.gl/react-google-maps */}
+              <div className="relative aspect-square w-full bg-[#0F1424] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">
+                <APIProvider apiKey={API_KEY} version="weekly">
+                  <Map
+                    defaultCenter={pinnedLocation ? mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng) : { lat: 31.7683, lng: 35.2137 }}
+                    defaultZoom={pinnedLocation ? 13 : 11}
+                    mapId="DEMO_MAP_ID"
+                    onClick={(e: any) => {
+                      if (!e.detail.latLng) return;
+                      const { lat, lng } = e.detail.latLng;
+                      const { lat: latPct, lng: lngPct } = latLngToMapPct(lat, lng);
+
+                      if (userRole === 'technician') {
+                        setProviderLat(latPct);
+                        setProviderLng(lngPct);
+                        triggerToast(
+                          lang === 'ar' 
+                            ? `تم تحديد موقع مركبتك بنجاح عند الإحداثيات: Lat: ${latPct}, Lng: ${lngPct}` 
+                            : `Service vehicle location pinned at: Lat: ${latPct}, Lng: ${lngPct}`, 
+                          'success'
+                        );
+                      } else {
+                        if (simStatus !== 'idle') {
+                          triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during an active request!', 'warning');
+                          return;
+                        }
+                        setPinnedLocation({ lat: latPct, lng: lngPct });
+                        triggerToast(lang === 'ar' ? 'تم تحديد موقع سيارتك بنجاح!' : 'Breakdown location pinned successfully!', 'success');
+                      }
+                    }}
+                    internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                    style={{ width: '100%', height: '100%' }}
+                  >
+                    {/* Client pin */}
+                    {pinnedLocation && (
+                      <AdvancedMarker 
+                        position={mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng)} 
+                        title={lang === 'ar' ? 'موقعي 📌' : 'My Location 📌'}
+                      >
+                        <Pin background="#EF4444" borderColor="#B91C1C" glyphColor="#FFFFFF" />
+                      </AdvancedMarker>
+                    )}
+
+                    {/* Technicians pins */}
+                    {technicians.map(tech => {
+                      if (simStatus !== 'idle' && selectedBid?.technicianId === tech.id) return null;
+                      return (
+                        <AdvancedMarker 
+                          key={tech.id} 
+                          position={mapPctToLatLng(tech.lat, tech.lng)} 
+                          title={lang === 'ar' ? tech.arName : tech.name}
+                        >
+                          <Pin background="#3B82F6" borderColor="#1D4ED8" glyphColor="#FFFFFF" />
+                        </AdvancedMarker>
+                      );
+                    })}
+
+                    {/* Moving live technician pin */}
+                    {techCoordinates && selectedBid && (
+                      <AdvancedMarker 
+                        position={mapPctToLatLng(techCoordinates.lat, techCoordinates.lng)} 
+                        title={lang === 'ar' ? `ونش ${selectedBid.technicianArName} 🚚` : `${selectedBid.technicianName} 🚚`}
+                      >
+                        <Pin background="#F59E0B" borderColor="#D97706" glyphColor="#FFFFFF" />
+                      </AdvancedMarker>
+                    )}
+
+                    {/* Tech provider pin */}
+                    {userRole === 'technician' && providerLat !== null && providerLng !== null && (
+                      <AdvancedMarker 
+                        position={mapPctToLatLng(providerLat, providerLng)} 
+                        title={lang === 'ar' ? 'موقع مركبتي 🛠️' : 'My Vehicle Location 🛠️'}
+                      >
+                        <Pin background="#10B981" borderColor="#047857" glyphColor="#FFFFFF" />
+                      </AdvancedMarker>
+                    )}
+                  </Map>
+                </APIProvider>
+
+                {/* Pin guidance instruction Overlay overlaying when idle */}
+                {simStatus === 'idle' && !pinnedLocation && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-gray-800 text-center select-none pointer-events-none shrink-0 z-10 max-w-xs">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-amber-500 animate-bounce" />
+                      <p className="text-[11px] font-extrabold text-white">
+                        {t.simSelectLocation}
+                      </p>
                     </div>
                   </div>
-                  
-                  <button
-                    onClick={() => setUseSimulatedMapFallback(true)}
-                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl transition-all select-none shadow-md cursor-pointer mt-2"
-                  >
-                    {lang === 'ar' ? 'استمرار باستخدام محاكي الخرائط الثنائي' : 'Continue with Simple 2D Map Simulator'}
-                  </button>
-                </div>
-              ) : useSimulatedMapFallback ? (
-                /* Graphical HTML5 Canvas GPS map */
-                <div className="relative aspect-square w-full bg-[#0F1424] border border-gray-900 rounded-2xl overflow-hidden cursor-crosshair shadow-inner group select-none">
-                  <canvas 
-                    ref={canvasRef} 
-                    width={400} 
-                    height={400} 
-                    onClick={handleMapClick}
-                    className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
-                  />
-                  
-                  {/* Pin guidance instruction Overlay overlaying when idle */}
-                  {simStatus === 'idle' && !pinnedLocation && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-6 text-center select-none pointer-events-none">
-                      <div className="space-y-2 max-w-xs">
-                        <MapPin className="w-10 h-10 text-amber-500 mx-auto animate-bounce" />
-                        <p className="text-xs font-extrabold text-white leading-relaxed">
-                          {t.simSelectLocation}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Real Live Google Maps rendering using @vis.gl/react-google-maps */
-                <div className="relative aspect-square w-full bg-[#0F1424] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">
-                  <APIProvider apiKey={API_KEY} version="weekly">
-                    <Map
-                      defaultCenter={pinnedLocation ? mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng) : { lat: 31.7683, lng: 35.2137 }}
-                      defaultZoom={pinnedLocation ? 13 : 11}
-                      mapId="DEMO_MAP_ID"
-                      onClick={(e: any) => {
-                        if (!e.detail.latLng) return;
-                        const { lat, lng } = e.detail.latLng;
-                        const { lat: latPct, lng: lngPct } = latLngToMapPct(lat, lng);
-
-                        if (userRole === 'technician') {
-                          setProviderLat(latPct);
-                          setProviderLng(lngPct);
-                          triggerToast(
-                            lang === 'ar' 
-                              ? `تم تحديد موقع مركبتك بنجاح عند الإحداثيات: Lat: ${latPct}, Lng: ${lngPct}` 
-                              : `Service vehicle location pinned at: Lat: ${latPct}, Lng: ${lngPct}`, 
-                            'success'
-                          );
-                        } else {
-                          if (simStatus !== 'idle') {
-                            triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during an active request!', 'warning');
-                            return;
-                          }
-                          setPinnedLocation({ lat: latPct, lng: lngPct });
-                          triggerToast(lang === 'ar' ? 'تم تحديد موقع سيارتك بنجاح!' : 'Breakdown location pinned successfully!', 'success');
-                        }
-                      }}
-                      internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-                      style={{ width: '100%', height: '100%' }}
-                    >
-                      {/* Client pin */}
-                      {pinnedLocation && (
-                        <AdvancedMarker 
-                          position={mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng)} 
-                          title={lang === 'ar' ? 'موقعي 📌' : 'My Location 📌'}
-                        >
-                          <Pin background="#EF4444" borderColor="#B91C1C" glyphColor="#FFFFFF" />
-                        </AdvancedMarker>
-                      )}
-
-                      {/* Technicians pins */}
-                      {technicians.map(tech => {
-                        if (simStatus !== 'idle' && selectedBid?.technicianId === tech.id) return null;
-                        return (
-                          <AdvancedMarker 
-                            key={tech.id} 
-                            position={mapPctToLatLng(tech.lat, tech.lng)} 
-                            title={lang === 'ar' ? tech.arName : tech.name}
-                          >
-                            <Pin background="#3B82F6" borderColor="#1D4ED8" glyphColor="#FFFFFF" />
-                          </AdvancedMarker>
-                        );
-                      })}
-
-                      {/* Moving live technician pin */}
-                      {techCoordinates && selectedBid && (
-                        <AdvancedMarker 
-                          position={mapPctToLatLng(techCoordinates.lat, techCoordinates.lng)} 
-                          title={lang === 'ar' ? `ونش ${selectedBid.technicianArName} 🚚` : `${selectedBid.technicianName} 🚚`}
-                        >
-                          <Pin background="#F59E0B" borderColor="#D97706" glyphColor="#FFFFFF" />
-                        </AdvancedMarker>
-                      )}
-
-                      {/* Tech provider pin */}
-                      {userRole === 'technician' && providerLat !== null && providerLng !== null && (
-                        <AdvancedMarker 
-                          position={mapPctToLatLng(providerLat, providerLng)} 
-                          title={lang === 'ar' ? 'موقع مركبتي 🛠️' : 'My Vehicle Location 🛠️'}
-                        >
-                          <Pin background="#10B981" borderColor="#047857" glyphColor="#FFFFFF" />
-                        </AdvancedMarker>
-                      )}
-                    </Map>
-                  </APIProvider>
-
-                  {/* Pin guidance instruction Overlay overlaying when idle */}
-                  {simStatus === 'idle' && !pinnedLocation && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-gray-800 text-center select-none pointer-events-none shrink-0 z-10 max-w-xs">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-amber-500 animate-bounce" />
-                        <p className="text-[11px] font-extrabold text-white">
-                          {t.simSelectLocation}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Status details bottom pin details */}
               <div className="bg-[#0A0B10] p-4 rounded-xl border border-gray-900/60 flex items-center justify-between text-xs font-semibold select-none">
