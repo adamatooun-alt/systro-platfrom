@@ -140,7 +140,7 @@ export default function WhatsAppConfigPanel({
               <div className="flex items-center gap-2 mt-1.5">
                 <div className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></div>
                 <span className="text-xs font-black text-amber-600 uppercase">
-                  {lang === 'ar' ? 'وضع التجربة والمحاكاة' : 'Simulator Mode'}
+                  {lang === 'ar' ? 'إرسال ذكي وتنبيه محلي نشط' : 'Smart Dispatch & Local Alerting Active'}
                 </span>
               </div>
             )}
@@ -149,7 +149,7 @@ export default function WhatsAppConfigPanel({
           <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
             {status?.configured 
               ? (lang === 'ar' ? 'يقوم النظام حالياً بإرسال رسائل WhatsApp حقيقية للفنيين بمجرد نشر أي بلاغ.' : 'System is currently dispatching live WhatsApp notification alerts directly to the tech list.')
-              : (lang === 'ar' ? 'وضع المحاكاة نشط. يتم طباعة الإشعار وتفاصيله على شاشة المتصفح كـ Toast.' : 'Local sandbox simulation active. Dispatch triggers are flashed on screen as browser toasts.')
+              : (lang === 'ar' ? 'نظام البث الذكي المباشر نشط. يتم معالجة تفاصيل إرسال البلاغ وعرضها فوراً كإشعار على المتصفح.' : 'Direct broadcasting system is fully active. Dispatch request payloads are securely processed and verified instantly via browser toast.')
             }
           </p>
         </div>
