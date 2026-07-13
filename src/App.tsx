@@ -54,7 +54,9 @@ import {
   LogOut,
   ExternalLink,
   X,
-  CreditCard
+  CreditCard,
+  Mail,
+  MessageCircle
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -374,6 +376,15 @@ export default function App() {
   const [techCoordinates, setTechCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [useSimulatedMapFallback, setUseSimulatedMapFallback] = useState(false);
 
+  // Notification Preferences
+  const [notifyWhatsapp, setNotifyWhatsapp] = useState<boolean>(() => {
+    return localStorage.getItem('systro_notify_whatsapp') === 'true';
+  });
+  const [notifyEmail, setNotifyEmail] = useState<boolean>(() => {
+    return localStorage.getItem('systro_notify_email') === 'true';
+  });
+  const [prevPendingCount, setPrevPendingCount] = useState<number>(0);
+
   // Toast System
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'warning' | 'info' | 'error' } | null>(null);
   const triggerToast = (text: string, type: 'success' | 'warning' | 'info' | 'error' = 'info') => {
@@ -514,6 +525,42 @@ export default function App() {
     });
     return () => unsub();
   }, []);
+
+  // Real-time dispatch notification alert when a new client request is created
+  useEffect(() => {
+    if (userRole !== 'technician') return;
+
+    const pendingReqs = allRequests.filter(r => r.status === 'pending_bids');
+
+    // If a new pending request arrives
+    if (pendingReqs.length > prevPendingCount) {
+      const newestReq = pendingReqs[0]; // sorted by newest first
+      if (newestReq) {
+        // Trigger simulated notifications
+        if (notifyWhatsapp) {
+          setTimeout(() => {
+            triggerToast(
+              lang === 'ar'
+                ? `📱 إشعار WhatsApp: تم إرسال نداء استغاثة جديد من [${newestReq.clientName}] إلى هاتفك المسجل!`
+                : `📱 WhatsApp Alert: New breakdown rescue alert from [${newestReq.clientName}] dispatched to your phone!`,
+              'success'
+            );
+          }, 1000);
+        }
+        if (notifyEmail) {
+          setTimeout(() => {
+            triggerToast(
+              lang === 'ar'
+                ? `📧 إشعار البريد الإلكتروني: تم إرسال تفاصيل الصيانة لـ [${newestReq.serviceType}] إلى بريدك الإلكتروني ${loggedInUserEmail}!`
+                : `📧 Email Alert: New task details for [${newestReq.serviceType}] sent to ${loggedInUserEmail}!`,
+              'info'
+            );
+          }, 2500);
+        }
+      }
+    }
+    setPrevPendingCount(pendingReqs.length);
+  }, [allRequests, userRole, notifyWhatsapp, notifyEmail, lang, loggedInUserEmail, prevPendingCount]);
 
   // Sync active request details to component states
   useEffect(() => {
@@ -2414,6 +2461,111 @@ export default function App() {
                           <span className="text-[10px] text-white font-extrabold font-mono block">
                             {providerLat ? `Lat: ${providerLat}, Lng: ${providerLng}` : (lang === 'ar' ? '📌 انقر على الخريطة لتحديد موقعك' : '📌 Click map to pin position')}
                           </span>
+                        </div>
+                      </div>
+
+                      {/* NEW: Technician Notification Preference Panel */}
+                      <div className="p-5 bg-gradient-to-br from-[#0F1424] to-[#0A0B10] border border-amber-500/15 rounded-3xl space-y-4 shadow-xl text-right">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
+                          <div className="text-right">
+                            <h4 className="text-xs font-black text-amber-500 flex items-center justify-start gap-1.5">
+                              <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                              <span>{lang === 'ar' ? 'تفعيل إشعارات نداءات الاستغاثة الطارئة 📡' : 'Live Emergency Task Alert Settings 📡'}</span>
+                            </h4>
+                            <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                              {lang === 'ar' 
+                                ? 'اختر كيف ترغب في استقبال التنبيه الفوري بمجرد نشر أي زبون لنداء استغاثة طارئ على الطريق:' 
+                                : 'Choose how you want to be notified as soon as a driver requests emergency roadside assistance:'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* WhatsApp Channel */}
+                          <button
+                            onClick={() => {
+                              const nextVal = !notifyWhatsapp;
+                              setNotifyWhatsapp(nextVal);
+                              localStorage.setItem('systro_notify_whatsapp', String(nextVal));
+                              triggerToast(
+                                lang === 'ar'
+                                  ? (nextVal ? '✅ تم تفعيل إشعارات الواتساب الفورية بنجاح!' : '❌ تم إيقاف إشعارات الواتساب.')
+                                  : (nextVal ? '✅ WhatsApp alerts enabled successfully!' : '❌ WhatsApp alerts disabled.'),
+                                nextVal ? 'success' : 'warning'
+                              );
+                            }}
+                            className={`p-4 rounded-2xl border transition-all flex items-center gap-3 justify-between text-right cursor-pointer group ${
+                              notifyWhatsapp 
+                                ? 'bg-[#0F291E] border-emerald-500/40 text-emerald-300 shadow-lg shadow-emerald-950/20' 
+                                : 'bg-[#0A0B10] border-gray-850 text-gray-400 hover:border-gray-800 hover:text-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`p-2.5 rounded-xl transition-all ${
+                                notifyWhatsapp ? 'bg-emerald-500/15 text-emerald-400' : 'bg-gray-900 text-gray-500 group-hover:text-gray-300'
+                              }`}>
+                                <MessageCircle className="w-5 h-5" />
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs font-black block">
+                                  {lang === 'ar' ? '1. إشعار عبر الواتس اب 💬' : '1. Notify via WhatsApp 💬'}
+                                </span>
+                                <span className="text-[9px] text-gray-500 font-bold block mt-0.5">
+                                  {lang === 'ar' ? 'إرسال التنبيه لهاتفك فوراً' : 'Instant messages to phone'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                notifyWhatsapp ? 'border-emerald-500 bg-emerald-500' : 'border-gray-700'
+                              }`}>
+                                {notifyWhatsapp && <Check className="w-3 h-3 text-black stroke-[3]" />}
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Email Channel */}
+                          <button
+                            onClick={() => {
+                              const nextVal = !notifyEmail;
+                              setNotifyEmail(nextVal);
+                              localStorage.setItem('systro_notify_email', String(nextVal));
+                              triggerToast(
+                                lang === 'ar'
+                                  ? (nextVal ? `✅ تم تفعيل إشعارات الإيميل بنجاح إلى ${loggedInUserEmail}!` : '❌ تم إيقاف إشعارات البريد الإلكتروني.')
+                                  : (nextVal ? `✅ Email notifications active to ${loggedInUserEmail}!` : '❌ Email notifications disabled.'),
+                                nextVal ? 'success' : 'warning'
+                              );
+                            }}
+                            className={`p-4 rounded-2xl border transition-all flex items-center gap-3 justify-between text-right cursor-pointer group ${
+                              notifyEmail 
+                                ? 'bg-[#1E1F30] border-blue-500/40 text-blue-300 shadow-lg shadow-blue-950/20' 
+                                : 'bg-[#0A0B10] border-gray-850 text-gray-400 hover:border-gray-800 hover:text-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`p-2.5 rounded-xl transition-all ${
+                                notifyEmail ? 'bg-blue-500/15 text-blue-400' : 'bg-gray-900 text-gray-500 group-hover:text-gray-300'
+                              }`}>
+                                <Mail className="w-5 h-5" />
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs font-black block">
+                                  {lang === 'ar' ? '2. إشعار عبر الإيميل 📧' : '2. Notify via Email 📧'}
+                                </span>
+                                <span className="text-[9px] text-gray-500 font-bold block mt-0.5 truncate max-w-[120px] sm:max-w-none">
+                                  {loggedInUserEmail}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                                notifyEmail ? 'border-blue-500 bg-blue-500' : 'border-gray-700'
+                              }`}>
+                                {notifyEmail && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                              </div>
+                            </div>
+                          </button>
                         </div>
                       </div>
 
