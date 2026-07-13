@@ -111,14 +111,16 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 
 const mapPctToLatLng = (latPct: number, lngPct: number) => {
-  const lat = 32.05 - (latPct / 100) * 0.40;
-  const lng = 34.90 + (lngPct / 100) * 0.50;
+  // latPct=0 corresponds to North (33.40), latPct=100 corresponds to South (29.40)
+  const lat = 33.40 - (latPct / 100) * 4.0;
+  // lngPct=0 corresponds to West (34.10), lngPct=100 corresponds to East (35.90)
+  const lng = 34.10 + (lngPct / 100) * 1.8;
   return { lat, lng };
 };
 
 const latLngToMapPct = (lat: number, lng: number) => {
-  const latPct = Math.min(100, Math.max(0, Math.round(((32.05 - lat) / 0.40) * 100)));
-  const lngPct = Math.min(100, Math.max(0, Math.round(((lng - 34.90) / 0.50) * 100)));
+  const latPct = Math.min(100, Math.max(0, Math.round(((33.40 - lat) / 4.0) * 100)));
+  const lngPct = Math.min(100, Math.max(0, Math.round(((lng - 34.10) / 1.8) * 100)));
   return { lat: latPct, lng: lngPct };
 };
 
@@ -351,7 +353,8 @@ export default function App() {
 
   // Dispute Simulation State
   const [disputeReason, setDisputeReason] = useState('');
-  const [disputesList, setDisputesList] = useState<{ id: string; clientName: string; techName: string; serviceType: string; amount: number; reason: string; status: 'pending' | 'resolved' | 'refunded' }[]>([]);
+  const [showDisputeForm, setShowDisputeForm] = useState(false);
+  const [disputesList, setDisputesList] = useState<{ id: string; requestId: string; clientName: string; techName: string; serviceType: string; amount: number; reason: string; status: 'pending' | 'resolved' | 'refunded' }[]>([]);
 
   // Escrows List (Admin simulation)
   const [escrows, setEscrows] = useState<{ id: string; clientName: string; techName: string; amount: number; serviceType: string; status: 'escrowed' | 'released' | 'refunded' | 'disputed' }[]>([]);
@@ -847,7 +850,7 @@ export default function App() {
       // Initialize/Update the request document in the live collection
       await setDoc(doc(db, "requests", reqId), {
         id: reqId,
-        clientName: userRole === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : 'Adam Atooun',
+        clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : 'Adam Atooun',
         clientPhone: phoneNumber || "+972 59-123-4567",
         locationLat: pinnedLocation.lat,
         locationLng: pinnedLocation.lng,
@@ -1244,7 +1247,8 @@ export default function App() {
         createdTime: Date.now()
       });
 
-      triggerToast(lang === 'ar' ? 'تم تقديم الشكوى وتجميد الأموال!' : 'Dispute filed and funds frozen!', 'error');
+      triggerToast(lang === 'ar' ? 'شكراً على ملاحظتك، سوف نتابع الأمر.' : 'Thank you for the note, we will follow up on the matter.', 'success');
+      setShowDisputeForm(false);
     } catch (err) {
       console.error(err);
     }
@@ -1988,8 +1992,8 @@ export default function App() {
           isLoggedIn={isLoggedIn}
           setIsLoggedIn={setIsLoggedIn}
           userRole={userRole}
-          setUserRole={setUserRole}
-          setActiveTab={setActiveTab}
+          setUserRole={setUserRole as any}
+          setActiveTab={setActiveTab as any}
           t={t}
           stats={stats}
           servicesList={servicesList}
@@ -2013,8 +2017,8 @@ export default function App() {
           dbTechnicians={dbTechnicians}
           triggerToast={triggerToast}
           setIsLoggedIn={setIsLoggedIn}
-          setUserRole={setUserRole}
-          setActiveTab={setActiveTab}
+          setUserRole={setUserRole as any}
+          setActiveTab={setActiveTab as any}
           setSelectedService={setSelectedService}
           setSelectedServiceIdForRecord={setSelectedServiceIdForRecord}
           setShowAddRecordModal={setShowAddRecordModal}
@@ -2087,14 +2091,72 @@ export default function App() {
             
             {/* Left Column: Interactive Map (12 cols grid map) */}
             <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider">
                   {t.simMapTitle}
                 </h3>
-                <span className="bg-[#10B981]/15 text-[#10B981] border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none">
+                <span className="bg-[#10B981]/15 text-[#10B981] border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none self-start">
                   {lang === 'ar' ? 'خرائط جوجل نشطة 📡' : 'GOOGLE MAPS LIVE 📡'}
                 </span>
               </div>
+
+              {/* Precise Auto-GPS locator button */}
+              <button
+                onClick={() => {
+                  if (navigator.geolocation) {
+                    triggerToast(lang === 'ar' ? 'جاري الحصول على موقعك الدقيق من الـ GPS... 📡' : 'Fetching accurate GPS location... 📡', 'info');
+                    navigator.geolocation.getCurrentPosition(
+                      (position) => {
+                        const { latitude, longitude } = position.coords;
+                        const { lat: latPct, lng: lngPct } = latLngToMapPct(latitude, longitude);
+                        
+                        if (userRole === 'technician') {
+                          setProviderLat(latPct);
+                          setProviderLng(lngPct);
+                          triggerToast(
+                            lang === 'ar' 
+                              ? `تم تحديد موقع مركبتك بدقة! الإحداثيات: Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}` 
+                              : `Service vehicle location pinned via GPS! Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`, 
+                            'success'
+                          );
+                        } else {
+                          if (simStatus !== 'idle') {
+                            triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during active request!', 'warning');
+                            return;
+                          }
+                          setPinnedLocation({ lat: latPct, lng: lngPct });
+                          triggerToast(
+                            lang === 'ar' 
+                              ? `تم تحديد موقع تعطل سيارتك بدقة! الإحداثيات: Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}` 
+                              : `Breakdown location pinned via GPS! Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`, 
+                            'success'
+                          );
+                        }
+                      },
+                      (error) => {
+                        console.error("Geolocation error:", error);
+                        triggerToast(
+                          lang === 'ar' 
+                            ? 'فشل الحصول على إحداثيات الموقع. يرجى السماح بالوصول لموقعك الجغرافي أو تفعيل الـ GPS.' 
+                            : 'Could not fetch GPS coordinates. Please allow location permissions or turn on GPS.', 
+                          'error'
+                        );
+                      },
+                      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                  } else {
+                    triggerToast(lang === 'ar' ? 'متصفحك لا يدعم نظام تحديد المواقع العالمي.' : 'Your browser does not support GPS location systems.', 'error');
+                  }
+                }}
+                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-[11px] md:text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-blue-500/30 group active:scale-[0.98]"
+              >
+                <MapPin className="w-4 h-4 text-amber-400 animate-bounce group-hover:scale-110 transition-transform" />
+                <span>
+                  {userRole === 'technician' 
+                    ? (lang === 'ar' ? 'تحديد موقع مركبتي الحالي تلقائياً (GPS) 🛠️' : 'Auto-Detect My Vehicle Location (GPS) 🛠️')
+                    : (lang === 'ar' ? 'تحديد موقعي الحالي بدقة تلقائياً (GPS) 📍' : 'Auto-Detect My Current Location (GPS) 📍')}
+                </span>
+              </button>
 
               {/* Real Live Google Maps rendering using @vis.gl/react-google-maps */}
               <div className="relative aspect-square w-full bg-[#0F1424] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">
@@ -2190,13 +2252,27 @@ export default function App() {
 
               {/* Status details bottom pin details */}
               <div className="bg-[#0A0B10] p-4 rounded-xl border border-gray-900/60 flex items-center justify-between text-xs font-semibold select-none">
-                <span className="text-gray-500">{lang === 'ar' ? 'إحداثيات العميل:' : 'Client Coordinates:'}</span>
-                {pinnedLocation ? (
-                  <span className="text-[#10B981] font-mono font-bold">
-                    Lat: {pinnedLocation.lat}°N , Lng: {pinnedLocation.lng}°E
-                  </span>
+                <span className="text-gray-500">
+                  {userRole === 'technician' 
+                    ? (lang === 'ar' ? 'موقع مركبتي الفعلي:' : 'My Vehicle GPS:') 
+                    : (lang === 'ar' ? 'إحداثيات موقعي الفعلي:' : 'My GPS Coordinates:')}
+                </span>
+                {userRole === 'technician' ? (
+                  providerLat !== null ? (
+                    <span className="text-amber-400 font-mono font-bold">
+                      Lat: {mapPctToLatLng(providerLat, providerLng || 0).lat.toFixed(5)}°N , Lng: {mapPctToLatLng(providerLat, providerLng || 0).lng.toFixed(5)}°E
+                    </span>
+                  ) : (
+                    <span className="text-red-400 font-bold">{lang === 'ar' ? 'لم يتم تحديد الموقع بعد 📍' : 'Not Pinned Yet 📍'}</span>
+                  )
                 ) : (
-                  <span className="text-red-400 font-bold">{lang === 'ar' ? 'غير محدد 📌' : 'Unspecified 📌'}</span>
+                  pinnedLocation ? (
+                    <span className="text-[#10B981] font-mono font-bold">
+                      Lat: {mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lat.toFixed(5)}°N , Lng: {mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lng.toFixed(5)}°E
+                    </span>
+                  ) : (
+                    <span className="text-red-400 font-bold">{lang === 'ar' ? 'غير محدد 📌' : 'Unspecified 📌'}</span>
+                  )
                 )}
               </div>
             </div>
@@ -2442,6 +2518,161 @@ export default function App() {
                           <span>{lang === 'ar' ? 'إضافة وتسجيل التخصص الجديد بالشبكة 🚀' : 'Register Custom Specialty 🚀'}</span>
                         </button>
                       </div>
+
+                      {/* My Active / Accepted Rescue Tasks */}
+                      {allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && (r.status === 'awaiting_deposit' || r.status === 'en_route' || r.status === 'arrived' || r.status === 'in_progress')).length > 0 && (
+                        <div className="space-y-4 border-b border-gray-900 pb-6 text-right">
+                          <h4 className="text-xs font-black text-amber-500 uppercase tracking-wider flex items-center justify-start gap-2 border-b border-gray-950 pb-2">
+                            <Truck className="w-4 h-4 text-amber-500 animate-pulse" />
+                            <span>{lang === 'ar' ? '🚨 مهامي الحالية الجاري تنفيذها (Active Tasks):' : '🚨 My Active Assigned Rescue Tasks:'}</span>
+                          </h4>
+
+                          <div className="space-y-3 font-sans">
+                            {allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && (r.status === 'awaiting_deposit' || r.status === 'en_route' || r.status === 'arrived' || r.status === 'in_progress')).map(req => {
+                              const clientLoc = mapPctToLatLng(req.locationLat, req.locationLng);
+                              
+                              // Translate status
+                              let statusTextAr = '';
+                              let statusTextEn = '';
+                              if (req.status === 'awaiting_deposit') {
+                                statusTextAr = 'بانتظار إيداع الضمان من العميل 💰';
+                                statusTextEn = 'Awaiting Client Escrow Deposit 💰';
+                              } else if (req.status === 'en_route') {
+                                statusTextAr = 'جاري التحرك إلى موقع الحادث 🚚';
+                                statusTextEn = 'En Route to Breakdown Site 🚚';
+                              } else if (req.status === 'arrived') {
+                                statusTextAr = 'وصلت لموقع العميل 📍';
+                                statusTextEn = 'Arrived at Site 📍';
+                              } else if (req.status === 'in_progress') {
+                                statusTextAr = 'قيد الصيانة والإصلاح 🛠️';
+                                statusTextEn = 'Repair/Servicing In Progress 🛠️';
+                              } else {
+                                statusTextAr = req.status;
+                                statusTextEn = req.status;
+                              }
+
+                              return (
+                                <div key={req.id} className="p-4 bg-amber-500/5 border border-amber-500/30 rounded-2xl space-y-4">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="text-right">
+                                      <h5 className="text-xs font-black text-white flex items-center justify-start gap-2">
+                                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                                        <span>{req.clientName}</span>
+                                      </h5>
+                                      <span className="text-[10px] text-gray-400 font-bold block mt-1">
+                                        {lang === 'ar' ? 'الخدمة المطلوبة:' : 'Service Type:'} <span className="text-amber-500 font-black">{req.serviceType}</span>
+                                      </span>
+                                      <span className="text-[10px] text-gray-400 font-bold block">
+                                        {lang === 'ar' ? 'حالة الطلب:' : 'Task Status:'} <span className="text-blue-400 font-black">{lang === 'ar' ? statusTextAr : statusTextEn}</span>
+                                      </span>
+                                    </div>
+
+                                    {/* Action buttons */}
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                      {/* THE GOLDEN BUTTON: Open in Google Maps */}
+                                      <button
+                                        onClick={() => {
+                                          const url = `https://www.google.com/maps/search/?api=1&query=${clientLoc.lat},${clientLoc.lng}`;
+                                          window.open(url, '_blank');
+                                          triggerToast(
+                                            lang === 'ar' 
+                                              ? 'جاري فتح موقع العميل الفعلي في نظام الملاحة (GPS)... 🧭' 
+                                              : 'Opening client GPS coordinates in navigation system... 🧭', 
+                                            'success'
+                                          );
+                                        }}
+                                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-[10px] rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                                      >
+                                        <Globe className="w-3.5 h-3.5" />
+                                        <span>{lang === 'ar' ? 'فتح في خرائط Google (نظام الملاحة GPS) 🗺️' : 'Navigate in Google Maps (GPS) 🗺️'}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Progress / Status controls for the technician on this active request */}
+                                  <div className="bg-[#0A0B10] p-3 rounded-xl border border-gray-900/60 flex flex-wrap gap-2 justify-start sm:justify-end">
+                                    <span className="text-[9px] text-gray-500 font-extrabold w-full text-right mb-1">
+                                      {lang === 'ar' ? 'تحديث حالة المهمة فورياً للعميل:' : 'Quick-Update Task Status for Client:'}
+                                    </span>
+                                    
+                                    {req.status === 'en_route' && (
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            await updateDoc(doc(db, "requests", req.id), { status: 'arrived' });
+                                            // Add system chat log
+                                            const chatMsgId = `sys-arrived-${Date.now()}`;
+                                            await setDoc(doc(db, "chats", chatMsgId), {
+                                              id: chatMsgId,
+                                              requestId: req.id,
+                                              sender: 'system',
+                                              text: lang === 'ar' ? '🚚 تحديث GPS: لقد وصل فني الإنقاذ إلى موقعك المحدد بالفعل وهو بجانب مركبتك الآن.' : '🚚 GPS Update: The rescue technician has arrived at your pinned location.',
+                                              timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+                                              createdTime: Date.now()
+                                            });
+                                            triggerToast(lang === 'ar' ? 'تم تحديث الحالة لـ: لقد وصلت للموقع!' : 'Status updated to: Arrived at Site!', 'success');
+                                          } catch (err) {
+                                            console.error(err);
+                                          }
+                                        }}
+                                        className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[9px] font-black rounded transition-all cursor-pointer"
+                                      >
+                                        {lang === 'ar' ? 'أنا وصلت للموقع 📍' : 'I Have Arrived 📍'}
+                                      </button>
+                                    )}
+
+                                    {req.status === 'arrived' && (
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            await updateDoc(doc(db, "requests", req.id), { status: 'in_progress' });
+                                            // Add system chat log
+                                            const chatMsgId = `sys-repair-${Date.now()}`;
+                                            await setDoc(doc(db, "chats", chatMsgId), {
+                                              id: chatMsgId,
+                                              requestId: req.id,
+                                              sender: 'system',
+                                              text: lang === 'ar' ? '🛠️ تحديث الصيانة: بدأ الفني في عملية الإصلاح وتقديم المساعدة المطلوبة.' : '🛠️ Servicing Update: Technician started the repair and active rescue help.',
+                                              timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+                                              createdTime: Date.now()
+                                            });
+                                            triggerToast(lang === 'ar' ? 'تم تحديث الحالة لـ: بدأت عملية الصيانة!' : 'Status updated to: Repair in progress!', 'success');
+                                          } catch (err) {
+                                            console.error(err);
+                                          }
+                                        }}
+                                        className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-[9px] font-black rounded transition-all cursor-pointer"
+                                      >
+                                        {lang === 'ar' ? 'بدء الصيانة والإصلاح 🛠️' : 'Start Servicing 🛠️'}
+                                      </button>
+                                    )}
+
+                                    {/* Link to chat with client */}
+                                    <button
+                                      onClick={() => {
+                                        setActiveRequestId(req.id);
+                                        setSimStatus(req.status);
+                                        // Load the bids for this request
+                                        const q = query(collection(db, "bids"), where("requestId", "==", req.id));
+                                        getDocs(q).then((snap) => {
+                                          const bidsList: any[] = [];
+                                          snap.forEach(d => bidsList.push(d.data()));
+                                          const matchingBid = bidsList.find(b => b.technicianId === loggedInUserEmail);
+                                          if (matchingBid) setSelectedBid(matchingBid);
+                                        });
+                                        triggerToast(lang === 'ar' ? 'تم فتح لوحة المتابعة والمحادثة مع العميل!' : 'Opened client monitoring & chat portal!', 'info');
+                                      }}
+                                      className="px-2.5 py-1.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-[9px] font-black rounded transition-all cursor-pointer border border-blue-500/20"
+                                    >
+                                      {lang === 'ar' ? 'متابعة وفتح المحادثة مع العميل 💬' : 'Monitor & Open Chat 💬'}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Active client requests from road network */}
                       <div className="space-y-4">
@@ -2986,28 +3217,38 @@ export default function App() {
                   )}
 
                   {/* Wizard Status: En route / Arrived / Working live tracking status */}
-                  {(simStatus === 'en_route' || simStatus === 'arrived' || simStatus === 'in_progress') && selectedBid && (
+                  {((simStatus === 'en_route' || simStatus === 'arrived' || simStatus === 'in_progress' || (simStatus === 'disputed' && !showDisputeForm)) && selectedBid) && (
                     <div className="space-y-6">
                       {/* Status wizard card */}
-                      <div className="p-4 bg-[#0F1424] border border-gray-850 rounded-2xl flex items-center justify-between gap-4 animate-pulse">
+                      <div className={`p-4 border rounded-2xl flex items-center justify-between gap-4 animate-pulse ${
+                        simStatus === 'disputed' ? 'bg-red-500/5 border-red-500/20 text-red-400' : 'bg-[#0F1424] border-gray-850'
+                      }`}>
                         <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl">
-                            <Truck className="w-5 h-5" />
+                          <div className={`p-2.5 rounded-xl ${
+                            simStatus === 'disputed' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'
+                          }`}>
+                            {simStatus === 'disputed' ? <AlertTriangle className="w-5 h-5 animate-bounce" /> : <Truck className="w-5 h-5" />}
                           </div>
                           <div>
                             <h4 className="text-sm font-black text-white">
                               {simStatus === 'en_route' && t.simTechEnRoute}
                               {simStatus === 'arrived' && t.simTechArrived}
                               {simStatus === 'in_progress' && t.simTechWorking}
+                              {simStatus === 'disputed' && (lang === 'ar' ? 'الطلب قيد النزاع والمراجعة الإدارية ⚠️' : 'Under Dispute & Administrative Review ⚠️')}
                             </h4>
                             <span className="text-[10px] text-gray-500 font-semibold block">{lang === 'ar' ? 'رقم اللوحة:' : 'License Plate:'} {technicians[0].plateNumber}</span>
                           </div>
                         </div>
 
-                        <span className="bg-amber-500/15 text-amber-500 text-[10px] font-bold px-3 py-1 rounded-full font-mono uppercase tracking-widest">
+                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full font-mono uppercase tracking-widest ${
+                          simStatus === 'disputed' 
+                            ? 'bg-red-500/15 text-red-500' 
+                            : 'bg-amber-500/15 text-amber-500'
+                        }`}>
                           {simStatus === 'en_route' && (lang === 'ar' ? 'جاري التحرك' : 'EN ROUTE')}
                           {simStatus === 'arrived' && (lang === 'ar' ? 'وصل الفني' : 'ARRIVED')}
                           {simStatus === 'in_progress' && (lang === 'ar' ? 'جاري الصيانة' : 'IN REPAIR')}
+                          {simStatus === 'disputed' && (lang === 'ar' ? 'قيد التحقيق ⚠️' : 'UNDER INVESTIGATION ⚠️')}
                         </span>
                       </div>
 
@@ -3052,28 +3293,36 @@ export default function App() {
                       </div>
 
                       {/* Action buttons (Release Escrow or open dispute panel) */}
-                      <div className="flex gap-4">
-                        <button 
-                          onClick={handleReleaseEscrow}
-                          className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5"
-                        >
-                          <Unlock className="w-4.5 h-4.5" />
-                          <span>{t.simReleaseFundsBtn}</span>
-                        </button>
+                      {simStatus !== 'disputed' ? (
+                        <div className="flex gap-4">
+                          <button 
+                            onClick={handleReleaseEscrow}
+                            className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <Unlock className="w-4.5 h-4.5" />
+                            <span>{t.simReleaseFundsBtn}</span>
+                          </button>
 
-                        <button 
-                          onClick={() => setSimStatus('disputed')}
-                          className="px-5 py-3.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
-                        >
-                          <AlertTriangle className="w-4.5 h-4.5" />
-                          <span>{t.simDisputeBtn}</span>
-                        </button>
-                      </div>
+                          <button 
+                            onClick={() => { setSimStatus('disputed'); setShowDisputeForm(true); }}
+                            className="px-5 py-3.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
+                          >
+                            <AlertTriangle className="w-4.5 h-4.5" />
+                            <span>{t.simDisputeBtn}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-red-950/20 border border-red-900/30 text-center text-red-400 rounded-2xl text-xs font-semibold leading-relaxed">
+                          {lang === 'ar' 
+                            ? '⏳ تم إرسال شكواك للإدارة. أموال الضمان مجمدة حالياً، ويجري التحقق من تفاصيل البلاغ والدردشة لاتخاذ القرار العادل.' 
+                            : '⏳ Your dispute has been submitted to administration. Escrow is frozen, and our team is actively reviewing the request logs.'}
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {/* Wizard Status: Disputed Simulation Panel */}
-                  {simStatus === 'disputed' && (
+                  {(simStatus === 'disputed' && showDisputeForm) && (
                     <div className="space-y-6 animate-fade-in">
                       <div className="p-4 bg-red-500/10 border border-red-500/25 rounded-2xl flex items-center gap-3 text-red-400">
                         <AlertTriangle className="w-8 h-8 animate-bounce shrink-0" />
@@ -3096,10 +3345,10 @@ export default function App() {
 
                       <div className="flex gap-4">
                         <button 
-                          onClick={() => setSimStatus('in_progress')}
+                          onClick={() => { setSimStatus('in_progress'); setShowDisputeForm(false); }}
                           className="flex-1 py-3 bg-[#111827] border border-gray-850 hover:bg-gray-800 text-gray-300 font-bold text-xs rounded-xl transition-all"
                         >
-                          {t.cancel}
+                          {lang === 'ar' ? 'إلغاء' : 'Cancel'}
                         </button>
                         <button 
                           onClick={handleFileDispute}
@@ -3261,7 +3510,7 @@ export default function App() {
 
           {/* Real-time Domain Connection & Website Trust Panel */}
           <TrustPortal 
-            lang={lang} 
+            lang={lang === 'he' ? 'en' : lang} 
             triggerToast={triggerToast} 
             customDomain={customDomain}
             setCustomDomain={setCustomDomain}
