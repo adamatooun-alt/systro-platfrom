@@ -590,8 +590,8 @@ export default function HomeTab({
               </h3>
               <p className="text-sm text-gray-400 font-medium leading-relaxed">
                 {lang === 'ar' 
-                  ? 'ملاحظاتك تهمنا كثيراً لتطوير الخدمة! إذا صادفتك أي مشكلة برمجية، تأخير، أو خطأ في النظام، يرجى كتابتها فوراً ليصل تقريرك مباشرة إلى المهندس علي للمتابعة الفورية.' 
-                  : 'Your feedback is extremely valuable to us! If you encounter any software bugs, delays, or system errors, please report them here to reach Eng. Ali immediately for resolving.'}
+                  ? 'ملاحظاتك تهمنا كثيراً لتطوير الخدمة! إذا صادفتك أي مشكلة برمجية، تأخير، أو خطأ في النظام، يرجى كتابتها فوراً ليصل تقريرك مباشرة إلى المهندس آدم عطون للمتابعة الفورية.' 
+                  : 'Your feedback is extremely valuable to us! If you encounter any software bugs, delays, or system errors, please report them here to reach Eng. Adam Atoun immediately for resolving.'}
               </p>
             </div>
 
@@ -711,7 +711,7 @@ export default function HomeTab({
                 ) : (
                   <>
                     <Send className="w-4 h-4 shrink-0" />
-                    <span>{lang === 'ar' ? 'إرسال البلاغ فوراً للمهندس علي' : 'Submit Issue to Eng. Ali'}</span>
+                    <span>{lang === 'ar' ? 'إرسال البلاغ فوراً للمهندس آدم عطون' : 'Submit Issue to Eng. Adam Atoun'}</span>
                   </>
                 )}
               </button>

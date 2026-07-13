@@ -32,13 +32,13 @@ export default function LoginPortal({
   triggerToast,
   t,
 }: LoginPortalProps) {
-  const [showCustomAccountForm, setShowCustomAccountForm] = React.useState(false);
+  const [showCustomAccountForm, setShowCustomAccountForm] = React.useState(true);
   const [customName, setCustomName] = React.useState('');
   const [customEmail, setCustomEmail] = React.useState('');
 
   React.useEffect(() => {
     if (!showGoogleFallbackModal) {
-      setShowCustomAccountForm(false);
+      setShowCustomAccountForm(true);
       setCustomName('');
       setCustomEmail('');
     }
@@ -58,10 +58,10 @@ export default function LoginPortal({
           </span>
           <span className="text-[10px] sm:text-xs font-black text-amber-400 tracking-wide leading-relaxed">
             {lang === 'ar' 
-              ? 'بإشراف وإدارة م. علي | المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
+              ? 'بإشراف وإدارة آدم عطون | المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
               : lang === 'he'
-              ? 'בפיקוח ובניהול אינג\' עלי | פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
-              : 'Supervised & Managed by Eng. Ali | The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
+              ? 'בפיקוח ובניהול אדם עטון | פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
+              : 'Supervised & Managed by Adam Atoun | The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
           </span>
         </div>
 
@@ -285,29 +285,20 @@ export default function LoginPortal({
               <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-slate-50/50">
                 {[
                   { 
-                    name: 'לוגו אדם', 
-                    email: 'adam.atooun2@gmail.com', 
-                    avatarType: 'text', 
-                    avatarText: 'לוגו אדם',
-                    avatarBg: 'bg-indigo-50 text-indigo-700 border-indigo-100'
-                  },
-                  { 
-                    name: 'Adam.atooun', 
-                    email: 'adam.atooun@gmail.com', 
-                    avatarType: 'image', 
-                    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&fit=crop&q=80'
-                  },
-                  { 
-                    name: 'رائد مسعود', 
+                    name: lang === 'ar' ? 'رائد مسعود (فني معتمد)' : 'Raed Masoud (Certified Tech)', 
                     email: 'raid.masoud@gmail.com', 
                     avatarType: 'image', 
-                    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&fit=crop&q=80' 
+                    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&fit=crop&q=80',
+                    avatarBg: '',
+                    avatarText: ''
                   },
                   { 
-                    name: 'حساب عميل سيسترو', 
+                    name: lang === 'ar' ? 'حساب عميل سيسترو تجريبي' : 'Systro Client Account (Demo)', 
                     email: 'client@systro.live', 
                     avatarType: 'image', 
-                    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&fit=crop&q=80' 
+                    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&fit=crop&q=80',
+                    avatarBg: '',
+                    avatarText: ''
                   }
                 ].map((profile, i) => (
                   <button

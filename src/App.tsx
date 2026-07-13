@@ -361,6 +361,7 @@ export default function App() {
 
   // Map & Simulator State
   const [pinnedLocation, setPinnedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isMapAuthFailed, setIsMapAuthFailed] = useState<boolean>(false);
   const [showLocationPrompt, setShowLocationPrompt] = useState<boolean>(() => {
     try {
       const dismissed = sessionStorage.getItem('systro_location_prompt_dismissed');
@@ -510,6 +511,27 @@ export default function App() {
   // Provider position states for dynamic vehicle placement
   const [providerLat, setProviderLat] = useState<number | null>(null);
   const [providerLng, setProviderLng] = useState<number | null>(null);
+
+  // Listen for Google Maps auth or project config failure (like ApiProjectMapError)
+  useEffect(() => {
+    const originalAuthFailure = (window as any).gm_authFailure;
+    (window as any).gm_authFailure = () => {
+      console.warn("Google Maps API auth failure detected (e.g., ApiProjectMapError).");
+      setIsMapAuthFailed(true);
+      triggerToast(
+        lang === 'ar' 
+          ? 'تم الكشف عن مشكلة في صلاحيات مفتاح خرائط Google. يرجى تفعيل Maps JavaScript API!' 
+          : 'Google Maps API auth error detected. Please enable Maps JavaScript API on your Google Cloud Console!', 
+        'error'
+      );
+      if (originalAuthFailure) {
+        originalAuthFailure();
+      }
+    };
+    return () => {
+      (window as any).gm_authFailure = originalAuthFailure;
+    };
+  }, [lang]);
 
   // ==========================================
   // REAL-TIME FIREBASE FIRESTORE SYNC LISTENERS
@@ -1311,6 +1333,8 @@ export default function App() {
     }
   };
 
+
+
   // Quick Demo: Generate mock bids on demand for easy solo testing
   const handleGenerateDemoBids = async () => {
     if (!activeRequestId) return;
@@ -2019,8 +2043,8 @@ export default function App() {
 
   const handleGoogleSignIn = async (email?: string, name?: string) => {
     setIsLoggedIn(true);
-    const resolvedEmail = email || 'adam.atooun@gmail.com';
-    const resolvedName = name || (lang === 'ar' ? 'أدهم عطون' : lang === 'he' ? 'אדם עטון' : 'Adam Atoun');
+    const resolvedEmail = email || `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`;
+    const resolvedName = name || (lang === 'ar' ? 'مستخدم سيسترو' : lang === 'he' ? 'משתמש סיסטרו' : 'Systro User');
     
     setLoggedInUserEmail(resolvedEmail);
     setLoggedInUserName(resolvedName);
@@ -2107,10 +2131,10 @@ export default function App() {
         </span>
         <span className="text-[11px] sm:text-xs font-black text-amber-400 tracking-wide">
           {lang === 'ar' 
-            ? 'بإشراف وإدارة م. علي | المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
+            ? 'بإشراف وإدارة آدم عطون | المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
             : lang === 'he'
-            ? 'בפיקוח ובניהול אינג\' עלי | פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
-            : 'Supervised & Managed by Eng. Ali | The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
+            ? 'בפיקוח ובניהול אדם עטון | פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
+            : 'Supervised & Managed by Adam Atoun | The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
         </span>
       </div>
 
@@ -2256,9 +2280,9 @@ export default function App() {
                 <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 drop-shadow-[0_1px_2px_rgba(6,182,212,0.1)]">
                   {t.logoTitle} <span className="text-[#029FA5] font-black">{t.logoRescue}</span>
                 </h1>
-                {/* Custom glowing supervisor badge for Ali */}
+                {/* Custom glowing supervisor badge for Adam Atoun */}
                 <span className="px-2 py-0.5 text-[9px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-md animate-pulse">
-                  {lang === 'ar' ? 'بإشراف علي' : lang === 'he' ? 'בפיקוח עלי' : 'Eng. Ali'}
+                  {lang === 'ar' ? 'بإشراف آدم عطون' : lang === 'he' ? 'בפיקוח אדם עטון' : 'Adam Atoun'}
                 </span>
               </div>
               <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-gray-400 block uppercase">
@@ -2318,7 +2342,7 @@ export default function App() {
             {/* Quick Login google stroke button */}
             {!isLoggedIn ? (
               <button 
-                onClick={() => handleGoogleSignIn()}
+                onClick={() => handleRealGoogleSignIn()}
                 className="hidden lg:flex items-center gap-1.5 px-4 h-11 bg-transparent border border-gray-800 hover:border-gray-700 text-xs font-bold text-gray-300 rounded-xl transition-all cursor-pointer"
               >
                 <span>→]</span>
@@ -2600,12 +2624,12 @@ export default function App() {
             
             {/* Left Column: Interactive Map (12 cols grid map) */}
             <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
                 <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider">
                   {t.simMapTitle}
                 </h3>
-                <span className="bg-[#10B981]/15 text-[#10B981] border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none self-start">
-                  {lang === 'ar' ? 'خرائط جوجل نشطة 📡' : 'GOOGLE MAPS LIVE 📡'}
+                <span className="bg-blue-500/15 text-blue-400 border border-blue-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none self-start">
+                  {lang === 'ar' ? 'خرائط جوجل لايف 📡' : 'GOOGLE MAPS LIVE 📡'}
                 </span>
               </div>
 
@@ -2622,85 +2646,166 @@ export default function App() {
                 </button>
               )}
 
-              {/* Real Live Google Maps rendering using @vis.gl/react-google-maps */}
-              <div className="relative aspect-square w-full bg-[#0F1424] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">
-                <APIProvider apiKey={API_KEY} version="weekly">
-                  <Map
-                    defaultCenter={pinnedLocation ? mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng) : { lat: 31.7683, lng: 35.2137 }}
-                    defaultZoom={pinnedLocation ? 13 : 11}
-                    mapId="DEMO_MAP_ID"
-                    onClick={(e: any) => {
-                      if (userRole === 'technician') return; // Do not allow technician to pin or modify location via map click
-                      if (!e.detail.latLng) return;
-                      const { lat, lng } = e.detail.latLng;
-                      const { lat: latPct, lng: lngPct } = latLngToMapPct(lat, lng);
-
-                      if (simStatus !== 'idle') {
-                        triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during an active request!', 'warning');
-                        return;
-                      }
-                      setPinnedLocation({ lat: latPct, lng: lngPct });
-                      triggerToast(lang === 'ar' ? 'تم تحديد موقع سيارتك بنجاح!' : 'Breakdown location pinned successfully!', 'success');
-                    }}
-                    internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
-                    style={{ width: '100%', height: '100%' }}
-                  >
-                    {/* Client pin */}
-                    {pinnedLocation && (
-                      <AdvancedMarker 
-                        position={mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng)} 
-                        title={lang === 'ar' ? 'موقعي 📌' : 'My Location 📌'}
-                      >
-                        <Pin background="#EF4444" borderColor="#B91C1C" glyphColor="#FFFFFF" />
-                      </AdvancedMarker>
-                    )}
-
-                    {/* Technicians pins */}
-                    {technicians.map(tech => {
-                      if (simStatus !== 'idle' && selectedBid?.technicianId === tech.id) return null;
-                      return (
-                        <AdvancedMarker 
-                          key={tech.id} 
-                          position={mapPctToLatLng(tech.lat, tech.lng)} 
-                          title={lang === 'ar' ? tech.arName : tech.name}
-                        >
-                          <Pin background="#3B82F6" borderColor="#1D4ED8" glyphColor="#FFFFFF" />
-                        </AdvancedMarker>
-                      );
-                    })}
-
-                    {/* Moving live technician pin */}
-                    {techCoordinates && selectedBid && (
-                      <AdvancedMarker 
-                        position={mapPctToLatLng(techCoordinates.lat, techCoordinates.lng)} 
-                        title={lang === 'ar' ? `ونش ${selectedBid.technicianArName} 🚚` : `${selectedBid.technicianName} 🚚`}
-                      >
-                        <Pin background="#F59E0B" borderColor="#D97706" glyphColor="#FFFFFF" />
-                      </AdvancedMarker>
-                    )}
-
-                    {/* Tech provider pin */}
-                    {userRole === 'technician' && providerLat !== null && providerLng !== null && (
-                      <AdvancedMarker 
-                        position={mapPctToLatLng(providerLat, providerLng)} 
-                        title={lang === 'ar' ? 'موقع مركبتي 🛠️' : 'My Vehicle Location 🛠️'}
-                      >
-                        <Pin background="#10B981" borderColor="#047857" glyphColor="#FFFFFF" />
-                      </AdvancedMarker>
-                    )}
-                  </Map>
-                </APIProvider>
-
-                {/* Pin guidance instruction Overlay overlaying when idle */}
-                {simStatus === 'idle' && !pinnedLocation && userRole !== 'technician' && (
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-gray-800 text-center select-none pointer-events-none shrink-0 z-10 max-w-xs">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-amber-500 animate-bounce" />
-                      <p className="text-[11px] font-extrabold text-white">
-                        {t.simSelectLocation}
+              {/* Map Rendering Container */}
+              <div className="relative aspect-square w-full bg-[#050814] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">
+                {!hasValidKey ? (
+                  /* Google Maps setup guidelines when API key is unprovided */
+                  <div className="absolute inset-0 bg-[#0B0E17] p-5 md:p-6 overflow-y-auto flex flex-col justify-center items-center text-center space-y-4 font-sans select-none animate-fadeIn">
+                    <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-amber-500 uppercase tracking-wide">
+                        {lang === 'ar' ? 'مفتاح Google Maps مطلوب لتشغيل الخريطة' : 'Google Maps API Key Required'}
+                      </h4>
+                      <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed max-w-xs">
+                        {lang === 'ar' 
+                          ? 'يرجى إضافة مفتاح GOOGLE_MAPS_PLATFORM_KEY إلى إعدادات المشروع لتفعيل تتبع مركبات الإنقاذ والموقع بدقة.' 
+                          : 'Please add GOOGLE_MAPS_PLATFORM_KEY to your project secrets to enable precise location and vehicle tracking.'}
                       </p>
                     </div>
+                    
+                    <div className="bg-[#121626] border border-gray-800 rounded-xl p-3.5 text-right w-full max-w-xs space-y-2 text-[9px] md:text-[10px]">
+                      <p className="font-extrabold text-gray-300 border-b border-gray-800 pb-1.5 text-center">
+                        {lang === 'ar' ? 'خطوات تفعيل الخريطة الحية:' : 'Map Setup Steps:'}
+                      </p>
+                      <ol className={`list-decimal space-y-1.5 text-gray-400 leading-normal px-4 ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                        <li>
+                          <a href="https://console.cloud.google.com/google/maps-apis/start?utm_campaign=gmp-code-assist-ais" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline font-bold">
+                            {lang === 'ar' ? 'أولاً: اضغط هنا للحصول على مفتاح API مجاني' : 'First: Get a free API Key'}
+                          </a>
+                        </li>
+                        <li>
+                          {lang === 'ar' 
+                            ? 'افتح الإعدادات (⚙️ أيقونة الترس في الزاوية العلوية اليمنى من هذه الصفحة).' 
+                            : 'Open Settings (⚙️ gear icon, top-right corner of this page).'}
+                        </li>
+                        <li>
+                          {lang === 'ar' 
+                            ? 'اختر قسم Secrets واكتب اسم المتغير: GOOGLE_MAPS_PLATFORM_KEY' 
+                            : 'Select Secrets and enter name: GOOGLE_MAPS_PLATFORM_KEY'}
+                        </li>
+                        <li>
+                          {lang === 'ar' 
+                            ? 'ألصق المفتاح الخاص بك في خانة القيمة واضغط Enter لحفظه.' 
+                            : 'Paste your API key value and press Enter to save.'}
+                        </li>
+                      </ol>
+                    </div>
                   </div>
+                ) : isMapAuthFailed ? (
+                  /* When Google Maps auth fails (ApiProjectMapError / Maps API not enabled) */
+                  <div className="absolute inset-0 bg-[#0B0E17] p-5 md:p-6 overflow-y-auto flex flex-col justify-center items-center text-center space-y-4 font-sans select-none animate-fadeIn">
+                    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-red-500 uppercase tracking-wide">
+                        {lang === 'ar' ? 'فشل تحميل خريطة جوجل (مشكلة في صلاحيات المفتاح)' : 'Google Maps Authorization Error'}
+                      </h4>
+                      <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed max-w-xs">
+                        {lang === 'ar' 
+                          ? 'المفتاح المدخل غير مصرح له أو أن "Maps JavaScript API" غير مفعّلة في حسابك على Google Cloud.' 
+                          : 'The API key is invalid or "Maps JavaScript API" is not enabled on your Google Cloud Console.'}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-[#121626] border border-red-500/15 rounded-xl p-3.5 text-right w-full max-w-xs space-y-2 text-[9px] md:text-[10px] sm:text-right">
+                      <p className="font-extrabold text-red-400 border-b border-gray-800 pb-1.5 text-center">
+                        {lang === 'ar' ? 'كيفية حل هذه المشكلة وتفعيل المفتاح:' : 'How to fix this issue:'}
+                      </p>
+                      <ol className={`list-decimal space-y-1.5 text-gray-400 leading-normal px-4 ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                        <li>
+                          <a href="https://console.cloud.google.com/google/maps-apis/api-list?utm_campaign=gmp-code-assist-ais" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline font-bold">
+                            {lang === 'ar' ? 'اضغط هنا لفتح صفحة خدمات خرائط جوجل' : 'Click here to open Maps API Library'}
+                          </a>
+                        </li>
+                        <li>
+                          {lang === 'ar' 
+                            ? 'ابحث عن "Maps JavaScript API" واضغط عليها.' 
+                            : 'Search for "Maps JavaScript API" and select it.'}
+                        </li>
+                        <li>
+                          {lang === 'ar' 
+                            ? 'اضغط على زر تفعيل (Enable) لتمكين استخدام الخريطة.' 
+                            : 'Click the "Enable" button to activate the API.'}
+                        </li>
+                        <li>
+                          {lang === 'ar' 
+                            ? 'تأكد أيضاً من تفعيل "Geocoding API" و"Places API" لتجربة إنقاذ متكاملة!' 
+                            : 'Ensure "Geocoding API" and "Places API" are also enabled for a full experience!'}
+                        </li>
+                      </ol>
+                    </div>
+                  </div>
+                ) : (
+                  /* Google Maps Component rendering */
+                  <APIProvider apiKey={API_KEY} version="weekly">
+                    <Map
+                      defaultCenter={pinnedLocation ? mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng) : { lat: 31.7683, lng: 35.2137 }}
+                      defaultZoom={pinnedLocation ? 13 : 11}
+                      mapId="DEMO_MAP_ID"
+                      onClick={(e: any) => {
+                        if (userRole === 'technician') return;
+                        if (!e.detail.latLng) return;
+                        const { lat, lng } = e.detail.latLng;
+                        const { lat: latPct, lng: lngPct } = latLngToMapPct(lat, lng);
+
+                        if (simStatus !== 'idle') {
+                          triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during an active request!', 'warning');
+                          return;
+                        }
+                        setPinnedLocation({ lat: latPct, lng: lngPct });
+                        triggerToast(lang === 'ar' ? 'تم تحديد موقع سيارتك بنجاح!' : 'Breakdown location pinned successfully!', 'success');
+                      }}
+                      internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                      style={{ width: '100%', height: '100%' }}
+                    >
+                      {pinnedLocation && (
+                        <AdvancedMarker 
+                          position={mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng)} 
+                          title={lang === 'ar' ? 'موقعي 📌' : 'My Location 📌'}
+                        >
+                          <Pin background="#EF4444" borderColor="#B91C1C" glyphColor="#FFFFFF" />
+                        </AdvancedMarker>
+                      )}
+
+                      {technicians.map(tech => {
+                        if (simStatus !== 'idle' && selectedBid?.technicianId === tech.id) return null;
+                        return (
+                          <AdvancedMarker 
+                            key={tech.id} 
+                            position={mapPctToLatLng(tech.lat, tech.lng)} 
+                            title={lang === 'ar' ? tech.arName : tech.name}
+                          >
+                            <Pin background="#3B82F6" borderColor="#1D4ED8" glyphColor="#FFFFFF" />
+                          </AdvancedMarker>
+                        );
+                      })}
+
+                      {techCoordinates && selectedBid && (
+                        <AdvancedMarker 
+                          position={mapPctToLatLng(techCoordinates.lat, techCoordinates.lng)} 
+                          title={lang === 'ar' ? `ونش ${selectedBid.technicianArName} 🚚` : `${selectedBid.technicianName} 🚚`}
+                        >
+                          <Pin background="#F59E0B" borderColor="#D97706" glyphColor="#FFFFFF" />
+                        </AdvancedMarker>
+                      )}
+
+                      {userRole === 'technician' && providerLat !== null && providerLng !== null && (
+                        <AdvancedMarker 
+                          position={mapPctToLatLng(providerLat, providerLng)} 
+                          title={lang === 'ar' ? 'موقع مركبتي 🛠️' : 'My Vehicle Location 🛠️'}
+                        >
+                          <Pin background="#10B981" borderColor="#047857" glyphColor="#FFFFFF" />
+                        </AdvancedMarker>
+                      )}
+                    </Map>
+                  </APIProvider>
                 )}
               </div>
 
@@ -4780,8 +4885,8 @@ export default function App() {
                   setCustomServicePrice('150');
                   triggerToast(
                     lang === 'ar' 
-                      ? 'تم إرسال اقتراح الخدمة المخصصة للمسؤول علي للموافقة عليها ونشرها بالشبكة قريباً!' 
-                      : 'Custom service proposal submitted to administrator Eng. Ali for review!', 
+                      ? 'تم إرسال اقتراح الخدمة المخصصة للمسؤول آدم عطون للموافقة عليها ونشرها بالشبكة قريباً!' 
+                      : 'Custom service proposal submitted to administrator Adam Atoun for review!', 
                     'success'
                   );
                 }}
