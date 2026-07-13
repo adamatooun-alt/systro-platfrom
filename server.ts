@@ -221,6 +221,231 @@ async function startServer() {
     }
   });
 
+  // GET endpoint to check current WhatsApp configuration status
+  app.get('/api/whatsapp-status', (req, res) => {
+    res.json({
+      configured: !!(process.env.WHATSAPP_INSTANCE_ID && process.env.WHATSAPP_TOKEN),
+      instanceId: process.env.WHATSAPP_INSTANCE_ID || '',
+      token: process.env.WHATSAPP_TOKEN || '',
+      apiUrl: process.env.WHATSAPP_API_URL || 'https://api.ultramsg.com'
+    });
+  });
+
+  // POST endpoint to send a test WhatsApp message
+  app.post('/api/test-whatsapp', async (req, res) => {
+    const { testPhone } = req.body;
+    if (!testPhone) {
+      res.status(400).json({ error: 'Please provide a recipient phone number' });
+      return;
+    }
+
+    const instanceId = process.env.WHATSAPP_INSTANCE_ID;
+    const token = process.env.WHATSAPP_TOKEN;
+    const apiUrl = process.env.WHATSAPP_API_URL || 'https://api.ultramsg.com';
+
+    if (!instanceId || !token) {
+      res.status(400).json({ 
+        error: 'WhatsApp gateway is not configured. Please define WHATSAPP_INSTANCE_ID and WHATSAPP_TOKEN in your environment.' 
+      });
+      return;
+    }
+
+    try {
+      const cleanPhone = testPhone.replace(/[\s\+\-]/g, '');
+      const testMsg = `📱 *تأكيد ربط بوابة الواتس اب لشبكة سيسترو* ✅\n\nتهانينا! تم ربط وتفعيل حساب الواتس اب الخاص بك مع نظام الإشعارات والطوارئ لشبكة سيسترو بنجاح.\n\nمن الآن فصاعداً، ستصلك رسائل الطوارئ والبلاغات فوراً هنا على رقمك المسجل.\n\n*Systro Rescue Network &copy; 2026*`;
+
+      const response = await fetch(`${apiUrl}/${instanceId}/messages/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          token: token,
+          to: cleanPhone,
+          body: testMsg,
+          priority: '10'
+        })
+      });
+
+      if (response.ok) {
+        res.json({ success: true, message: `Test WhatsApp sent successfully to +${cleanPhone}!` });
+      } else {
+        const errText = await response.text();
+        res.status(400).json({ error: `WhatsApp gateway returned error: ${errText}` });
+      }
+    } catch (error: any) {
+      console.error("Test WhatsApp error:", error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to authenticate or connect with UltraMsg API.' 
+      });
+    }
+  });
+
+  // POST endpoint to dispatch live email and WhatsApp alerts to matching technicians
+  app.post('/api/dispatch-rescue-notifications', async (req, res) => {
+    const { requestDetails, technicians, appUrl, lang } = req.body;
+    if (!requestDetails || !technicians || !Array.isArray(technicians)) {
+      res.status(400).json({ error: 'Missing requestDetails or technicians array' });
+      return;
+    }
+
+    const host = process.env.SMTP_HOST;
+    const port = process.env.SMTP_PORT;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.SMTP_FROM || 'Systro Rescue Network <no-reply@systro.live>';
+
+    const whatsappInstanceId = process.env.WHATSAPP_INSTANCE_ID;
+    const whatsappToken = process.env.WHATSAPP_TOKEN;
+    const whatsappApiUrl = process.env.WHATSAPP_API_URL || 'https://api.ultramsg.com';
+
+    let emailsSent = 0;
+    let whatsappsSent = 0;
+    let errors: string[] = [];
+
+    // Helper translations
+    const getServiceArName = (type: string) => {
+      switch (type) {
+        case 'fuel': return 'توصيل وقود طارئ ⛽';
+        case 'locksmith': return 'فتح أقفال سيارات 🔑';
+        case 'mechanic': return 'صيانة وميكانيك طريق 🛠️';
+        case 'towing': return 'ونش سحب وإنقاذ 🚚';
+        case 'battery': return 'شحن بطارية المركبة ⚡';
+        default: return type;
+      }
+    };
+
+    const getServiceEnName = (type: string) => {
+      switch (type) {
+        case 'fuel': return 'Fuel Delivery ⛽';
+        case 'locksmith': return 'Car Locksmith 🔑';
+        case 'mechanic': return 'Roadside Mechanic 🛠️';
+        case 'towing': return 'Towing Service 🚚';
+        case 'battery': return 'Battery Jumpstart ⚡';
+        default: return type;
+      }
+    };
+
+    const serviceName = lang === 'ar' ? getServiceArName(requestDetails.serviceType) : getServiceEnName(requestDetails.serviceType);
+
+    for (const tech of technicians) {
+      // 1. Send Email Alert (SMTP)
+      if (tech.notifyEmail && tech.email && host && user && pass) {
+        try {
+          const transporter = nodemailer.createTransport({
+            host,
+            port: Number(port) || 587,
+            secure: Number(port) === 465,
+            auth: { user, pass }
+          });
+
+          await transporter.sendMail({
+            from,
+            to: tech.email.trim(),
+            subject: lang === 'ar' 
+              ? `🚨 نداء استغاثة عاجل: مطلوب ${serviceName} في موقعك!` 
+              : `🚨 Live Dispatch Alert: Emergency ${serviceName} requested!`,
+            text: `نداء استغاثة جديد من العميل ${requestDetails.clientName}. للتفاصيل يرجى مراجعة بوابة فنيي سيسترو.`,
+            html: `
+              <div style="direction: ${lang === 'ar' ? 'rtl' : 'ltr'}; text-align: ${lang === 'ar' ? 'right' : 'left'}; font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #E2E8F0; border-radius: 20px; background-color: #0F1424; color: #FFFFFF;">
+                <div style="text-align: center; margin-bottom: 25px; border-bottom: 1px solid #1E293B; padding-bottom: 15px;">
+                  <h1 style="color: #F59E0B; margin: 0; font-size: 26px;">سيسترو إنقاذ | SYSTRO RESCUE</h1>
+                  <span style="background-color: #EF4444; color: #FFFFFF; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; margin-top: 5px; display: inline-block;">
+                    ${lang === 'ar' ? 'نداء استغاثة نشط 📡' : 'Live Emergency Dispatch 📡'}
+                  </span>
+                </div>
+                
+                <div style="background-color: #0A0B10; padding: 20px; border-radius: 16px; border: 1px solid #1E293B; margin-bottom: 20px;">
+                  <h3 style="color: #F59E0B; margin-top: 0; font-size: 16px;">
+                    ${lang === 'ar' ? 'تفاصيل حالة الطوارئ على الطريق:' : 'Emergency Task Details:'}
+                  </h3>
+                  
+                  <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #E2E8F0; margin-top: 15px;">
+                    <tr>
+                      <td style="padding: 6px 0; color: #64748B; width: 120px;"><strong>${lang === 'ar' ? 'الخدمة المطلوبة:' : 'Service Type:'}</strong></td>
+                      <td style="padding: 6px 0; font-weight: bold; color: #F59E0B;">${serviceName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 6px 0; color: #64748B;"><strong>${lang === 'ar' ? 'اسم العميل:' : 'Client Name:'}</strong></td>
+                      <td style="padding: 6px 0; font-weight: bold;">${requestDetails.clientName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 6px 0; color: #64748B;"><strong>${lang === 'ar' ? 'هاتف التواصل:' : 'Client Phone:'}</strong></td>
+                      <td style="padding: 6px 0; font-weight: bold;"><a href="tel:${requestDetails.clientPhone}" style="color: #38BDF8; text-decoration: none;">${requestDetails.clientPhone}</a></td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 6px 0; color: #64748B;"><strong>${lang === 'ar' ? 'موقع العطل:' : 'Location:'}</strong></td>
+                      <td style="padding: 6px 0;">${lang === 'ar' ? requestDetails.arLocationName || requestDetails.locationName : requestDetails.locationName}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 6px 0; color: #64748B;"><strong>${lang === 'ar' ? 'تفاصيل المشكلة:' : 'Description:'}</strong></td>
+                      <td style="padding: 6px 0; font-style: italic; color: #94A3B8;">"${requestDetails.description || 'لا توجد تفاصيل إضافية'}"</td>
+                    </tr>
+                  </table>
+                  
+                  <div style="text-align: center; margin-top: 25px;">
+                    <a href="${appUrl || 'https://systro.live'}?tab=home" style="background-color: #F59E0B; color: #000000; font-weight: bold; text-decoration: none; padding: 12px 24px; border-radius: 12px; font-size: 14px; display: inline-block; transition: all 0.2s;">
+                      ${lang === 'ar' ? 'تقديم عرض سعر فوري ومساعدة السائق 🚚' : 'Submit Live Quote & Help Driver 🚚'}
+                    </a>
+                  </div>
+                </div>
+
+                <div style="text-align: center; color: #64748B; font-size: 11px;">
+                  أرسل هذا التنبيه الفوري لكونك مسجل كتقني معتمد في تخصص (${serviceName}). يمكنك تعديل تفضيلات الإشعارات من لوحة التحكم في أي وقت.
+                  <br/><br/>
+                  &copy; 2026 Systro Rescue Network. All Rights Reserved.
+                </div>
+              </div>
+            `
+          });
+          emailsSent++;
+        } catch (err: any) {
+          console.error(`Error sending email to technician ${tech.email}:`, err);
+          errors.push(`Email error for ${tech.email}: ${err.message}`);
+        }
+      }
+
+      // 2. Send WhatsApp Alert (UltraMsg API)
+      if (tech.notifyWhatsapp && tech.phone && whatsappInstanceId && whatsappToken) {
+        try {
+          const messageText = lang === 'ar' 
+            ? `🚨 *إشعار طوارئ عاجل من شبكة سيسترو للإنقاذ* 🚨\n\nأهلاً بك يا *${tech.name}*، تم تقديم نداء استغاثة جديد يتطلب تخصصك الفني:\n\n🔧 *الخدمة المطلوبة:* ${serviceName}\n👤 *اسم العميل:* ${requestDetails.clientName}\n📞 *هاتف العميل:* ${requestDetails.clientPhone}\n📍 *الموقع:* ${lang === 'ar' ? requestDetails.arLocationName || requestDetails.locationName : requestDetails.locationName}\n📝 *تفاصيل العطل:* ${requestDetails.description || 'لا توجد'}\n\nالرجاء الضغط على الرابط التالي فوراً لتقديم عرض السعر الفوري ومساعدة العميل:\n🔗 ${appUrl || 'https://systro.live'}?tab=home\n\nشكراً لجهودكم وسرعة استجابتكم!`
+            : `🚨 *Live Rescue Alert: Systro Dispatch Network* 🚨\n\nHello *${tech.name}*, a new emergency request requires your specialty:\n\n🔧 *Service:* ${serviceName}\n👤 *Client:* ${requestDetails.clientName}\n📞 *Phone:* ${requestDetails.clientPhone}\n📍 *Location:* ${requestDetails.locationName}\n📝 *Details:* ${requestDetails.description || 'N/A'}\n\nTap the link below to submit a live bid and dispatch:\n🔗 ${appUrl || 'https://systro.live'}?tab=home\n\nThank you for your rapid response!`;
+
+          // Format phone to clean international format (remove spaces, plus, dashes)
+          const formattedPhone = tech.phone.replace(/[\s\+\-]/g, '');
+
+          const response = await fetch(`${whatsappApiUrl}/${whatsappInstanceId}/messages/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              token: whatsappToken,
+              to: formattedPhone,
+              body: messageText,
+              priority: '10'
+            })
+          });
+
+          if (response.ok) {
+            whatsappsSent++;
+          } else {
+            const rawText = await response.text();
+            console.error(`WhatsApp gateway responded with status ${response.status} for ${tech.phone}:`, rawText);
+            errors.push(`WhatsApp error for ${tech.phone}: HTTP ${response.status}`);
+          }
+        } catch (err: any) {
+          console.error(`Error sending WhatsApp to technician ${tech.phone}:`, err);
+          errors.push(`WhatsApp error for ${tech.phone}: ${err.message}`);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      emailsSent,
+      whatsappsSent,
+      errors: errors.length > 0 ? errors : null
+    });
+  });
+
   // Setup Vite middleware in development or serve static files in production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

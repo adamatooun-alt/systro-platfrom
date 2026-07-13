@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
 import { 
   ShieldCheck, 
   AlertTriangle, 
@@ -9,7 +11,11 @@ import {
   Wrench, 
   Lock, 
   Lightbulb, 
-  ThumbsUp 
+  ThumbsUp,
+  MessageSquare,
+  Phone,
+  Send,
+  HeartHandshake
 } from 'lucide-react';
 import { ServiceType, SystemStats } from '../types';
 
@@ -59,6 +65,56 @@ export default function HomeTab({
   triggerToast,
   loggedInUserName,
 }: HomeTabProps) {
+  const [reporterName, setReporterName] = useState('');
+  const [reporterPhone, setReporterPhone] = useState('');
+  const [reporterIssue, setReporterIssue] = useState('');
+  const [isSubmittingIssue, setIsSubmittingIssue] = useState(false);
+
+  const handleSubmitIssue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reporterIssue.trim()) {
+      triggerToast(
+        lang === 'ar' 
+          ? 'الرجاء كتابة تفاصيل المشكلة أولاً!' 
+          : 'Please enter the details of the issue first!', 
+        'warning'
+      );
+      return;
+    }
+
+    setIsSubmittingIssue(true);
+    try {
+      await addDoc(collection(db, "website_issues"), {
+        name: reporterName.trim() || 'Anonymous',
+        phone: reporterPhone.trim() || 'Not Provided',
+        issue: reporterIssue.trim(),
+        createdAt: serverTimestamp()
+      });
+
+      triggerToast(
+        lang === 'ar' 
+          ? '✅ تم إرسال البلاغ بنجاح! شكراً لمساعدتنا في تحسين شبكة سيسترو.' 
+          : '✅ Issue submitted successfully! Thank you for helping us improve Systro.', 
+        'success'
+      );
+
+      // Reset form
+      setReporterName('');
+      setReporterPhone('');
+      setReporterIssue('');
+    } catch (error: any) {
+      console.error("Error submitting website issue:", error);
+      triggerToast(
+        lang === 'ar' 
+          ? '❌ عذراً، فشل إرسال البلاغ. الرجاء المحاولة مجدداً.' 
+          : '❌ Sorry, failed to submit issue. Please try again.', 
+        'error'
+      );
+    } finally {
+      setIsSubmittingIssue(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       
@@ -507,6 +563,159 @@ export default function HomeTab({
               </div>
             )}
 
+          </div>
+        </div>
+      </section>
+
+      {/* Dynamic Support & Contact Section */}
+      <section id="support-contact-section" className="bg-[#0D0F1A] border-t border-gray-900 py-16 px-4 md:px-8 relative overflow-hidden">
+        {/* Subtle decorative glows */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+          
+          {/* Left Column: Help / Explanatory Copy & Direct Admin Contact */}
+          <div className="lg:col-span-5 space-y-6 text-right rtl:text-right ltr:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-xs font-bold uppercase tracking-wider">
+              <HeartHandshake className="w-4 h-4 text-amber-500" />
+              <span>{lang === 'ar' ? 'فريق الدعم والمساندة الفنية' : 'Support & Technical Assistance'}</span>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-2xl md:text-3xl font-black text-white leading-tight">
+                {lang === 'ar' 
+                  ? 'هل تواجه أي مشاكل أو أعطال في المنصة؟' 
+                  : 'Facing any issues or bugs on the platform?'}
+              </h3>
+              <p className="text-sm text-gray-400 font-medium leading-relaxed">
+                {lang === 'ar' 
+                  ? 'ملاحظاتك تهمنا كثيراً لتطوير الخدمة! إذا صادفتك أي مشكلة برمجية، تأخير، أو خطأ في النظام، يرجى كتابتها فوراً ليصل تقريرك مباشرة إلى المهندس علي للمتابعة الفورية.' 
+                  : 'Your feedback is extremely valuable to us! If you encounter any software bugs, delays, or system errors, please report them here to reach Eng. Ali immediately for resolving.'}
+              </p>
+            </div>
+
+            {/* Direct Contact Card */}
+            <div className="bg-[#0A0B10]/90 border border-gray-800 p-6 rounded-3xl space-y-5 shadow-xl">
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-white">
+                  {lang === 'ar' ? 'للتواصل الهاتفي الفوري والطارئ:' : 'Direct Phone & Instant WhatsApp:'}
+                </h4>
+                <p className="text-xs text-gray-500 font-semibold">
+                  {lang === 'ar' ? 'يمكنك التحدث مباشرة مع الإدارة والدعم الفني على مدار الساعة.' : 'Get in touch with the management and support team anytime.'}
+                </p>
+              </div>
+
+              {/* Phone display */}
+              <div className="flex items-center gap-3 bg-[#0F1424] px-4 py-3 border border-gray-800 rounded-xl justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                    <Phone className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <span className="text-sm font-black text-white font-mono tracking-wider" dir="ltr">
+                    +972 53-831-6779
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-amber-500 uppercase font-mono bg-amber-500/10 px-2 py-0.5 rounded animate-pulse">
+                  {lang === 'ar' ? 'نشط الآن' : 'LIVE SUPPORT'}
+                </span>
+              </div>
+
+              {/* Interactive buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <a 
+                  href="tel:+972538316779"
+                  className="py-3 px-4 bg-[#111827] hover:bg-gray-800 border border-gray-800 text-gray-300 hover:text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md text-center"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'اتصال مباشر' : 'Direct Call'}</span>
+                </a>
+                <a 
+                  href="https://wa.me/972538316779"
+                  target="_blank"
+                  referrerPolicy="no-referrer"
+                  className="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md text-center"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'واتس اب مباشر' : 'WhatsApp'}</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Interactive Report Issue Form */}
+          <div className="lg:col-span-7 bg-[#0A0B10]/75 border border-gray-800 p-8 rounded-3xl space-y-6 shadow-2xl relative text-right rtl:text-right ltr:text-left">
+            <div className="space-y-1">
+              <h4 className="text-lg font-black text-white flex items-center gap-2 justify-start">
+                <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
+                <span>{lang === 'ar' ? 'نموذج الإبلاغ المباشر عن مشكلة' : 'Direct Issue Report Form'}</span>
+              </h4>
+              <p className="text-xs text-gray-400 font-semibold">
+                {lang === 'ar' ? 'سيتم إرسال هذا التقرير فوراً إلى لوحة تحكم المسؤول.' : 'Your report will be sent directly to the Admin Dashboard.'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmitIssue} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    {lang === 'ar' ? 'اسمك الكريم (اختياري):' : 'Your Name (Optional):'}
+                  </label>
+                  <input 
+                    type="text"
+                    value={reporterName}
+                    onChange={(e) => setReporterName(e.target.value)}
+                    placeholder={lang === 'ar' ? 'مثال: أحمد العبد' : 'e.g. John Doe'}
+                    className="w-full px-4 py-3 bg-[#0F1424] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    {lang === 'ar' ? 'رقم هاتفك للتواصل (اختياري):' : 'Phone Number (Optional):'}
+                  </label>
+                  <input 
+                    type="text"
+                    value={reporterPhone}
+                    onChange={(e) => setReporterPhone(e.target.value)}
+                    placeholder={lang === 'ar' ? 'مثال: +972 59-123-4567' : 'e.g. +972 59-123-4567'}
+                    className="w-full px-4 py-3 bg-[#0F1424] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  {lang === 'ar' ? 'تفاصيل العطل أو المشكلة بدقة:' : 'Detailed Description of the Issue:'}
+                </label>
+                <textarea 
+                  required
+                  rows={4}
+                  value={reporterIssue}
+                  onChange={(e) => setReporterIssue(e.target.value)}
+                  placeholder={lang === 'ar' ? 'صف المشكلة التي واجهتك، أين حدثت، وما الذي ظهر لك على الشاشة بالتفصيل...' : 'Please describe the bug or issue, where did it happen, and any errors displayed...'}
+                  className="w-full px-4 py-3 bg-[#0F1424] border border-gray-800 focus:border-amber-500 outline-none text-white font-medium text-xs transition-colors rounded-xl resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingIssue}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-105 disabled:brightness-50 disabled:cursor-not-allowed text-black font-black rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 cursor-pointer"
+              >
+                {isSubmittingIssue ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                    <span>{lang === 'ar' ? 'جاري إرسال البلاغ...' : 'Sending Report...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 shrink-0" />
+                    <span>{lang === 'ar' ? 'إرسال البلاغ فوراً للمهندس علي' : 'Submit Issue to Eng. Ali'}</span>
+                  </>
+                )}
+              </button>
+            </form>
           </div>
         </div>
       </section>

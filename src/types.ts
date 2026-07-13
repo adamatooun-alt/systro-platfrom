@@ -57,6 +57,9 @@ export interface Technician {
   plateNumber: string;
   serviceId?: string;
   specialties?: string[];
+  email?: string;
+  notifyEmail?: boolean;
+  notifyWhatsapp?: boolean;
 }
 
 export interface Bid {

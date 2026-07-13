@@ -120,29 +120,6 @@ export default function ServicesTab({
                       {lang === 'ar' ? 'فنيو ومزودو الخدمة المسجلون:' : lang === 'he' ? 'ספקי שירות רשומים:' : 'Registered Service Providers:'}
                     </span>
                   </h4>
-                  <button
-                    onClick={() => {
-                      if (!isLoggedIn) {
-                        triggerToast(
-                          lang === 'ar' 
-                            ? 'يرجى تسجيل الدخول بحساب Google أولاً لتسجيل سجل فني!' 
-                            : lang === 'he'
-                            ? 'אנא התחבר עם חשבון גוגל תחילה כדי להוסיף רשומת טכנאי!'
-                            : 'Please sign in with Google account first to add a technician record!', 
-                          'warning'
-                        );
-                        const section = document.getElementById('login-portal-section');
-                        if (section) section.scrollIntoView({ behavior: 'smooth' });
-                      } else {
-                        setSelectedServiceIdForRecord(service.id);
-                        setShowAddRecordModal(true);
-                      }
-                    }}
-                    className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/20 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>➕</span>
-                    <span>{lang === 'ar' ? 'إضافة سجل' : lang === 'he' ? 'הוסף רשומה' : 'Add Record'}</span>
-                  </button>
                 </div>
 
                 {/* Filter technicians */}

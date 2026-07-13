@@ -61,6 +61,7 @@ import {
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
 import TrustPortal from './components/TrustPortal';
 import SmtpConfigPanel from './components/SmtpConfigPanel';
+import WhatsAppConfigPanel from './components/WhatsAppConfigPanel';
 import LoginPortal from './components/LoginPortal';
 import HomeTab from './components/HomeTab';
 import ServicesTab from './components/ServicesTab';
@@ -192,10 +193,31 @@ export default function App() {
     }
   };
 
-  // Fetch SMTP status on tab selection
+  // WhatsApp Live Configurations & Testing
+  const [whatsAppStatus, setWhatsAppStatus] = useState<{
+    configured: boolean;
+    instanceId: string;
+    token: string;
+    apiUrl: string;
+  } | null>(null);
+
+  const fetchWhatsAppStatus = async () => {
+    try {
+      const response = await fetch('/api/whatsapp-status');
+      if (response.ok) {
+        const data = await response.json();
+        setWhatsAppStatus(data);
+      }
+    } catch (err) {
+      console.error("Error fetching WhatsApp status:", err);
+    }
+  };
+
+  // Fetch SMTP and WhatsApp status on tab selection
   useEffect(() => {
     if (activeTab === 'admin') {
       fetchSmtpStatus();
+      fetchWhatsAppStatus();
     }
   }, [activeTab]);
 
@@ -226,6 +248,8 @@ export default function App() {
   const [providerPhone, setProviderPhone] = useState('');
   const [providerCarModel, setProviderCarModel] = useState('');
   const [providerPlateNumber, setProviderPlateNumber] = useState('');
+  const [adminTechName, setAdminTechName] = useState('');
+  const [adminTechEmail, setAdminTechEmail] = useState('');
 
   // Form inputs for Custom Service Creation
   const [showCustomServiceModal, setShowCustomServiceModal] = useState(false);
@@ -361,6 +385,9 @@ export default function App() {
   // Escrows List (Admin simulation)
   const [escrows, setEscrows] = useState<{ id: string; clientName: string; techName: string; amount: number; serviceType: string; status: 'escrowed' | 'released' | 'refunded' | 'disputed' }[]>([]);
 
+  // Reported website issues / bug reports state
+  const [websiteIssues, setWebsiteIssues] = useState<{ id: string; name?: string; phone?: string; issue: string; createdAt?: any }[]>([]);
+
   // Current simulation rating state
   const [simRating, setSimRating] = useState<number>(5);
 
@@ -435,6 +462,18 @@ export default function App() {
     return () => unsub();
   }, [isLoggedIn, loggedInUserEmail, userRole]);
 
+  // Sync notification preferences when activeTechDoc is updated from Firestore
+  useEffect(() => {
+    if (activeTechDoc) {
+      if (activeTechDoc.notifyWhatsapp !== undefined) {
+        setNotifyWhatsapp(activeTechDoc.notifyWhatsapp);
+      }
+      if (activeTechDoc.notifyEmail !== undefined) {
+        setNotifyEmail(activeTechDoc.notifyEmail);
+      }
+    }
+  }, [activeTechDoc]);
+
   // Sync technician's location from providerLat/providerLng into Firestore
   useEffect(() => {
     if (!isLoggedIn || !loggedInUserEmail || userRole !== 'technician' || providerLat === null || providerLng === null) {
@@ -489,9 +528,9 @@ export default function App() {
       if (snapshot.empty) {
         // Seed initial default technicians if collection is empty
         const initialTechs = [
-          { id: 't1', name: 'Raed Masoud', arName: 'رائد مسعود', phone: '+972 59-123-4567', rating: 4.9, reviewsCount: 142, isOnline: true, lat: 25, lng: 30, avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120', carModel: 'Toyota Hilux 4x4', arCarModel: 'تويوتا هايلوكس 4x4', plateNumber: '7-4321-99', serviceId: 'towing' },
-          { id: 't2', name: 'Mohamed Al-Hussein', arName: 'محمد الحسين', phone: '+972 59-765-4321', rating: 4.8, reviewsCount: 98, isOnline: true, lat: 75, lng: 20, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120', carModel: 'GMC Sierra Recovery', arCarModel: 'جي إم سي سييرا ونش', plateNumber: '8-1122-88', serviceId: 'towing' },
-          { id: 't3', name: 'Shady Yousef', arName: 'شادي يوسف', phone: '+972 59-888-2233', rating: 4.7, reviewsCount: 65, isOnline: true, lat: 50, lng: 80, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120', carModel: 'Ford F-150 Service', arCarModel: 'فورد F-150 صيانة', plateNumber: '6-9988-77', serviceId: 'mechanic' }
+          { id: 't1', name: 'Raed Masoud', arName: 'رائد مسعود', phone: '+972 59-123-4567', email: 'raed.masoud@systro.live', rating: 4.9, reviewsCount: 142, isOnline: true, lat: 25, lng: 30, avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120', carModel: 'Toyota Hilux 4x4', arCarModel: 'تويوتا هايلوكس 4x4', plateNumber: '7-4321-99', serviceId: 'towing', notifyEmail: true, notifyWhatsapp: true },
+          { id: 't2', name: 'Mohamed Al-Hussein', arName: 'محمد الحسين', phone: '+972 59-765-4321', email: 'mohamed.alhussein@systro.live', rating: 4.8, reviewsCount: 98, isOnline: true, lat: 75, lng: 20, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120', carModel: 'GMC Sierra Recovery', arCarModel: 'جي إم سي سييرا ونش', plateNumber: '8-1122-88', serviceId: 'towing', notifyEmail: true, notifyWhatsapp: true },
+          { id: 't3', name: 'Shady Yousef', arName: 'شادي يوسف', phone: '+972 59-888-2233', email: 'shady.yousef@systro.live', rating: 4.7, reviewsCount: 65, isOnline: true, lat: 50, lng: 80, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120', carModel: 'Ford F-150 Service', arCarModel: 'فورد F-150 صيانة', plateNumber: '6-9988-77', serviceId: 'mechanic', notifyEmail: true, notifyWhatsapp: true }
         ];
         initialTechs.forEach(async (t) => {
           await setDoc(doc(db, "technicians", t.id), t);
@@ -561,6 +600,14 @@ export default function App() {
     }
     setPrevPendingCount(pendingReqs.length);
   }, [allRequests, userRole, notifyWhatsapp, notifyEmail, lang, loggedInUserEmail, prevPendingCount]);
+
+  // Sync default fields for new technician record modal
+  useEffect(() => {
+    if (showAddRecordModal) {
+      setAdminTechName(loggedInUserName || '');
+      setAdminTechEmail(loggedInUserEmail || '');
+    }
+  }, [showAddRecordModal, loggedInUserName, loggedInUserEmail]);
 
   // Sync active request details to component states
   useEffect(() => {
@@ -673,6 +720,35 @@ export default function App() {
     });
     return () => unsub();
   }, []);
+
+  // Listen for website issues / support tickets
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "website_issues"), (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      list.sort((a, b) => {
+        const tA = a.createdAt?.seconds || 0;
+        const tB = b.createdAt?.seconds || 0;
+        return tB - tA;
+      });
+      setWebsiteIssues(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, "website_issues");
+    });
+    return () => unsub();
+  }, []);
+
+  const handleDeleteWebsiteIssue = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "website_issues", id));
+      triggerToast(lang === 'ar' ? 'تم حذف بلاغ المشكلة بنجاح!' : 'Issue report deleted successfully!', 'success');
+    } catch (err: any) {
+      console.error("Error deleting website issue:", err);
+      triggerToast(lang === 'ar' ? 'فشل حذف البلاغ.' : 'Failed to delete issue report.', 'error');
+    }
+  };
 
   // Listen for system stats
   useEffect(() => {
@@ -918,6 +994,54 @@ export default function App() {
 
       setActiveRequestId(reqId);
       triggerToast(lang === 'ar' ? 'تم تسجيل وتعميم طلبك بنجاح على الفنيين بالقائمة!' : 'Request published successfully to all technicians!', 'success');
+
+      // Fetch matching technicians and dispatch real notification alerts (SMTP / WhatsApp)
+      const matchedTechs = dbTechnicians.filter(tech => {
+        const hasSpecialty = tech.serviceId === selectedService || tech.specialties?.includes(selectedService);
+        return hasSpecialty && (tech.notifyEmail || tech.notifyWhatsapp);
+      });
+
+      if (matchedTechs.length > 0) {
+        fetch('/api/dispatch-rescue-notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestDetails: {
+              id: reqId,
+              clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : 'Adam Atooun',
+              clientPhone: phoneNumber || "+972 59-123-4567",
+              serviceType: selectedService,
+              locationLat: pinnedLocation.lat,
+              locationLng: pinnedLocation.lng,
+              locationName: "Al-Quds St",
+              arLocationName: "شارع القدس",
+              description: problemDescription
+            },
+            technicians: matchedTechs.map(t => ({
+              name: t.name,
+              email: t.email,
+              phone: t.phone,
+              notifyEmail: t.notifyEmail !== false,
+              notifyWhatsapp: !!t.notifyWhatsapp
+            })),
+            appUrl: window.location.origin,
+            lang: lang
+          })
+        }).then(res => res.json())
+          .then(data => {
+            console.log("Dispatch response:", data);
+            if (data.success && (data.emailsSent > 0 || data.whatsappsSent > 0)) {
+              triggerToast(
+                lang === 'ar'
+                  ? `📡 تم إرسال ${data.emailsSent} إيميل و ${data.whatsappsSent} رسائل واتس اب حقيقية للفنيين!`
+                  : `📡 Dispatched ${data.emailsSent} real emails and ${data.whatsappsSent} real WhatsApp alerts to active technicians!`,
+                'success'
+              );
+            }
+          }).catch(err => {
+            console.error("Failed to dispatch real notifications:", err);
+          });
+      }
     } catch (error) {
       console.error("Error creating request:", error);
       triggerToast(lang === 'ar' ? 'فشل إرسال الطلب لقاعدة البيانات!' : 'Failed to publish request!', 'error');
@@ -2413,7 +2537,9 @@ export default function App() {
                                 arCarModel: providerVehicle,
                                 plateNumber: providerPlate,
                                 specialties: ['towing'],
-                                email: loggedInUserEmail
+                                email: loggedInUserEmail,
+                                notifyEmail: notifyEmail,
+                                notifyWhatsapp: notifyWhatsapp
                               };
                               await setDoc(doc(db, "technicians", loggedInUserEmail), newTech);
                               setProviderLat(40);
@@ -2487,6 +2613,11 @@ export default function App() {
                               const nextVal = !notifyWhatsapp;
                               setNotifyWhatsapp(nextVal);
                               localStorage.setItem('systro_notify_whatsapp', String(nextVal));
+                              if (isLoggedIn && loggedInUserEmail && userRole === 'technician') {
+                                updateDoc(doc(db, "technicians", loggedInUserEmail), {
+                                  notifyWhatsapp: nextVal
+                                }).catch(e => console.error(e));
+                              }
                               triggerToast(
                                 lang === 'ar'
                                   ? (nextVal ? '✅ تم تفعيل إشعارات الواتساب الفورية بنجاح!' : '❌ تم إيقاف إشعارات الواتساب.')
@@ -2530,6 +2661,11 @@ export default function App() {
                               const nextVal = !notifyEmail;
                               setNotifyEmail(nextVal);
                               localStorage.setItem('systro_notify_email', String(nextVal));
+                              if (isLoggedIn && loggedInUserEmail && userRole === 'technician') {
+                                updateDoc(doc(db, "technicians", loggedInUserEmail), {
+                                  notifyEmail: nextVal
+                                }).catch(e => console.error(e));
+                              }
                               triggerToast(
                                 lang === 'ar'
                                   ? (nextVal ? `✅ تم تفعيل إشعارات الإيميل بنجاح إلى ${loggedInUserEmail}!` : '❌ تم إيقاف إشعارات البريد الإلكتروني.')
@@ -3762,6 +3898,14 @@ export default function App() {
             triggerToast={triggerToast}
           />
 
+          {/* Real-time WhatsApp Connection & Diagnostics Panel */}
+          <WhatsAppConfigPanel 
+            lang={lang}
+            status={whatsAppStatus}
+            onRefresh={fetchWhatsAppStatus}
+            triggerToast={triggerToast}
+          />
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* Active Escrow Holdings list */}
@@ -3859,6 +4003,136 @@ export default function App() {
 
           </div>
 
+          {/* New: Technician Records Management Panel for Admin */}
+          <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-850 pb-3">
+              <div className="text-right">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 justify-start">
+                  <Users className="w-5 h-5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'إدارة السجلات الفنية ومزودي الخدمة 🛠️' : 'Technician Records Management 🛠️'}</span>
+                </h3>
+                <p className="text-[10px] text-gray-400 font-semibold mt-1">
+                  {lang === 'ar' 
+                    ? 'يمكنك من هنا إضافة فنيين ومزودي خدمات جدد لأي تصنيف خدمة في المنصة بشكل يدوي ومباشر.' 
+                    : 'Add certified technicians or emergency service providers manually to any category index.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {dbServices.map(service => {
+                const serviceTechs = dbTechnicians.filter(t => t.serviceId === service.id || t.specialties?.includes(service.id));
+                return (
+                  <div key={service.id} className="p-4 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-4 text-right">
+                    <div className="space-y-1 text-right">
+                      <span className="text-xs font-black text-amber-400 block">{lang === 'ar' ? service.name.split(' (')[0] : service.name}</span>
+                      <span className="text-[10px] text-gray-500 font-semibold block">{lang === 'ar' ? service.description || service.desc : service.desc}</span>
+                      <div className="text-[9px] text-gray-400 font-bold mt-1">
+                        {lang === 'ar' ? `عدد الفنيين المسجلين: ${serviceTechs.length}` : `Technicians count: ${serviceTechs.length}`}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setSelectedServiceIdForRecord(service.id);
+                        setShowAddRecordModal(true);
+                      }}
+                      className="w-full py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/25 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <span>➕</span>
+                      <span>{lang === 'ar' ? 'إضافة سجل فني' : 'Add Tech Record'}</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* New: Website Bug Reports & Technical Issues Panel for Admin */}
+          <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-850 pb-3">
+              <div className="text-right">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 justify-start">
+                  <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse shrink-0"></span>
+                  <span>{lang === 'ar' ? 'بلاغات المشاكل والأعطال المرسلة من المستخدمين 🚨' : 'User Bug Reports & Platform Issues 🚨'}</span>
+                </h3>
+                <p className="text-[10px] text-gray-400 font-semibold mt-1">
+                  {lang === 'ar' 
+                    ? 'هنا تجد جميع البلاغات والشكاوى التقنية التي أرسلها المستخدمون من خلال النموذج الموجود في أسفل الموقع.' 
+                    : 'View technical complaints and feedback submitted by users via the support form at the footer.'}
+                </p>
+              </div>
+              <span className="bg-amber-500/15 text-amber-500 border border-amber-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
+                {lang === 'ar' ? `إجمالي التقارير: ${websiteIssues.length}` : `Total Reports: ${websiteIssues.length}`}
+              </span>
+            </div>
+
+            {websiteIssues.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-10 font-semibold">
+                {lang === 'ar' ? 'لا توجد أي بلاغات أو مشاكل مسجلة حالياً! الموقع يعمل بكفاءة تامة. ✨' : 'No issues reported yet! Platform running smoothly. ✨'}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {websiteIssues.map((issue) => {
+                  const dateStr = issue.createdAt?.seconds 
+                    ? new Date(issue.createdAt.seconds * 1000).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US') 
+                    : lang === 'ar' ? 'غير متوفر' : 'N/A';
+                  return (
+                    <div key={issue.id} className="p-5 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-4 text-right relative">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between border-b border-gray-900 pb-2">
+                          <span className="text-[10px] font-mono text-gray-500">{dateStr}</span>
+                          <button 
+                            onClick={() => handleDeleteWebsiteIssue(issue.id)}
+                            className="text-gray-500 hover:text-red-500 transition-colors p-1 rounded-lg cursor-pointer text-xs"
+                            title={lang === 'ar' ? 'حذف البلاغ' : 'Delete Report'}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                        
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-gray-400 font-medium leading-relaxed bg-[#0F1424]/50 p-3 rounded-xl border border-gray-900">
+                            "{issue.issue}"
+                          </p>
+                        </div>
+
+                        <div className="space-y-1 pt-1">
+                          <span className="text-[10px] text-gray-500 block">
+                            {lang === 'ar' ? 'المرسل:' : 'Submitted By:'} <strong className="text-white font-black">{issue.name || 'Anonymous'}</strong>
+                          </span>
+                          <span className="text-[10px] text-gray-500 block">
+                            {lang === 'ar' ? 'رقم الهاتف:' : 'Contact Phone:'} <strong className="text-white font-black font-mono">{issue.phone || 'N/A'}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Direct action to chat/call if phone provided */}
+                      {issue.phone && issue.phone !== 'Not Provided' && (
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-900">
+                          <a 
+                            href={`tel:${issue.phone}`}
+                            className="py-1.5 bg-[#111827] hover:bg-gray-800 text-gray-300 hover:text-white rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1"
+                          >
+                            📞 {lang === 'ar' ? 'اتصال' : 'Call'}
+                          </a>
+                          <a 
+                            href={`https://wa.me/${issue.phone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            referrerPolicy="no-referrer"
+                            className="py-1.5 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 hover:text-emerald-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1"
+                          >
+                            💬 {lang === 'ar' ? 'واتساب' : 'WhatsApp'}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
         </div>
         )
       )}
@@ -3889,13 +4163,25 @@ export default function App() {
             <div className="space-y-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'الاسم بالكامل:' : 'Full Name:'}
+                  {lang === 'ar' ? 'الاسم بالكامل للتقني:' : 'Full Name of Technician:'}
                 </label>
                 <input 
                   type="text" 
-                  value={loggedInUserName}
-                  disabled
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 rounded-xl text-gray-400 font-bold text-xs"
+                  value={adminTechName}
+                  onChange={(e) => setAdminTechName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase">
+                  {lang === 'ar' ? 'البريد الإلكتروني للتقني:' : 'Technician Email Address:'}
+                </label>
+                <input 
+                  type="email" 
+                  value={adminTechEmail}
+                  onChange={(e) => setAdminTechEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
                 />
               </div>
 
@@ -3943,15 +4229,15 @@ export default function App() {
 
               <button
                 onClick={async () => {
-                  if (!providerPhone.trim() || !providerCarModel.trim() || !providerPlateNumber.trim()) {
+                  if (!adminTechName.trim() || !adminTechEmail.trim() || !providerPhone.trim() || !providerCarModel.trim() || !providerPlateNumber.trim()) {
                     triggerToast(lang === 'ar' ? 'الرجاء ملء جميع الحقول!' : 'Please fill all fields!', 'warning');
                     return;
                   }
                   const newTechId = `tech_${Date.now()}`;
                   const newTech = {
                     id: newTechId,
-                    name: loggedInUserName || 'Unknown Technician',
-                    arName: loggedInUserName || 'Unknown Technician',
+                    name: adminTechName,
+                    arName: adminTechName,
                     phone: providerPhone,
                     rating: 5.0,
                     reviewsCount: 1,
@@ -3964,7 +4250,9 @@ export default function App() {
                     plateNumber: providerPlateNumber,
                     specialties: [selectedServiceIdForRecord],
                     serviceId: selectedServiceIdForRecord,
-                    email: loggedInUserEmail
+                    email: adminTechEmail,
+                    notifyEmail: true,
+                    notifyWhatsapp: true
                   };
                   await setDoc(doc(db, "technicians", newTechId), newTech);
                   setShowAddRecordModal(false);
