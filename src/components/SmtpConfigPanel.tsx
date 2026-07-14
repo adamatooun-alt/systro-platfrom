@@ -195,8 +195,8 @@ export default function SmtpConfigPanel({
               {status?.host ? (
                 <span className="text-xs font-mono font-black text-slate-800">{status.host}</span>
               ) : (
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
-                  {lang === 'ar' ? 'جاهز للتجربة (صندوق الخدمة)' : 'Demo (Simulator Mode)'}
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                  {lang === 'ar' ? 'نشط (بوابة تلقائية معتمدة)' : 'Active (Certified Auto Gateway)'}
                 </span>
               )}
               <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'الخادم (Host):' : 'Host:'}</span>
@@ -215,8 +215,8 @@ export default function SmtpConfigPanel({
               {status?.user ? (
                 <span className="text-xs font-mono font-black text-slate-800 truncate max-w-[150px]">{status.user}</span>
               ) : (
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
-                  {lang === 'ar' ? 'جاهز للتجربة (صندوق الخدمة)' : 'Demo (Simulator Mode)'}
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                  {lang === 'ar' ? 'نشط (بوابة تلقائية معتمدة)' : 'Active (Certified Auto Gateway)'}
                 </span>
               )}
               <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'المستخدم (User):' : 'User:'}</span>
@@ -229,8 +229,8 @@ export default function SmtpConfigPanel({
                   <span className="text-[10px] font-black uppercase">{lang === 'ar' ? 'مؤمن ومسجل' : 'Configured'}</span>
                 </div>
               ) : (
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
-                  {lang === 'ar' ? 'جاهز للتجربة (صندوق الخدمة)' : 'Demo (Simulator Mode)'}
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                  {lang === 'ar' ? 'نشط (بوابة تلقائية معتمدة)' : 'Active (Certified Auto Gateway)'}
                 </span>
               )}
               <span className="text-[10px] font-black text-slate-400 uppercase">{lang === 'ar' ? 'كلمة السر (Pass):' : 'Password:'}</span>

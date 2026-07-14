@@ -32,15 +32,15 @@ export default function LoginPortal({
   triggerToast,
   t,
 }: LoginPortalProps) {
-  const [showCustomAccountForm, setShowCustomAccountForm] = React.useState(true);
   const [customName, setCustomName] = React.useState('');
   const [customEmail, setCustomEmail] = React.useState('');
+  const [showManualForm, setShowManualForm] = React.useState(false);
 
   React.useEffect(() => {
     if (!showGoogleFallbackModal) {
-      setShowCustomAccountForm(true);
       setCustomName('');
       setCustomEmail('');
+      setShowManualForm(false);
     }
   }, [showGoogleFallbackModal]);
 
@@ -269,82 +269,61 @@ export default function LoginPortal({
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
                 <span className="text-[11px] font-bold text-slate-500 tracking-wide font-sans">
-                  {lang === 'ar' ? 'تسجيل الدخول باستخدام حساب Google' : 'Sign in with Google'}
+                  {lang === 'ar' ? 'تسجيل الدخول باستخدام حساب Google' : lang === 'he' ? 'התחברות באמצעות Google' : 'Sign in with Google'}
                 </span>
               </div>
 
               <div className="space-y-1 text-center">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight leading-tight select-none">
-                  {lang === 'ar' ? 'اختيار حساب لتسجيل الدخول إلى "Systro"' : lang === 'he' ? 'בחירת חשבון להתחברות אל "Systro"' : 'Choose an account to continue to "Systro"'}
+                  {lang === 'ar' ? 'تسجيل الدخول الآمن إلى "Systro"' : lang === 'he' ? 'התחברות מאובטחת אל "Systro"' : 'Secure Sign-In to "Systro"'}
                 </h2>
               </div>
             </div>
 
-            {/* Profiles List or Custom Account Form */}
-            {!showCustomAccountForm ? (
-              <div className="border border-slate-150 rounded-2xl overflow-hidden divide-y divide-slate-100 bg-slate-50/50">
-                {[
-                  { 
-                    name: lang === 'ar' ? 'رائد مسعود (فني معتمد)' : 'Raed Masoud (Certified Tech)', 
-                    email: 'raid.masoud@gmail.com', 
-                    avatarType: 'image', 
-                    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&fit=crop&q=80',
-                    avatarBg: '',
-                    avatarText: ''
-                  },
-                  { 
-                    name: lang === 'ar' ? 'حساب عميل سيسترو تجريبي' : 'Systro Client Account (Demo)', 
-                    email: 'client@systro.live', 
-                    avatarType: 'image', 
-                    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&fit=crop&q=80',
-                    avatarBg: '',
-                    avatarText: ''
-                  }
-                ].map((profile, i) => (
-                  <button
-                    key={i}
-                    onClick={async () => {
-                      setShowGoogleFallbackModal(false);
-                      await handleGoogleSignIn(profile.email, profile.name);
-                      triggerToast(lang === 'ar' ? 'تم الدخول الآمن بحساب Google!' : 'Secure signed in with Google!', 'success');
-                    }}
-                    className={`w-full p-3.5 hover:bg-slate-50 flex ${lang === 'ar' || lang === 'he' ? 'flex-row-reverse text-right' : 'flex-row text-left'} items-center justify-between gap-3 cursor-pointer transition-all`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {profile.avatarType === 'text' ? (
-                        <div className={`w-9 h-9 rounded-full ${profile.avatarBg} border flex items-center justify-center text-[8px] font-black tracking-tighter shadow-sm select-none shrink-0`}>
-                          {profile.avatarText}
-                        </div>
-                      ) : (
-                        <img src={profile.avatarUrl} alt={profile.name} referrerPolicy="no-referrer" className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0 select-none" />
-                      )}
-                      <div className={`${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}>
-                        <p className="text-xs font-black text-slate-800 leading-tight">{profile.name}</p>
-                        <p className="text-[10px] font-mono text-slate-400 font-bold leading-normal">{profile.email}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
+            {!showManualForm ? (
+              <div className="space-y-5 animate-fade-in text-center">
+                <p className="text-xs text-slate-500 font-bold leading-relaxed px-2">
+                  {lang === 'ar' 
+                    ? 'اضغط أدناه للاتصال المباشر واسترجاع تفاصيل حسابك تلقائياً وبأمان من Google لمتابعة الدخول دون الحاجة لكتابة البيانات يدوياً.' 
+                    : lang === 'he'
+                    ? 'לחץ למטה כדי להתחבר ולקבל את פרטי החשבון שלך באופן אוטומטי ומאובטח מ-Google ללא צורך בהקלדה ידנית.'
+                    : 'Click below to connect and retrieve your account details automatically and securely from Google to sign in without typing.'}
+                </p>
 
-                {/* "Use another account" button */}
                 <button
-                  onClick={() => setShowCustomAccountForm(true)}
-                  className={`w-full p-3.5 hover:bg-slate-100 flex ${lang === 'ar' || lang === 'he' ? 'flex-row-reverse text-right' : 'flex-row text-left'} items-center gap-3 cursor-pointer transition-all bg-sky-500/5 text-sky-600`}
+                  type="button"
+                  onClick={async () => {
+                    await handleRealGoogleSignIn();
+                  }}
+                  className="w-full py-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-sky-600/20 hover:shadow-lg cursor-pointer"
                 >
-                  <div className="w-9 h-9 rounded-full bg-sky-100 border border-sky-200 flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M12 4v16m8-8H4" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-black text-sky-700">
-                      {lang === 'ar' ? 'استخدام حساب آخر' : lang === 'he' ? 'שימוש בחשבון אחר' : 'Use another account'}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-bold">
-                      {lang === 'ar' ? 'تسجيل الدخول بحساب جوجل المخصص لك' : lang === 'he' ? 'התחברות עם חשבון גוגל האישי שלך' : 'Sign in with your own custom Google account'}
-                    </p>
-                  </div>
+                  <svg className="w-5 h-5 bg-white p-0.5 rounded-full shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>
+                    {lang === 'ar' ? 'استيراد الحساب والاتصال التلقائي' : lang === 'he' ? 'ייבוא חשבון והתחברות אוטומטית' : 'Import Account & Auto Connect'}
+                  </span>
                 </button>
+
+                <div className="pt-4 border-t border-slate-100 flex flex-col items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualForm(true)}
+                    className="text-xs font-extrabold text-sky-600 hover:text-sky-700 transition-colors cursor-pointer"
+                  >
+                    {lang === 'ar' ? 'أو أدخل بيانات حسابك يدوياً (كحل بديل)' : lang === 'he' ? 'או הזן את פרטי החשבון ידנית (חלופי)' : 'Or enter account details manually (alternative)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleFallbackModal(false)}
+                    className="text-xs text-slate-400 hover:text-slate-500 font-bold transition-colors cursor-pointer"
+                  >
+                    {lang === 'ar' ? 'إلغاء وإغلاق البوابة' : lang === 'he' ? 'ביטול וסגירת השער' : 'Cancel & Close Portal'}
+                  </button>
+                </div>
               </div>
             ) : (
               <form 
@@ -415,34 +394,27 @@ export default function LoginPortal({
                   />
                 </div>
 
-                <div className="pt-2 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCustomAccountForm(false);
-                      setCustomName('');
-                      setCustomEmail('');
-                    }}
-                    className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
-                  >
-                    {lang === 'ar' ? 'إلغاء' : lang === 'he' ? 'ביטול' : 'Cancel'}
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl text-xs shadow-md shadow-sky-600/10 transition-colors cursor-pointer text-center"
-                  >
-                    {lang === 'ar' ? 'متابعة الدخول' : lang === 'he' ? 'המשך התחברות' : 'Continue'}
-                  </button>
+                <div className="pt-2 flex flex-col gap-2">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowManualForm(false);
+                      }}
+                      className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
+                    >
+                      {lang === 'ar' ? 'رجوع للخلف' : lang === 'he' ? 'חזור' : 'Go Back'}
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl text-xs shadow-md shadow-sky-600/10 transition-colors cursor-pointer text-center"
+                    >
+                      {lang === 'ar' ? 'متابعة الدخول' : lang === 'he' ? 'המשך התחברות' : 'Continue'}
+                    </button>
+                  </div>
                 </div>
               </form>
             )}
-
-            {/* Bottom blue action */}
-            <div className="pt-2 text-center select-none">
-              <span className="text-xs font-black text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
-                {lang === 'ar' ? 'خيارات تسجيل الدخول' : lang === 'he' ? 'אפשרויות התחברות נוספות' : 'Sign-in options'}
-              </span>
-            </div>
 
           </div>
         </div>

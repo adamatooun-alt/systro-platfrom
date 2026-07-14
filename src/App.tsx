@@ -415,6 +415,11 @@ export default function App() {
   // Pending custom specialties/services awaiting Admin approval
   const [pendingServices, setPendingServices] = useState<{ id: string; name: string; arName: string; description: string; arDescription: string; basePrice: number; requestedBy?: string; requestedByName?: string; status: string; createdAt?: any }[]>([]);
 
+  // Registered users state (clients and technicians)
+  const [registeredUsers, setRegisteredUsers] = useState<{ id: string; email: string; name: string; role: 'client' | 'technician' | null; phone?: string; createdAt?: any }[]>([]);
+  const [adminUserSearch, setAdminUserSearch] = useState('');
+  const [adminUserRoleFilter, setAdminUserRoleFilter] = useState<'all' | 'client' | 'technician' | 'unassigned'>('all');
+
   // Current simulation rating state
   const [simRating, setSimRating] = useState<number>(5);
 
@@ -865,6 +870,20 @@ export default function App() {
       setPendingServices(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "pending_services");
+    });
+    return () => unsub();
+  }, []);
+
+  // Listen for registered users
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "users"), (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setRegisteredUsers(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, "users");
     });
     return () => unsub();
   }, []);
@@ -1928,6 +1947,7 @@ export default function App() {
         const email = user.email;
         const name = user.displayName || `Google User #${Math.floor(1000 + Math.random() * 9000)}`;
         await handleGoogleSignIn(email, name);
+        setShowGoogleFallbackModal(false);
         triggerToast(lang === 'ar' ? 'تم تسجيل الدخول بواسطة Google بنجاح!' : 'Successfully signed in with Google!', 'success');
       }
     } catch (err: any) {
@@ -2043,6 +2063,7 @@ export default function App() {
 
   const handleGoogleSignIn = async (email?: string, name?: string) => {
     setIsLoggedIn(true);
+    setShowGoogleFallbackModal(false);
     const resolvedEmail = email || `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`;
     const resolvedName = name || (lang === 'ar' ? 'مستخدم سيسترو' : lang === 'he' ? 'משתמש סיסטרו' : 'Systro User');
     
@@ -4616,6 +4637,183 @@ export default function App() {
                           className="py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
                         >
                           🗑️ {lang === 'ar' ? 'رفض وحذف' : 'Reject & Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* New: Registered Users List (Clients & Technicians) Panel for Admin */}
+          <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-850 pb-3">
+              <div className="text-right">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 justify-start">
+                  <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse shrink-0"></span>
+                  <span>{lang === 'ar' ? 'سجل المستخدمين المسجلين (العملاء والفنيين) 👥' : 'Registered Users Registry (Clients & Technicians) 👥'}</span>
+                </h3>
+                <p className="text-[10px] text-gray-400 font-semibold mt-1">
+                  {lang === 'ar' 
+                    ? 'قائمة بجميع العملاء والفنيين المسجلين في النظام مع بيانات البريد الإلكتروني والهاتف وأدوارهم.' 
+                    : 'Comprehensive list of all registered clients & technicians with their email, phone, and access roles.'}
+                </p>
+              </div>
+              <span className="bg-amber-500/15 text-amber-500 border border-amber-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
+                {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
+              </span>
+            </div>
+
+            {/* Filtering & Search Controls */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input 
+                type="text"
+                value={adminUserSearch}
+                onChange={(e) => setAdminUserSearch(e.target.value)}
+                placeholder={lang === 'ar' ? 'ابحث بالاسم، البريد الإلكتروني أو الجوال...' : 'Search by name, email or phone...'}
+                className="flex-1 px-4 py-2.5 bg-[#0A0B10] border border-gray-800 rounded-xl text-white text-xs font-bold focus:border-amber-500 outline-none transition-colors"
+              />
+              
+              <div className="flex bg-[#0A0B10] p-1 rounded-xl border border-gray-800 shrink-0">
+                <button
+                  onClick={() => setAdminUserRoleFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'all' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {lang === 'ar' ? 'الكل' : 'All'}
+                </button>
+                <button
+                  onClick={() => setAdminUserRoleFilter('client')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'client' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {lang === 'ar' ? 'العملاء' : 'Clients'}
+                </button>
+                <button
+                  onClick={() => setAdminUserRoleFilter('technician')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'technician' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {lang === 'ar' ? 'الفنيين' : 'Techs'}
+                </button>
+                <button
+                  onClick={() => setAdminUserRoleFilter('unassigned')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'unassigned' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {lang === 'ar' ? 'غير محدد' : 'Guest'}
+                </button>
+              </div>
+            </div>
+
+            {/* Users List Rendering */}
+            {registeredUsers.filter(u => {
+              const matchesSearch = 
+                u.name?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                u.email?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                (u.phone && u.phone.toLowerCase().includes(adminUserSearch.toLowerCase()));
+              
+              if (!matchesSearch) return false;
+              if (adminUserRoleFilter === 'all') return true;
+              if (adminUserRoleFilter === 'client') return u.role === 'client';
+              if (adminUserRoleFilter === 'technician') return u.role === 'technician';
+              if (adminUserRoleFilter === 'unassigned') return !u.role;
+              return true;
+            }).length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-10 font-semibold">
+                {lang === 'ar' ? 'لا يوجد أي مستخدمين يطابقون خيارات البحث حالياً!' : 'No registered users match your search criteria!'}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {registeredUsers.filter(u => {
+                  const matchesSearch = 
+                    u.name?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                    u.email?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                    (u.phone && u.phone.toLowerCase().includes(adminUserSearch.toLowerCase()));
+                  
+                  if (!matchesSearch) return false;
+                  if (adminUserRoleFilter === 'all') return true;
+                  if (adminUserRoleFilter === 'client') return u.role === 'client';
+                  if (adminUserRoleFilter === 'technician') return u.role === 'technician';
+                  if (adminUserRoleFilter === 'unassigned') return !u.role;
+                  return true;
+                }).map((u) => {
+                  return (
+                    <div key={u.id} className="p-5 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-4 text-right relative animate-fade-in">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2 border-b border-gray-900/40 pb-2">
+                          <div className="text-right">
+                            <h4 className="text-xs font-black text-white">{u.name || (lang === 'ar' ? 'مستخدم بدون اسم' : 'Unnamed User')}</h4>
+                            <span className="text-[9px] font-mono text-gray-500 block truncate max-w-[180px]">{u.email}</span>
+                          </div>
+
+                          {/* Role Badge */}
+                          {u.role === 'technician' ? (
+                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-black px-2 py-0.5 rounded-full select-none shrink-0">
+                              🛠️ {lang === 'ar' ? 'فني إنقاذ' : 'Rescue Tech'}
+                            </span>
+                          ) : u.role === 'client' ? (
+                            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-black px-2 py-0.5 rounded-full select-none shrink-0">
+                              👤 {lang === 'ar' ? 'عميل مقطوع' : 'Stranded Client'}
+                            </span>
+                          ) : (
+                            <span className="bg-slate-500/10 text-slate-400 border border-slate-500/20 text-[9px] font-black px-2 py-0.5 rounded-full select-none shrink-0">
+                              🧭 {lang === 'ar' ? 'زائر غير محدد' : 'Guest/New'}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-[10px] space-y-1 text-gray-400 font-semibold">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">{lang === 'ar' ? 'الجوال:' : 'Phone:'}</span>
+                            <span className="text-white font-bold">{u.phone || (lang === 'ar' ? 'غير متوفر' : 'N/A')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">{lang === 'ar' ? 'تاريخ التسجيل:' : 'Registered On:'}</span>
+                            <span className="text-white font-mono">
+                              {u.createdAt ? (
+                                typeof u.createdAt === 'string' ? u.createdAt.split('T')[0] : 
+                                u.createdAt.seconds ? new Date(u.createdAt.seconds * 1000).toLocaleDateString() : 
+                                lang === 'ar' ? 'تاريخ صحيح' : 'Valid date'
+                              ) : (
+                                lang === 'ar' ? 'غير محدد' : 'Not Pinned'
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Direct actions */}
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-900/40">
+                        {u.phone ? (
+                          <a 
+                            href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            referrerPolicy="no-referrer"
+                            className="py-1.5 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 hover:text-emerald-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            💬 {lang === 'ar' ? 'واتساب' : 'WhatsApp'}
+                          </a>
+                        ) : (
+                          <button
+                            disabled
+                            className="py-1.5 bg-gray-900 text-gray-600 rounded-lg text-[10px] font-black text-center cursor-not-allowed opacity-50"
+                          >
+                            💬 {lang === 'ar' ? 'لا يوجد هاتف' : 'No Phone'}
+                          </button>
+                        )}
+                        <button 
+                          onClick={async () => {
+                            if (confirm(lang === 'ar' ? `هل أنت متأكد من رغبتك في إزالة حساب المستخدم: ${u.name || u.email} نهائياً؟` : `Are you sure you want to permanently delete user: ${u.name || u.email}?`)) {
+                              try {
+                                await deleteDoc(doc(db, "users", u.id));
+                                triggerToast(lang === 'ar' ? 'تم حذف حساب المستخدم بنجاح!' : 'User account deleted successfully!', 'success');
+                              } catch (err) {
+                                console.error("Error deleting user:", err);
+                                triggerToast(lang === 'ar' ? 'فشل في حذف حساب المستخدم.' : 'Failed to delete user account.', 'error');
+                              }
+                            }
+                          }}
+                          className="py-1.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          🗑️ {lang === 'ar' ? 'حذف الحساب' : 'Delete'}
                         </button>
                       </div>
                     </div>
