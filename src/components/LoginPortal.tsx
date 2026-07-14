@@ -11,7 +11,7 @@ interface LoginPortalProps {
   setEnteredEmail: (email: string) => void;
   showGoogleFallbackModal: boolean;
   setShowGoogleFallbackModal: (show: boolean) => void;
-  handleRealGoogleSignIn: (isFallbackMode?: boolean) => Promise<void>;
+  handleRealGoogleSignIn: (isFallbackMode?: boolean, fallbackEmail?: string, fallbackName?: string) => Promise<void>;
   handleGoogleSignIn: (email: string, name: string) => Promise<void>;
   triggerToast: (text: string, type?: 'success' | 'warning' | 'info' | 'error') => void;
   t: any;
@@ -32,12 +32,15 @@ export default function LoginPortal({
   triggerToast,
   t,
 }: LoginPortalProps) {
-  const [customName, setCustomName] = React.useState('');
-  const [customEmail, setCustomEmail] = React.useState('');
+  const [customName, setCustomName] = React.useState(() => localStorage.getItem('systro_saved_google_name') || '');
+  const [customEmail, setCustomEmail] = React.useState(() => localStorage.getItem('systro_saved_google_email') || '');
   const [showManualForm, setShowManualForm] = React.useState(false);
 
   React.useEffect(() => {
-    if (!showGoogleFallbackModal) {
+    if (showGoogleFallbackModal) {
+      setCustomName(localStorage.getItem('systro_saved_google_name') || '');
+      setCustomEmail(localStorage.getItem('systro_saved_google_email') || '');
+    } else {
       setCustomName('');
       setCustomEmail('');
       setShowManualForm(false);
@@ -293,7 +296,19 @@ export default function LoginPortal({
                 <button
                   type="button"
                   onClick={async () => {
-                    await handleRealGoogleSignIn(true);
+                    const savedEmail = localStorage.getItem('systro_saved_google_email');
+                    const savedName = localStorage.getItem('systro_saved_google_name');
+                    if (savedEmail) {
+                      await handleRealGoogleSignIn(true, savedEmail, savedName || undefined);
+                    } else {
+                      triggerToast(
+                        lang === 'ar'
+                          ? 'لم يتم العثور على حساب Google محفوظ. الرجاء كتابة بريدك واسمك بالأسفل ليتم حفظه واستيراده مستقبلاً! ✨'
+                          : 'No saved Google account found. Please type your email & name below to save and import it in the future! ✨',
+                        'info'
+                      );
+                      setShowManualForm(true);
+                    }
                   }}
                   className="w-full py-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-sky-600/20 hover:shadow-lg cursor-pointer"
                 >
@@ -353,6 +368,11 @@ export default function LoginPortal({
                     );
                     return;
                   }
+                  
+                  // Save user-specific details to localStorage so they can auto-import next time!
+                  localStorage.setItem('systro_saved_google_email', trimmedEmail);
+                  localStorage.setItem('systro_saved_google_name', trimmedName);
+
                   setShowGoogleFallbackModal(false);
                   await handleGoogleSignIn(trimmedEmail, trimmedName);
                   triggerToast(

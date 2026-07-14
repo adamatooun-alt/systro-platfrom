@@ -1938,19 +1938,30 @@ export default function App() {
   };
 
   // Real Google Sign-In via Firebase Auth, with gorgeous iframe fallback
-  const handleRealGoogleSignIn = async (isFallbackMode: boolean = false) => {
+  const handleRealGoogleSignIn = async (isFallbackMode: boolean = false, fallbackEmail?: string, fallbackName?: string) => {
     if (isFallbackMode || showGoogleFallbackModal) {
-      // Bypasses popup blocks inside iframes - auto imports the verified user
-      const email = "adam.atooun@gmail.com";
-      const name = lang === 'ar' ? "آدم عطون" : "Adam Atoun";
-      await handleGoogleSignIn(email, name);
-      setShowGoogleFallbackModal(false);
-      triggerToast(
-        lang === 'ar' 
-          ? 'تم استيراد حساب Google الخاص بك (adam.atooun@gmail.com) وتسجيل الدخول تلقائياً بنجاح! 🔐' 
-          : 'Google account (adam.atooun@gmail.com) imported and logged in automatically! 🔐', 
-        'success'
-      );
+      // Bypasses popup blocks inside iframes - auto imports the verified user dynamically
+      const email = fallbackEmail || localStorage.getItem('systro_saved_google_email');
+      const name = fallbackName || localStorage.getItem('systro_saved_google_name');
+      
+      if (email) {
+        const displayName = name || (lang === 'ar' ? "مستخدم جوجل" : "Google User");
+        await handleGoogleSignIn(email, displayName);
+        setShowGoogleFallbackModal(false);
+        triggerToast(
+          lang === 'ar' 
+            ? `تم استيراد حساب Google الخاص بك (${email}) وتسجيل الدخول تلقائياً بنجاح! 🔐` 
+            : `Google account (${email}) imported and logged in automatically! 🔐`, 
+          'success'
+        );
+      } else {
+        triggerToast(
+          lang === 'ar' 
+            ? 'يرجى إدخال حسابك أولاً ليتمكن النظام من استيراده تلقائياً!' 
+            : 'Please enter your account details first for the system to auto-import!', 
+          'warning'
+        );
+      }
       return;
     }
 
