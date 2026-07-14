@@ -11,7 +11,7 @@ interface LoginPortalProps {
   setEnteredEmail: (email: string) => void;
   showGoogleFallbackModal: boolean;
   setShowGoogleFallbackModal: (show: boolean) => void;
-  handleRealGoogleSignIn: () => Promise<void>;
+  handleRealGoogleSignIn: (isFallbackMode?: boolean) => Promise<void>;
   handleGoogleSignIn: (email: string, name: string) => Promise<void>;
   triggerToast: (text: string, type?: 'success' | 'warning' | 'info' | 'error') => void;
   t: any;
@@ -223,7 +223,7 @@ export default function LoginPortal({
 
             {/* Main Google Button */}
             <button
-              onClick={handleRealGoogleSignIn}
+              onClick={() => handleRealGoogleSignIn()}
               className="w-full py-4.5 bg-white hover:bg-slate-50 text-slate-800 font-extrabold rounded-2xl text-sm sm:text-[15px] transition-all flex items-center justify-center gap-3 shadow-xl border border-slate-100 hover:shadow-2xl cursor-pointer"
             >
               <svg className="w-5.5 h-5.5 shrink-0" viewBox="0 0 24 24">
@@ -293,7 +293,7 @@ export default function LoginPortal({
                 <button
                   type="button"
                   onClick={async () => {
-                    await handleRealGoogleSignIn();
+                    await handleRealGoogleSignIn(true);
                   }}
                   className="w-full py-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-sky-600/20 hover:shadow-lg cursor-pointer"
                 >
