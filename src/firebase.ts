@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -12,8 +12,11 @@ const app = initializeApp({
   appId: firebaseConfig.appId
 });
 
-// Since the platform created a specific firestore database ID, we pass it as the second argument
-const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(default)');
+// Use initializeFirestore with experimentalForceLongPolling: true to resolve connectivity issues in sandboxed environments and iframe proxies
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+}, firebaseConfig.firestoreDatabaseId || '(default)');
+
 const auth = getAuth(app);
 
 export { db, auth };

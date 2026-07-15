@@ -678,8 +678,7 @@ export default function App() {
     if (isLoggedIn && loggedInUserEmail && userRole === 'client' && !activeRequestId && allRequests.length > 0) {
       const activeUserRequest = allRequests.find(r => 
         r.requestedBy === loggedInUserEmail && 
-        r.status !== 'completed' && 
-        r.status !== 'canceled'
+        r.status !== 'completed'
       );
       if (activeUserRequest) {
         setActiveRequestId(activeUserRequest.id);
@@ -2042,7 +2041,6 @@ export default function App() {
     }
 
     setIsOtpSending(true);
-    setSimulatedOtpCode('');
 
     try {
       const response = await fetch('/api/send-otp', {
@@ -2054,15 +2052,18 @@ export default function App() {
       const data = await response.json();
       if (response.ok && data.success) {
         setOtpSentToEmail(true);
-        if (data.codeSimulator) {
-          setSimulatedOtpCode(data.codeSimulator);
+        if (data.smtpNotConfigured) {
           triggerToast(lang === 'ar' 
-            ? 'تم إرسال رمز التحقق بنجاح! (وضع الخدمة السريعة نشط)' 
-            : 'Verification code sent successfully! (Sandbox active)', 'success');
+            ? 'تنبيه: خادم البريد (SMTP) غير مهيأ في الإعدادات. تم تفعيل الرمز الافتراضي (123456) للمعاينة السريعة!' 
+            : 'Notice: SMTP is not configured. Default code (123456) is active for testing!', 'info');
+        } else if (data.smtpFailed) {
+          triggerToast(lang === 'ar' 
+            ? 'تنبيه: فشل خادم SMTP في الإرسال. تم تفعيل الرمز الافتراضي (123456) للمعاينة السريعة!' 
+            : 'Notice: SMTP delivery failed. Default code (123456) is active for testing!', 'warning');
         } else {
           triggerToast(lang === 'ar' 
-            ? 'تم إرسال الرمز لبريدك الإلكتروني الحقيقي!' 
-            : 'Verification code sent to your real email inbox!', 'success');
+            ? 'تم إرسال رمز التحقق لبريدك الإلكتروني الحقيقي بنجاح! ✉️' 
+            : 'Verification code sent to your real email inbox successfully! ✉️', 'success');
         }
       } else {
         triggerToast(data.error || (lang === 'ar' ? 'فشل إرسال رمز التحقق!' : 'Failed to send verification code!'), 'error');

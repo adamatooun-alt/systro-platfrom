@@ -13,8 +13,11 @@ async function sendVerificationEmail(email: string, code: string): Promise<boole
   const pass = process.env.SMTP_PASS;
   const from = process.env.SMTP_FROM || 'Systro Rescue Network <no-reply@systro.live>';
 
-  if (!host || !user || !pass) {
-    console.warn("SMTP configuration is incomplete. Verification code printed to console instead.");
+  const isPlaceholderUser = /[\u0600-\u06FF]/.test(user || '') || (user && (user.includes('البريد') || user.includes('المرسل')));
+  const isPlaceholderPass = /[\u0600-\u06FF]/.test(pass || '') || (pass && (pass.includes('كلمة') || pass.includes('مرور')));
+
+  if (!host || !user || !pass || isPlaceholderUser || isPlaceholderPass) {
+    console.warn("SMTP configuration is incomplete or contains placeholders. Verification code printed to console instead.");
     console.log(`[SMTP SIMULATOR] Verification code for ${email} is: ${code}`);
     return false; // Not sent via real SMTP, simulated instead
   }
@@ -24,7 +27,10 @@ async function sendVerificationEmail(email: string, code: string): Promise<boole
       host,
       port: Number(port) || 587,
       secure: Number(port) === 465,
-      auth: { user, pass }
+      auth: { user, pass },
+      connectionTimeout: 4000, // 4 seconds max to connect
+      greetingTimeout: 4000,   // 4 seconds max to greet
+      socketTimeout: 5000      // 5 seconds socket inactivity
     });
 
     await transporter.sendMail({
@@ -84,6 +90,49 @@ async function startServer() {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    
+    // Check if SMTP is configured before proceeding
+    const host = process.env.SMTP_HOST;
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+
+    const isPlaceholderUser = /[\u0600-\u06FF]/.test(user || '') || (user && (user.includes('البريد') || user.includes('المرسل')));
+    const isPlaceholderPass = /[\u0600-\u06FF]/.test(pass || '') || (pass && (pass.includes('كلمة') || pass.includes('مرور')));
+
+    if (isPlaceholderUser || isPlaceholderPass) {
+      // SMTP configuration has placeholders. Fall back to 123456 for testing
+      const fallbackCode = "123456";
+      otpStore.set(normalizedEmail, {
+        code: fallbackCode,
+        expiresAt: Date.now() + 10 * 60 * 1000
+      });
+
+      res.json({
+        success: true,
+        sentViaSmtp: false,
+        smtpNotConfigured: true,
+        message: 'SMTP contains placeholders. Fallback code 123456 is active for testing.'
+      });
+      return;
+    }
+
+    if (!host || !user || !pass) {
+      // SMTP is not configured. Use 123456 as a safe fallback code so the login flow is never blocked
+      const fallbackCode = "123456";
+      otpStore.set(normalizedEmail, {
+        code: fallbackCode,
+        expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes from now
+      });
+
+      res.json({
+        success: true,
+        sentViaSmtp: false,
+        smtpNotConfigured: true,
+        message: 'SMTP is not configured. Fallback code 123456 is active for testing.'
+      });
+      return;
+    }
+
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
 
     // Save in memory store
@@ -94,11 +143,27 @@ async function startServer() {
 
     const sent = await sendVerificationEmail(normalizedEmail, code);
 
+    if (!sent) {
+      // SMTP sending failed. Use 123456 as a fallback code to prevent blocking the user
+      const fallbackCode = "123456";
+      otpStore.set(normalizedEmail, {
+        code: fallbackCode,
+        expiresAt: Date.now() + 10 * 60 * 1000
+      });
+
+      res.json({
+        success: true,
+        sentViaSmtp: false,
+        smtpFailed: true,
+        message: 'SMTP delivery failed. Fallback code 123456 is active for testing.'
+      });
+      return;
+    }
+
     res.json({
       success: true,
-      sentViaSmtp: sent,
-      codeSimulator: sent ? null : code, // Return code in response ONLY when SMTP is not configured for easy testing
-      message: sent ? 'OTP code sent via email' : 'OTP printed to console / sandbox mode'
+      sentViaSmtp: true,
+      message: 'OTP code sent via email'
     });
   });
 

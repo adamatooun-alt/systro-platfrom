@@ -107,19 +107,25 @@ export default function LoginPortal({
       const data = await response.json();
       if (response.ok && data.success) {
         setFallbackOtpSent(true);
-        if (data.codeSimulator) {
-          setSimulatedCode(data.codeSimulator);
+        if (data.smtpNotConfigured) {
           triggerToast(
             lang === 'ar' 
-              ? `تم إرسال الرمز التجريبي: ${data.codeSimulator}` 
-              : `Simulated OTP sent: ${data.codeSimulator}`, 
+              ? 'تنبيه: خادم البريد (SMTP) غير مهيأ في الإعدادات. تم تفعيل الرمز الافتراضي (123456) للمعاينة السريعة!' 
+              : 'Notice: SMTP is not configured. Default code (123456) is active for testing!', 
             'info'
+          );
+        } else if (data.smtpFailed) {
+          triggerToast(
+            lang === 'ar' 
+              ? 'تنبيه: فشل خادم SMTP في الإرسال. تم تفعيل الرمز الافتراضي (123456) للمعاينة السريعة!' 
+              : 'Notice: SMTP delivery failed. Default code (123456) is active for testing!', 
+            'warning'
           );
         } else {
           triggerToast(
             lang === 'ar' 
-              ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني بنجاح! ✉️' 
-              : 'Verification code sent to your email successfully! ✉️', 
+              ? 'تم إرسال رمز التحقق لبريدك الإلكتروني الحقيقي بنجاح! ✉️' 
+              : 'Verification code sent to your real email inbox successfully! ✉️', 
             'success'
           );
         }
@@ -484,18 +490,7 @@ export default function LoginPortal({
                   </p>
                 </div>
 
-                {/* Sandbox helper inside the card if simulated Code is present */}
-                {simulatedCode && (
-                  <div className="bg-[#1C1105] border border-amber-500/20 p-3.5 rounded-2xl text-center space-y-1.5 animate-pulse">
-                    <span className="text-[10px] text-amber-500 font-black tracking-wider uppercase block">
-                      {lang === 'ar' ? 'وضع المحاكاة النشط (AI Studio Sandbox)' : 'Sandbox Mode Active (AI Studio Sandbox)'}
-                    </span>
-                    <p className="text-xs text-amber-200/80 font-bold">
-                      {lang === 'ar' ? 'استخدم رمز التحقق السريع التالي للتجربة:' : 'Use this quick OTP to log in for testing:'}
-                    </p>
-                    <span className="font-mono font-black text-xl text-amber-500 tracking-widest block bg-[#0B1513] py-1 px-4 rounded-xl border border-amber-500/10 max-w-[120px] mx-auto">{simulatedCode}</span>
-                  </div>
-                )}
+
 
                 {/* OTP Code input */}
                 <div className="space-y-1.5 text-center">
@@ -683,18 +678,7 @@ export default function LoginPortal({
                     </p>
                   </div>
 
-                  {/* Simulated code display for developers/sandbox ONLY when returned by the API */}
-                  {simulatedCode && (
-                    <div className="bg-amber-50 border border-amber-200/50 p-3 rounded-xl text-center space-y-1 animate-pulse">
-                      <span className="text-[10px] text-amber-600 font-black tracking-wider uppercase block">
-                        {lang === 'ar' ? 'وضع المحاكاة (Google AI Studio)' : 'Sandbox Mode (Google AI Studio)'}
-                      </span>
-                      <p className="text-xs text-slate-700 font-extrabold">
-                        {lang === 'ar' ? 'استخدم رمز التحقق التالي للتجربة:' : 'Use this code to verify in sandbox:'}
-                      </p>
-                      <span className="font-mono font-black text-lg text-amber-700 tracking-widest">{simulatedCode}</span>
-                    </div>
-                  )}
+
 
                   {/* Verification Code Input */}
                   <div className="space-y-1.5">
