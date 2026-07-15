@@ -58,7 +58,8 @@ import {
   Mail,
   MessageCircle,
   Volume2,
-  Ban
+  Ban,
+  User
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -252,6 +253,11 @@ export default function App() {
   const [loggedInUserName, setLoggedInUserName] = useState(() => {
     return localStorage.getItem('systro_user_name') || '';
   });
+
+  // User Profile Modal & Permanent Account State
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileNameInput, setProfileNameInput] = useState('');
+  const [profilePhoneInput, setProfilePhoneInput] = useState('');
 
   // Dynamic Collections state synced in real-time from Firestore
   const [dbServices, setDbServices] = useState<any[]>([]);
@@ -666,6 +672,43 @@ export default function App() {
     });
     return () => unsub();
   }, []);
+
+  // Automatically restore active request for logged in client if there is one in progress
+  useEffect(() => {
+    if (isLoggedIn && loggedInUserEmail && userRole === 'client' && !activeRequestId && allRequests.length > 0) {
+      const activeUserRequest = allRequests.find(r => 
+        r.requestedBy === loggedInUserEmail && 
+        r.status !== 'completed' && 
+        r.status !== 'canceled'
+      );
+      if (activeUserRequest) {
+        setActiveRequestId(activeUserRequest.id);
+      }
+    }
+  }, [isLoggedIn, loggedInUserEmail, userRole, activeRequestId, allRequests]);
+
+  // Automatically restore active request for logged in technician if there is one in progress
+  useEffect(() => {
+    if (isLoggedIn && loggedInUserEmail && userRole === 'technician' && !activeRequestId && allRequests.length > 0) {
+      const activeTechRequest = allRequests.find(r => 
+        r.selectedTechnicianId === loggedInUserEmail && 
+        (r.status === 'awaiting_deposit' || r.status === 'en_route' || r.status === 'arrived' || r.status === 'in_progress')
+      );
+      if (activeTechRequest) {
+        setActiveRequestId(activeTechRequest.id);
+        // Also fetch the bid details for this request and technician
+        getDocs(query(collection(db, "bids"), where("requestId", "==", activeTechRequest.id)))
+          .then(snap => {
+            const bidsList: any[] = [];
+            snap.forEach(d => bidsList.push(d.data()));
+            const matchingBid = bidsList.find(b => b.technicianId === loggedInUserEmail);
+            if (matchingBid) setSelectedBid(matchingBid);
+          }).catch(err => {
+            console.error("Error restoring technician active bid:", err);
+          });
+      }
+    }
+  }, [isLoggedIn, loggedInUserEmail, userRole, activeRequestId, allRequests]);
 
   // Real-time dispatch notification alert when a new client request is created
   useEffect(() => {
@@ -1159,8 +1202,9 @@ export default function App() {
       // Initialize/Update the request document in the live collection
       await setDoc(doc(db, "requests", reqId), {
         id: reqId,
-        clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : 'Adam Atooun',
+        clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : (loggedInUserName || 'Adam Atooun'),
         clientPhone: phoneNumber || "+972 59-123-4567",
+        requestedBy: loggedInUserEmail || '',
         locationLat: pinnedLocation.lat,
         locationLng: pinnedLocation.lng,
         locationName: "Al-Quds St",
@@ -1194,7 +1238,7 @@ export default function App() {
           body: JSON.stringify({
             requestDetails: {
               id: reqId,
-              clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : 'Adam Atooun',
+              clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : (loggedInUserName || 'Adam Atooun'),
               clientPhone: phoneNumber || "+972 59-123-4567",
               serviceType: selectedService,
               locationLat: pinnedLocation.lat,
@@ -2105,6 +2149,10 @@ export default function App() {
       const snapshot = await getDoc(userDocRef);
       if (snapshot.exists()) {
         const data = snapshot.data();
+        if (data.name) {
+          setLoggedInUserName(data.name);
+          localStorage.setItem('systro_user_name', data.name);
+        }
         if (data.role) {
           setUserRole(data.role);
           localStorage.setItem('systro_user_role', data.role);
@@ -2115,6 +2163,9 @@ export default function App() {
         if (data.phone) {
           setPhoneNumber(data.phone);
           localStorage.setItem('systro_phone_number', data.phone);
+        } else {
+          setPhoneNumber('');
+          localStorage.removeItem('systro_phone_number');
         }
       } else {
         // Create initial user document
@@ -2127,6 +2178,8 @@ export default function App() {
         }, { merge: true });
         setUserRole(null);
         localStorage.removeItem('systro_user_role');
+        setPhoneNumber('');
+        localStorage.removeItem('systro_phone_number');
       }
     } catch (err) {
       console.error("Error persisting/fetching user from Firestore:", err);
@@ -2140,11 +2193,53 @@ export default function App() {
     setUserRole(null);
     setLoggedInUserEmail('');
     setLoggedInUserName('');
+    setPhoneNumber('');
     localStorage.removeItem('systro_is_logged_in');
     localStorage.removeItem('systro_user_email');
     localStorage.removeItem('systro_user_name');
     localStorage.removeItem('systro_user_role');
+    localStorage.removeItem('systro_phone_number');
     triggerToast(lang === 'ar' ? 'تم تسجيل الخروج بنجاح!' : 'Logged out successfully!', 'info');
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profileNameInput.trim()) {
+      triggerToast(lang === 'ar' ? 'الرجاء إدخال اسم صحيح!' : 'Please enter a valid name!', 'warning');
+      return;
+    }
+
+    try {
+      // 1. Update local states
+      setLoggedInUserName(profileNameInput.trim());
+      setPhoneNumber(profilePhoneInput.trim());
+
+      // 2. Update localStorage
+      localStorage.setItem('systro_user_name', profileNameInput.trim());
+      localStorage.setItem('systro_phone_number', profilePhoneInput.trim());
+
+      // 3. Update Firestore users collection
+      const userDocRef = doc(db, "users", loggedInUserEmail);
+      await setDoc(userDocRef, {
+        name: profileNameInput.trim(),
+        phone: profilePhoneInput.trim()
+      }, { merge: true });
+
+      // 4. Update Firestore technicians collection if they are a registered technician
+      const techDocRef = doc(db, "technicians", loggedInUserEmail);
+      const techSnap = await getDoc(techDocRef);
+      if (techSnap.exists()) {
+        await updateDoc(techDocRef, {
+          name: profileNameInput.trim(),
+          phone: profilePhoneInput.trim()
+        });
+      }
+
+      setShowProfileModal(false);
+      triggerToast(lang === 'ar' ? 'تم تحديث الملف الشخصي بنجاح!' : 'Profile updated successfully!', 'success');
+    } catch (err) {
+      console.error("Error saving user profile:", err);
+      triggerToast(lang === 'ar' ? 'حدث خطأ أثناء حفظ التعديلات!' : 'Error saving profile changes!', 'error');
+    }
   };
 
   if (!isLoggedIn) {
@@ -2433,6 +2528,19 @@ export default function App() {
                 </button>
 
                 <button
+                  onClick={() => {
+                    setProfileNameInput(loggedInUserName);
+                    setProfilePhoneInput(phoneNumber);
+                    setShowProfileModal(true);
+                  }}
+                  className="px-3.5 h-11 bg-[#0F1424] hover:bg-[#161C33] border border-gray-800 rounded-xl text-xs font-bold text-gray-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                  title={lang === 'ar' ? 'الملف الشخصي' : 'User Profile'}
+                >
+                  <User className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                  <span>{lang === 'ar' ? 'حسابي' : 'Profile'}</span>
+                </button>
+
+                <button
                   onClick={handleLogout}
                   className="px-3.5 h-11 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-xl text-xs font-bold text-red-400 transition-all flex items-center gap-1.5 cursor-pointer"
                   title={lang === 'ar' ? 'تسجيل الخروج' : 'Logout'}
@@ -2441,6 +2549,21 @@ export default function App() {
                   <span>{lang === 'ar' ? 'خروج' : 'Logout'}</span>
                 </button>
               </div>
+            )}
+
+            {/* Mobile Profile Button */}
+            {isLoggedIn && (
+              <button
+                onClick={() => {
+                  setProfileNameInput(loggedInUserName);
+                  setProfilePhoneInput(phoneNumber);
+                  setShowProfileModal(true);
+                }}
+                className="lg:hidden p-2 bg-[#0F1424] hover:bg-[#161C33] border border-gray-800 rounded-xl text-gray-200 transition-all cursor-pointer flex items-center justify-center shrink-0"
+                title={lang === 'ar' ? 'الملف الشخصي' : 'User Profile'}
+              >
+                <User className="w-4 h-4 text-amber-500" />
+              </button>
             )}
 
             {/* Mobile Logout Button */}
@@ -4760,6 +4883,92 @@ export default function App() {
       )}
 
 
+
+      {/* Edit Profile Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-fade-in">
+          <div className="w-full max-w-md bg-[#0F1424] border border-gray-800 p-6 rounded-3xl space-y-6 relative text-right rtl:text-right ltr:text-left">
+            <button 
+              onClick={() => setShowProfileModal(false)}
+              className="absolute top-4 left-4 text-gray-400 hover:text-white text-sm font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+            <div className="space-y-2 text-center font-sans">
+              <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-2">
+                <User className="w-6 h-6 text-amber-500 animate-pulse" />
+              </div>
+              <h3 className="text-base font-black text-white">
+                {lang === 'ar' ? 'تعديل الملف الشخصي' : lang === 'he' ? 'עריכת פרופיל משתמש' : 'Edit User Profile'}
+              </h3>
+              <p className="text-[11px] text-gray-400 font-bold">
+                {lang === 'ar' ? 'حافظ على بيانات حسابك محدثة ومزامنة دائمًا' : 'Keep your profile details synchronized and updated'}
+              </p>
+            </div>
+
+            <div className="space-y-4 font-sans">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase">
+                  {lang === 'ar' ? 'البريد الإلكتروني (غير قابل للتعديل):' : 'Email Address (Read-only):'}
+                </label>
+                <input 
+                  type="text" 
+                  value={loggedInUserEmail}
+                  disabled
+                  className="w-full px-4 py-2.5 bg-[#0A0B10]/60 border border-gray-900 text-gray-500 font-bold text-xs select-none cursor-not-allowed"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase">
+                  {lang === 'ar' ? 'الاسم بالكامل:' : 'Full Name:'}
+                </label>
+                <input 
+                  type="text" 
+                  value={profileNameInput}
+                  onChange={(e) => setProfileNameInput(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl text-right rtl:text-right"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase">
+                  {lang === 'ar' ? 'رقم الهاتف / الجوال:' : 'Phone Number:'}
+                </label>
+                <input 
+                  type="text" 
+                  value={profilePhoneInput}
+                  onChange={(e) => setProfilePhoneInput(e.target.value)}
+                  placeholder={lang === 'ar' ? 'مثال: 0599000000' : 'e.g. +972599000000'}
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl text-right rtl:text-right"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase">
+                  {lang === 'ar' ? 'نوع الحساب الحالي:' : 'Current Account Role:'}
+                </label>
+                <div className="px-4 py-2.5 bg-[#0A0B10] border border-gray-900 text-amber-500 font-extrabold text-xs rounded-xl flex items-center justify-between">
+                  <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded font-black uppercase">
+                    {userRole === 'technician' ? (lang === 'ar' ? 'فني إصلاح 🛠️' : 'Provider') : (lang === 'ar' ? 'زبون 🚗' : 'Client')}
+                  </span>
+                  <span className="text-gray-400 font-bold text-[10px]">
+                    {lang === 'ar' ? 'لتغيير نوع الحساب، استخدم زر التحويل في شريط القائمة العلوي' : 'To switch, use the role toggle button in the top menu'}
+                  </span>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleSaveProfile}
+                className="w-full py-3 bg-amber-500 hover:bg-amber-400 active:scale-[0.99] text-black font-extrabold text-xs rounded-xl transition-all cursor-pointer shadow-lg shadow-amber-500/10 flex items-center justify-center gap-1.5 mt-2"
+              >
+                <span>💾</span>
+                <span>{lang === 'ar' ? 'حفظ البيانات والمزامنة' : 'Save Details & Synchronize'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Record Modal */}
       {showAddRecordModal && (

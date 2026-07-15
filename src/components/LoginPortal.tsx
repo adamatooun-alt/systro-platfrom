@@ -344,69 +344,206 @@ export default function LoginPortal({
             <div className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-[#2563EB] rotate-45"></div>
           </div>
 
-          <div className="pt-2 space-y-5">
-            <div className="text-center space-y-2.5">
-              <h4 className="text-lg sm:text-xl font-black text-[#FDF6E2]">
-                {lang === 'ar' ? 'تسجيل دخول موحد عبر Google' : 'Google Single Sign-On'}
-              </h4>
-              <p className="text-xs sm:text-sm text-emerald-300 font-extrabold leading-relaxed">
-                {lang === 'ar' 
-                  ? 'اضغط للمتابعة الفورية والتوصيل الآمن لحسابك بنظام سيسترو المعزز' 
-                  : 'Click to authenticate instantly and sync with secure Systro portal'}
-              </p>
-            </div>
+          <div className="pt-2">
+            {!fallbackOtpSent ? (
+              <div className="space-y-4">
+                <div className="text-center space-y-2">
+                  <h4 className="text-lg sm:text-xl font-black text-[#FDF6E2]">
+                    {lang === 'ar' ? 'تسجيل دخول موحد وآمن' : 'Secure Instant Access'}
+                  </h4>
+                  <p className="text-xs text-emerald-300 font-extrabold leading-relaxed">
+                    {lang === 'ar' 
+                      ? 'أدخل بريدك الإلكتروني (Gmail) لاستلام رمز الدخول المؤقت' 
+                      : 'Enter your Gmail to receive a secure, passwordless OTP'}
+                  </p>
+                </div>
 
-            {/* Terms and Conditions Checkbox for Main Login */}
-            <div className="flex items-start gap-3 text-right bg-emerald-950/20 p-3.5 rounded-2xl border border-emerald-950/40">
-              <input
-                type="checkbox"
-                id="main-terms-checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="mt-1 w-4.5 h-4.5 text-emerald-500 border-emerald-950 bg-emerald-950/50 rounded focus:ring-emerald-500 cursor-pointer accent-emerald-500"
-              />
-              <label htmlFor="main-terms-checkbox" className="text-[11px] sm:text-xs text-emerald-100/80 font-bold select-none cursor-pointer leading-relaxed">
-                {lang === 'ar' ? (
-                  <>
-                    أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">شروط الخدمة وسياسة الخصوصية</button> الخاصة بمنصة Systro لإنقاذ وسحب السيارات.
-                  </>
-                ) : (
-                  <>
-                    I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">Terms of Service & Privacy Policy</button> of Systro Rescue Network.
-                  </>
+                {/* Email Input */}
+                <div className="space-y-1 text-right">
+                  <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
+                    {lang === 'ar' ? 'البريد الإلكتروني لجوجل (Verified Gmail):' : 'Google Gmail Address:'}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={customEmail}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    placeholder="e.g. adam@gmail.com"
+                    className="w-full px-4 py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-amber-500 text-left"
+                  />
+                </div>
+
+                {/* Name input */}
+                {customEmail && customName && (
+                  <div className="space-y-1 text-right animate-fade-in">
+                    <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
+                      {lang === 'ar' ? 'الاسم بالكامل (سيتم عرضه في الملف الشخصي):' : 'Full Name (Will display on your profile):'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder={lang === 'ar' ? 'أدخل اسمك الكريم' : 'Enter your name'}
+                      className="w-full px-4 py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-bold text-xs focus:outline-none focus:border-amber-500 text-right"
+                    />
+                  </div>
                 )}
-              </label>
-            </div>
 
-            {/* Main Google Button */}
-            <button
-              onClick={() => {
-                if (!acceptedTerms) {
-                  triggerToast(
-                    lang === 'ar' 
-                      ? 'يرجى قراءة والموافقة على شروط الخدمة وسياسة الخصوصية للمتابعة! 📜' 
-                      : 'Please read and agree to the Terms of Service & Privacy Policy to proceed! 📜', 
-                    'warning'
-                  );
-                  return;
-                }
-                handleRealGoogleSignIn();
-              }}
-              className="w-full py-4.5 bg-white hover:bg-slate-50 text-slate-800 font-extrabold rounded-2xl text-sm sm:text-[15px] transition-all flex items-center justify-center gap-3 shadow-xl border border-slate-100 hover:shadow-2xl cursor-pointer"
-            >
-              <svg className="w-5.5 h-5.5 shrink-0" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-              <span className="font-sans font-black tracking-wide text-slate-800">
-                {lang === 'ar' ? 'المتابعة باستخدام حساب Google' : lang === 'he' ? 'המשך באמצעות חשבון Google' : 'Continue with Google Account'}
-              </span>
-            </button>
+                {/* Terms checkbox */}
+                <div className="flex items-start gap-3 text-right bg-emerald-950/20 p-3.5 rounded-2xl border border-emerald-950/40">
+                  <input
+                    type="checkbox"
+                    id="main-terms-checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-1 w-4.5 h-4.5 text-emerald-500 border-emerald-950 bg-emerald-950/50 rounded focus:ring-emerald-500 cursor-pointer accent-emerald-500"
+                  />
+                  <label htmlFor="main-terms-checkbox" className="text-[11px] sm:text-xs text-emerald-100/80 font-bold select-none cursor-pointer leading-relaxed">
+                    {lang === 'ar' ? (
+                      <>
+                        أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">شروط الخدمة وسياسة الخصوصية</button> الخاصة بمنصة Systro لإنقاذ وسحب السيارات.
+                      </>
+                    ) : (
+                      <>
+                        I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">Terms of Service & Privacy Policy</button> of Systro Rescue Network.
+                      </>
+                    )}
+                  </label>
+                </div>
 
+                {/* Continue/Send Code Button */}
+                <button
+                  onClick={handleSendFallbackOtp}
+                  disabled={fallbackOtpSending}
+                  className="w-full py-4 bg-[#FCAD62] hover:bg-[#fcbc80] active:bg-[#e0924a] text-[#0B1513] font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-xl cursor-pointer disabled:opacity-50"
+                >
+                  {fallbackOtpSending ? (
+                    <span>{lang === 'ar' ? 'جاري إرسال الرمز...' : 'Sending code...'}</span>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-5 h-5 shrink-0" />
+                      <span>{lang === 'ar' ? 'متابعة وإرسال رمز التحقق' : 'Continue & Send Verification Code'}</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Fast popup login for other environments */}
+                <div className="relative flex py-2 items-center">
+                  <div className="flex-grow border-t border-emerald-950/40"></div>
+                  <span className="flex-shrink mx-4 text-emerald-300/40 text-[10px] font-bold uppercase tracking-widest">{lang === 'ar' ? 'أو' : 'OR'}</span>
+                  <div className="flex-grow border-t border-emerald-950/40"></div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (!acceptedTerms) {
+                      triggerToast(
+                        lang === 'ar' 
+                          ? 'يرجى قراءة والموافقة على شروط الخدمة وسياسة الخصوصية للمتابعة! 📜' 
+                          : 'Please read and agree to the Terms of Service & Privacy Policy to proceed! 📜', 
+                        'warning'
+                      );
+                      return;
+                    }
+                    handleRealGoogleSignIn();
+                  }}
+                  className="w-full py-3.5 bg-white/5 hover:bg-white/10 border border-emerald-950 text-white font-extrabold rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 cursor-pointer"
+                >
+                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>{lang === 'ar' ? 'دخول فوري بـ Google Popup' : 'Instant Google Popup Sign-In'}</span>
+                </button>
+              </div>
+            ) : (
+              /* Step 2 (OTP code verification screen inside the card) */
+              <div className="space-y-5 animate-fade-in">
+                <div className="text-center space-y-2">
+                  <h4 className="text-lg sm:text-xl font-black text-[#FDF6E2]">
+                    {lang === 'ar' ? 'تأكيد رمز الدخول' : 'Confirm Access Code'}
+                  </h4>
+                  <p className="text-xs text-emerald-300 font-extrabold leading-relaxed">
+                    {lang === 'ar' 
+                      ? 'أدخل الرمز المكون من 6 أرقام للتحقق والمتابعة' 
+                      : 'Enter the 6-digit code to verify your profile'}
+                  </p>
+                </div>
+
+                <div className="text-center space-y-2 bg-emerald-950/40 border border-emerald-900/50 p-4 rounded-2xl">
+                  <p className="text-xs text-emerald-300 font-extrabold leading-relaxed">
+                    {lang === 'ar' 
+                      ? 'أرسلنا رمز تحقق آمن إلى البريد التالي:' 
+                      : 'Secure verification code has been sent to:'}
+                  </p>
+                  <p className="font-mono text-xs text-white font-bold break-all bg-emerald-950/60 py-1.5 px-3 rounded-lg inline-block border border-emerald-900/30">
+                    {customEmail}
+                  </p>
+                </div>
+
+                {/* Sandbox helper inside the card if simulated Code is present */}
+                {simulatedCode && (
+                  <div className="bg-[#1C1105] border border-amber-500/20 p-3.5 rounded-2xl text-center space-y-1.5 animate-pulse">
+                    <span className="text-[10px] text-amber-500 font-black tracking-wider uppercase block">
+                      {lang === 'ar' ? 'وضع المحاكاة النشط (AI Studio Sandbox)' : 'Sandbox Mode Active (AI Studio Sandbox)'}
+                    </span>
+                    <p className="text-xs text-amber-200/80 font-bold">
+                      {lang === 'ar' ? 'استخدم رمز التحقق السريع التالي للتجربة:' : 'Use this quick OTP to log in for testing:'}
+                    </p>
+                    <span className="font-mono font-black text-xl text-amber-500 tracking-widest block bg-[#0B1513] py-1 px-4 rounded-xl border border-amber-500/10 max-w-[120px] mx-auto">{simulatedCode}</span>
+                  </div>
+                )}
+
+                {/* OTP Code input */}
+                <div className="space-y-1.5 text-center">
+                  <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
+                    {lang === 'ar' ? 'رمز التحقق (6 أرقام)' : 'Verification Code (6-digits)'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={fallbackOtpCode}
+                    onChange={(e) => setFallbackOtpCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    className="w-full px-4 py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-mono text-center text-xl font-bold tracking-widest focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Submit Verification Button */}
+                <button
+                  onClick={handleVerifyFallbackOtp}
+                  disabled={fallbackOtpVerifying}
+                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 active:bg-[#047857] text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-xl cursor-pointer disabled:opacity-50"
+                >
+                  {fallbackOtpVerifying ? (
+                    <span>{lang === 'ar' ? 'جاري التحقق...' : 'Verifying code...'}</span>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-5 h-5 shrink-0" />
+                      <span>{lang === 'ar' ? 'التحقق وتسجيل الدخول' : 'Verify & Sign In'}</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Change Email back button */}
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setFallbackOtpSent(false)}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 hover:underline font-bold transition-all cursor-pointer"
+                  >
+                    {lang === 'ar' ? '← تغيير البريد الإلكتروني' : '← Change email address'}
+                  </button>
+                </div>
+              </div>
+            )}
+            
             {/* Security and Protection Note */}
-            <div className="pt-4 border-t border-emerald-950/40 flex items-center justify-center gap-1.5 text-xs text-emerald-300/80 font-bold select-none uppercase tracking-widest text-center">
+            <div className="pt-4 mt-4 border-t border-emerald-950/40 flex items-center justify-center gap-1.5 text-xs text-emerald-300/80 font-bold select-none uppercase tracking-widest text-center">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>{lang === 'ar' ? 'بوابة مشفرة بالكامل بواسطة Google OAuth 2.0' : 'Fully secure and encrypted by Google OAuth 2.0'}</span>
             </div>
