@@ -159,7 +159,7 @@ export default function App() {
   const hasValidKey = Boolean(mapsKey) && mapsKey !== 'YOUR_API_KEY';
 
   useEffect(() => {
-    fetch('/api/maps-key')
+    fetch(`/api/maps-key?_t=${Date.now()}`)
       .then((res) => res.json())
       .then((data) => {
         if (data && data.key) {
@@ -2751,6 +2751,9 @@ export default function App() {
                           ? 'يرجى إضافة مفتاح GOOGLE_MAPS_PLATFORM_KEY إلى إعدادات المشروع لتفعيل تتبع مركبات الإنقاذ والموقع بدقة.' 
                           : 'Please add GOOGLE_MAPS_PLATFORM_KEY to your project secrets to enable precise location and vehicle tracking.'}
                       </p>
+                      <div className="mt-2 text-[9px] text-gray-500 font-mono bg-gray-900/40 px-2 py-1 rounded border border-gray-800/50 inline-block">
+                        Status: {mapsKey ? `Loaded (${mapsKey.slice(0, 5)}...${mapsKey.slice(-4)})` : 'No key detected'}
+                      </div>
                     </div>
                     
                     <div className="bg-[#121626] border border-gray-800 rounded-xl p-3.5 text-right w-full max-w-xs space-y-2 text-[9px] md:text-[10px]">

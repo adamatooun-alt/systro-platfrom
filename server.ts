@@ -183,6 +183,7 @@ async function startServer() {
 
   // GET endpoint to check current Google Maps Platform API key
   app.get('/api/maps-key', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.json({
       key: process.env.GOOGLE_MAPS_PLATFORM_KEY || ''
     });
