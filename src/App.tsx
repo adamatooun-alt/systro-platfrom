@@ -2490,6 +2490,7 @@ export default function App() {
           handleGoogleSignIn={handleGoogleSignIn}
           triggerToast={triggerToast}
           loggedInUserName={loggedInUserName}
+          loggedInUserEmail={loggedInUserEmail}
         />
       )}
 

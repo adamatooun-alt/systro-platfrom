@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { 
   ShieldCheck, 
@@ -44,6 +44,7 @@ interface HomeTabProps {
   handleGoogleSignIn: (email: string, name: string) => Promise<void>;
   triggerToast: (text: string, type?: 'success' | 'warning' | 'info' | 'error') => void;
   loggedInUserName: string;
+  loggedInUserEmail: string;
 }
 
 export default function HomeTab({
@@ -64,6 +65,7 @@ export default function HomeTab({
   handleGoogleSignIn,
   triggerToast,
   loggedInUserName,
+  loggedInUserEmail,
 }: HomeTabProps) {
   const [reporterName, setReporterName] = useState('');
   const [reporterPhone, setReporterPhone] = useState('');
@@ -146,9 +148,16 @@ export default function HomeTab({
           <div className="pt-6 flex flex-col md:flex-row items-center justify-center gap-5 max-w-2xl mx-auto">
             {/* Action 1: عميل مقطوع */}
             <button 
-              onClick={() => {
-                setIsLoggedIn(true);
+              onClick={async () => {
                 setUserRole('client');
+                localStorage.setItem('systro_user_role', 'client');
+                if (loggedInUserEmail) {
+                  try {
+                    await setDoc(doc(db, "users", loggedInUserEmail), { role: 'client' }, { merge: true });
+                  } catch (err) {
+                    console.error("Failed to save user role on HomeTab click:", err);
+                  }
+                }
                 setActiveTab('simulator');
                 triggerToast(
                   lang === 'ar' 
@@ -168,9 +177,16 @@ export default function HomeTab({
 
             {/* Action 2: مقدم خدمة صناعي */}
             <button 
-              onClick={() => {
-                setIsLoggedIn(true);
+              onClick={async () => {
                 setUserRole('technician');
+                localStorage.setItem('systro_user_role', 'technician');
+                if (loggedInUserEmail) {
+                  try {
+                    await setDoc(doc(db, "users", loggedInUserEmail), { role: 'technician' }, { merge: true });
+                  } catch (err) {
+                    console.error("Failed to save tech role on HomeTab click:", err);
+                  }
+                }
                 setActiveTab('simulator');
                 triggerToast(
                   lang === 'ar' 
@@ -428,144 +444,7 @@ export default function HomeTab({
         </div>
       </section>
 
-      {/* SECURITY PORTAL ACCESS GATE (Dynamic Google Login & Role Choice) */}
-      <section id="login-portal-section" className="py-20 md:py-28 bg-[#050505] px-4 md:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col items-center justify-center">
-          
-          {/* Main Container */}
-          <div className="w-full max-w-lg bg-[#0F1424]/60 border border-gray-800 rounded-3xl p-6 md:p-8 space-y-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl"></div>
 
-            {!isLoggedIn ? (
-              /* Unified Gmail Secure Login */
-              <div className="space-y-6">
-                <div className="space-y-3 text-center">
-                  <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
-                    <ShieldCheck className="w-7 h-7" />
-                  </div>
-                  <h4 className="text-xl font-black text-white">{lang === 'ar' ? 'بوابة التحقق وتسجيل الدخول بحساب Google' : 'Google Secure Sign-In Portal'}</h4>
-                  <p className="text-xs text-gray-400 leading-relaxed font-medium">
-                    {lang === 'ar' 
-                      ? 'بوابة التحقق الموحدة لشبكة سيسترو. يرجى إدخال بريدك الإلكتروني (Gmail) واسمك للمزامنة الفورية مع السيرفر والتحضير للمهام.' 
-                      : 'Unified secure gateway for the Systro rescue network. Please specify your Gmail address and full name to start live map operations.'}
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Name input */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'الاسم بالكامل (Google Display Name):' : 'Full Profile Name (Google Name):'}</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={enteredName}
-                      onChange={(e) => setEnteredName(e.target.value)}
-                      placeholder={lang === 'ar' ? 'مثال: أدهم عطون' : 'e.g. Adam Atoun'} 
-                      className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                    />
-                  </div>
-
-                  {/* Gmail input */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'البريد الإلكتروني لجوجل (Verified Gmail):' : 'Google Gmail Address:'}</label>
-                    <input 
-                      type="email" 
-                      required
-                      value={enteredEmail}
-                      onChange={(e) => setEnteredEmail(e.target.value)}
-                      placeholder="e.g. adam@gmail.com" 
-                      className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-mono text-xs transition-colors"
-                    />
-                  </div>
-
-                  {/* Submit action */}
-                  <button 
-                    onClick={() => {
-                      if (!enteredName.trim() || !enteredEmail.trim()) {
-                        triggerToast(lang === 'ar' ? 'الرجاء إدخال الاسم والبريد الإلكتروني للمتابعة!' : 'Please enter your name and email to proceed!', 'warning');
-                        return;
-                      }
-                      if (!enteredEmail.includes('@')) {
-                        triggerToast(lang === 'ar' ? 'الرجاء إدخال بريد إلكتروني صحيح!' : 'Please enter a valid email address!', 'warning');
-                        return;
-                      }
-                      handleGoogleSignIn(enteredEmail, enteredName);
-                    }}
-                    className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 cursor-pointer"
-                  >
-                    <span>{lang === 'ar' ? 'دخول فوري وآمن بـ Google Account' : 'Secure Fast Google Sign-In'}</span>
-                    <span>→]</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* User is logged in, show Role Selection Screen if userRole is null */
-              <div className="space-y-6">
-                <div className="space-y-2 text-center select-none">
-                  <span className="text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-extrabold px-3 py-1 rounded-full uppercase tracking-wider animate-pulse">
-                    {lang === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Authentication Successful'}
-                  </span>
-                  <h4 className="text-xl font-black text-white mt-3">
-                    {lang === 'ar' ? `مرحباً بك ${loggedInUserName}` : `Welcome ${loggedInUserName}`}
-                  </h4>
-                  <p className="text-xs text-gray-400 leading-relaxed font-medium">
-                    {lang === 'ar' 
-                      ? 'لقد سجلت دخولك بحساب Google بنجاح. اختر خيارك الآن للمتابعة (ويمكنك تبديله بأي لحظة في الهيدر):' 
-                      : 'Google authentication completed. Select your profile role to launch the workspace (you can switch roles anytime at the header):'}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 select-none">
-                  {/* Customer Button Option */}
-                  <button 
-                    onClick={() => {
-                      setUserRole('client');
-                      setActiveTab('simulator');
-                      triggerToast(lang === 'ar' ? 'تم تفعيل وضع الزبون المقطوع!' : 'Stranded Customer role activated!', 'success');
-                    }}
-                    className="p-5 bg-[#0A0B10] hover:bg-[#111827] border border-amber-500/30 hover:border-amber-500/70 rounded-2xl text-right flex items-start gap-4 transition-all cursor-pointer group"
-                  >
-                    <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl group-hover:bg-amber-500/20 transition-colors shrink-0">
-                      <AlertTriangle className="w-6 h-6 animate-pulse" />
-                    </div>
-                    <div className="space-y-1">
-                      <h5 className="text-sm font-black text-white">{lang === 'ar' ? 'زبون (أنا مقطوع على الطريق وبحاجة لإنقاذ طارئ)' : 'Stranded Client (I need emergency road rescue)'}</h5>
-                      <p className="text-xs text-gray-400 font-medium leading-relaxed">
-                        {lang === 'ar' 
-                          ? 'حدد موقعك الجغرافي، اختر نوع العطل، استقبل عروض الأسعار من الفنيين على الخريطة وتحكم بالدفع الآمن عبر خزنة الضمان.' 
-                          : 'Pin your location, request help, receive real-time technician bids, and handle payments safely via Escrow.'}
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Provider Button Option */}
-                  <button 
-                    onClick={() => {
-                      setUserRole('technician');
-                      setActiveTab('simulator');
-                      triggerToast(lang === 'ar' ? 'تم تفعيل وضع مقدم الخدمات الشريك!' : 'Partner Service Provider role activated!', 'success');
-                    }}
-                    className="p-5 bg-[#0A0B10] hover:bg-[#111827] border border-blue-500/30 hover:border-blue-500/70 rounded-2xl text-right flex items-start gap-4 transition-all cursor-pointer group"
-                  >
-                    <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl group-hover:bg-blue-500/20 transition-colors shrink-0">
-                      <Wrench className="w-6 h-6" />
-                    </div>
-                    <div className="space-y-1">
-                      <h5 className="text-sm font-black text-white">{lang === 'ar' ? 'مقدم خدمات (ميكانيكي، كهربائي، صاحب ونش سحب...) ' : 'Service Provider (Mechanic, Electrician, Tow Truck...)'}</h5>
-                      <p className="text-xs text-gray-400 font-medium leading-relaxed">
-                        {lang === 'ar' 
-                          ? 'سجل تخصصك، أضف بيانات ومركبة الصيانة الخاصة بك للخريطة، قدم عروض أسعار للعملاء المقطوعين، واستقبل الدفعات.' 
-                          : 'Register your trades, list work logs on the road network, bid on nearby emergency alerts, and receive earnings.'}
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      </section>
 
       {/* Dynamic Support & Contact Section */}
       <section id="support-contact-section" className="bg-[#0D0F1A] border-t border-gray-900 py-16 px-4 md:px-8 relative overflow-hidden">
