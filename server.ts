@@ -181,6 +181,13 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // GET endpoint to check current Google Maps Platform API key
+  app.get('/api/maps-key', (req, res) => {
+    res.json({
+      key: process.env.GOOGLE_MAPS_PLATFORM_KEY || ''
+    });
+  });
+
   // GET endpoint to check current SMTP configuration status
   app.get('/api/smtp-status', (req, res) => {
     res.json({

@@ -9,7 +9,6 @@ const API_KEY =
   (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
   (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
   '';
-const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { 
   doc, 
@@ -151,6 +150,26 @@ export default function App() {
   });
 
   const t = translations[lang];
+
+  // Dynamic Google Maps API Key State
+  const [mapsKey, setMapsKey] = useState<string>(() => {
+    return API_KEY;
+  });
+
+  const hasValidKey = Boolean(mapsKey) && mapsKey !== 'YOUR_API_KEY';
+
+  useEffect(() => {
+    fetch('/api/maps-key')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.key) {
+          setMapsKey(data.key);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch Google Maps dynamic key:', err);
+      });
+  }, []);
 
   // Set page direction based on language
   useEffect(() => {
@@ -2811,7 +2830,7 @@ export default function App() {
                   </div>
                 ) : (
                   /* Google Maps Component rendering */
-                  <APIProvider apiKey={API_KEY} version="weekly">
+                  <APIProvider apiKey={mapsKey} version="weekly">
                     <Map
                       defaultCenter={pinnedLocation ? mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng) : { lat: 31.7683, lng: 35.2137 }}
                       defaultZoom={pinnedLocation ? 13 : 11}
