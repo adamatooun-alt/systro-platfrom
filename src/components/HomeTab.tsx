@@ -612,7 +612,7 @@ export default function HomeTab({
                   <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
                     <Phone className="w-4 h-4 text-amber-500" />
                   </div>
-                  <span className="text-sm font-black text-white font-mono tracking-wider" dir="ltr">
+                  <span className="text-sm font-black text-slate-900 font-mono tracking-wider" dir="ltr">
                     +972 53-831-6779
                   </span>
                 </div>
@@ -625,7 +625,7 @@ export default function HomeTab({
               <div className="grid grid-cols-2 gap-3">
                 <a 
                   href="tel:+972538316779"
-                  className="py-3 px-4 bg-[#111827] hover:bg-gray-800 border border-gray-800 text-gray-300 hover:text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md text-center"
+                  className="py-3 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center"
                 >
                   <Phone className="w-3.5 h-3.5" />
                   <span>{lang === 'ar' ? 'اتصال مباشر' : 'Direct Call'}</span>

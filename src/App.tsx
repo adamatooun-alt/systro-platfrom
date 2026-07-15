@@ -2472,28 +2472,21 @@ export default function App() {
 
       {/* TWO MAIN USER ROLE CHANNELS (عميل مقطوع vs مقدم خدمة صناعي) */}
       {activeTab === 'home' && (
-        <div id="systro-primary-user-role-channels" className="max-w-7xl mx-auto px-4 md:px-8 pt-6 select-none animate-fade-in">
-          <div className="bg-gradient-to-r from-slate-950 via-[#0C111D] to-slate-950 p-5 rounded-3xl border border-[#1E293B]/90 flex flex-col lg:flex-row items-center justify-between gap-5 shadow-2xl">
-            <div className="flex items-center gap-3.5 text-right w-full lg:w-auto">
-              <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl animate-pulse shrink-0">
-                <Activity className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
-                  <span>{lang === 'ar' ? 'اختر بوابتك المباشرة للتعامل ⚡' : lang === 'he' ? 'בחר את ערוץ השירות המהיר ⚡' : 'Select Your Service Channel ⚡'}</span>
-                </h4>
-                <p className="text-[11px] sm:text-xs text-gray-400 font-bold leading-relaxed mt-1">
-                  {lang === 'ar' 
-                    ? 'اختر "عميل مقطوع" لطلب المساعدة الفورية على الطريق، أو "مقدم خدمة صناعي" للتسجيل وتقديم عروض أسعار للطلبات النشطة.' 
-                    : lang === 'he'
-                    ? 'בחר "לקוח תקוע" להזמנת סיוע מיידי בדרכים, أو "ספק שירות תעשייתי" להגשת הצעות מחיר לעבודות פעילות.' 
-                    : 'Select "Stranded Client" for immediate roadside rescue, or "Industrial Service Provider" to view active emergency requests and submit bids.'}
-                </p>
-              </div>
+        <div id="systro-primary-user-role-channels" className="max-w-7xl mx-auto px-4 md:px-8 pt-4 select-none animate-fade-in">
+          <div className="bg-gradient-to-r from-slate-950 via-[#0B0F19] to-slate-950 p-4 rounded-2xl border border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+            <div className="flex items-center gap-3 text-right">
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></div>
+              <span className="text-xs font-black text-slate-300">
+                {lang === 'ar' 
+                  ? 'بوابة التوجيه السريع والتحكم بالوضع النشط للمنصة:' 
+                  : lang === 'he'
+                  ? 'ערוץ ניתוב מהיר ובקרת מצב פילוח פילוסופיה:'
+                  : 'Quick Routing Gateway & Active Mode Control:'}
+              </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto shrink-0">
-              {/* Button 1: عميل مقطوع */}
+            <div className="bg-slate-900/90 p-1 rounded-xl border border-slate-800/90 flex items-center gap-1.5 w-full sm:w-auto">
+              {/* Option 1: عميل مقطوع */}
               <button
                 id="role-stranded-client-btn"
                 onClick={async () => {
@@ -2512,22 +2505,21 @@ export default function App() {
                       ? 'تم تفعيل وضع العميل المقطوع 🚨 تفضل بطلب الخدمة الفورية الآن!' 
                       : lang === 'he'
                       ? 'מצב לקוח תקוע הופעל 🚨 הזמן שירות מיידי כעת!'
-                      : 'Stranded Client Mode activated 🚨 Request rapid roadside assistance now!', 
+                      : 'Stranded Client Mode activated 🚨 Request rapid assistance now!', 
                     'success'
                   );
                 }}
-                className={`w-full sm:w-auto px-7 py-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-3 cursor-pointer shadow-xl active:scale-95 ${
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   userRole === 'client' 
-                    ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-black shadow-amber-500/20 scale-[1.03] font-black' 
-                    : 'bg-[#111827] hover:bg-gray-800 text-gray-300 border border-gray-800'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-lg shadow-amber-500/15' 
+                    : 'text-gray-400 hover:text-white hover:bg-slate-800/50'
                 }`}
               >
-                <span className="text-xl">🚗</span>
-                <span className="font-black">{lang === 'ar' ? 'عميل مقطوع' : lang === 'he' ? 'לקוח תקוע' : 'Stranded Client'}</span>
-                {userRole === 'client' && <span className="w-2.5 h-2.5 bg-black rounded-full animate-ping shrink-0"></span>}
+                <span>🚗</span>
+                <span>{lang === 'ar' ? 'عميل مقطوع' : lang === 'he' ? 'לקוח תקוע' : 'Stranded Client'}</span>
               </button>
 
-              {/* Button 2: مقدم خدمة صناعي */}
+              {/* Option 2: مقدم خدمة صناعي */}
               <button
                 id="role-industrial-provider-btn"
                 onClick={async () => {
@@ -2545,20 +2537,19 @@ export default function App() {
                     lang === 'ar' 
                       ? 'تم تفعيل وضع مقدم الخدمة الصناعي 🛠️ تصفح طلبات العملاء وقدم عرض أسعارك فورا!' 
                       : lang === 'he'
-                      ? 'מצב ספק שירות תעשייתי הופעל 🛠️ בדוק בקשות והגש הצעות מחיר!'
-                      : 'Industrial Service Provider Mode activated 🛠️ View requests and submit bids!', 
+                      ? 'מצב ספק שירות הופעל 🛠️ באפשרותך להגיש הצעות מחיר!'
+                      : 'Service Provider Mode activated 🛠️ View requests and submit bids!', 
                     'success'
                   );
                 }}
-                className={`w-full sm:w-auto px-7 py-4 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-3 cursor-pointer shadow-xl active:scale-95 ${
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   userRole === 'technician' 
-                    ? 'bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 text-black shadow-cyan-500/20 scale-[1.03] font-black' 
-                    : 'bg-[#111827] hover:bg-gray-800 text-gray-300 border border-gray-800'
+                    ? 'bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 text-black shadow-lg shadow-cyan-500/15' 
+                    : 'text-gray-400 hover:text-white hover:bg-slate-800/50'
                 }`}
               >
-                <span className="text-xl">🛠️</span>
-                <span className="font-black">{lang === 'ar' ? 'مقدم خدمة صناعي' : lang === 'he' ? 'ספק שירות תעשייתי' : 'Industrial Service Provider'}</span>
-                {userRole === 'technician' && <span className="w-2.5 h-2.5 bg-black rounded-full animate-ping shrink-0"></span>}
+                <span>🛠️</span>
+                <span>{lang === 'ar' ? 'مقدم خدمة صناعي' : lang === 'he' ? 'ספק שירות תעשייתי' : 'Industrial Service Provider'}</span>
               </button>
             </div>
           </div>

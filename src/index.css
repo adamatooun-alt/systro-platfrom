@@ -168,3 +168,12 @@ h1, h2, h3, h4,
   color: #0F172A !important;
 }
 
+/* Specific overrides for the dark support contact section to guarantee high readability */
+#support-contact-section h3 {
+  color: #FFFFFF !important;
+}
+
+#support-contact-section div.space-y-3 > p {
+  color: #CBD5E1 !important;
+}
+
