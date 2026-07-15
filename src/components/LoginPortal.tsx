@@ -42,6 +42,7 @@ export default function LoginPortal({
   const [fallbackOtpSending, setFallbackOtpSending] = React.useState(false);
   const [fallbackOtpVerifying, setFallbackOtpVerifying] = React.useState(false);
   const [simulatedCode, setSimulatedCode] = React.useState('');
+  const [resendCooldown, setResendCooldown] = React.useState(0);
 
   const handleEmailChange = (val: string) => {
     setCustomEmail(val);
@@ -64,6 +65,7 @@ export default function LoginPortal({
       setFallbackOtpSent(false);
       setFallbackOtpCode('');
       setSimulatedCode('');
+      setResendCooldown(0);
     } else {
       setCustomName('');
       setCustomEmail('');
@@ -71,8 +73,27 @@ export default function LoginPortal({
       setFallbackOtpSent(false);
       setFallbackOtpCode('');
       setSimulatedCode('');
+      setResendCooldown(0);
     }
   }, [showGoogleFallbackModal]);
+
+  React.useEffect(() => {
+    let timer: any;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown(prev => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [resendCooldown]);
+
+  React.useEffect(() => {
+    if (!fallbackOtpSent) {
+      setResendCooldown(0);
+    }
+  }, [fallbackOtpSent]);
 
   const handleSendFallbackOtp = async () => {
     const trimmedEmail = customEmail.trim();
@@ -107,6 +128,7 @@ export default function LoginPortal({
       const data = await response.json();
       if (response.ok && data.success) {
         setFallbackOtpSent(true);
+        setResendCooldown(600); // 10 minutes cooldown
         if (data.smtpNotConfigured) {
           triggerToast(
             lang === 'ar' 
@@ -534,6 +556,28 @@ export default function LoginPortal({
                     {lang === 'ar' ? '← تغيير البريد الإلكتروني' : '← Change email address'}
                   </button>
                 </div>
+
+                {/* Resend Code button under Change Email */}
+                <div className="text-center mt-2 pt-2 border-t border-emerald-950/20">
+                  <button
+                    type="button"
+                    disabled={resendCooldown > 0 || fallbackOtpSending}
+                    onClick={handleSendFallbackOtp}
+                    className="text-[11px] text-amber-400 hover:text-amber-300 disabled:text-emerald-500/60 font-bold transition-all cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5 mx-auto"
+                  >
+                    {fallbackOtpSending ? (
+                      <span>{lang === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</span>
+                    ) : resendCooldown > 0 ? (
+                      <span>
+                        {lang === 'ar' 
+                          ? `إعادة إرسال الرمز بعد (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})` 
+                          : `Resend code in (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})`}
+                      </span>
+                    ) : (
+                      <span>{lang === 'ar' ? '✉️ إعادة إرسال الرمز' : '✉️ Resend verification code'}</span>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
             
@@ -723,6 +767,28 @@ export default function LoginPortal({
                       className="text-[11px] text-sky-600 hover:text-sky-700 hover:underline font-bold transition-all cursor-pointer"
                     >
                       {lang === 'ar' ? '← تغيير البريد الإلكتروني' : '← Change email address'}
+                    </button>
+                  </div>
+
+                  {/* Resend Code button under Change Email */}
+                  <div className="text-center mt-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      disabled={resendCooldown > 0 || fallbackOtpSending}
+                      onClick={handleSendFallbackOtp}
+                      className="text-[11px] text-sky-600 hover:text-sky-700 disabled:text-slate-400 font-bold transition-all cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5 mx-auto"
+                    >
+                      {fallbackOtpSending ? (
+                        <span>{lang === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</span>
+                      ) : resendCooldown > 0 ? (
+                        <span>
+                          {lang === 'ar' 
+                            ? `إعادة إرسال الرمز بعد (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})` 
+                            : `Resend code in (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})`}
+                        </span>
+                      ) : (
+                        <span>{lang === 'ar' ? '✉️ إعادة إرسال الرمز' : '✉️ Resend verification code'}</span>
+                      )}
                     </button>
                   </div>
                 </>
