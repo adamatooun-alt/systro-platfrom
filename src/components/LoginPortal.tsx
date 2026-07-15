@@ -35,6 +35,22 @@ export default function LoginPortal({
   const [customName, setCustomName] = React.useState(() => localStorage.getItem('systro_saved_google_name') || '');
   const [customEmail, setCustomEmail] = React.useState(() => localStorage.getItem('systro_saved_google_email') || '');
   const [showManualForm, setShowManualForm] = React.useState(false);
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
+  const [showTermsModal, setShowTermsModal] = React.useState(false);
+
+  const handleEmailChange = (val: string) => {
+    setCustomEmail(val);
+    if (val.includes('@')) {
+      const localPart = val.split('@')[0];
+      const generatedName = localPart
+        .split(/[\._\-]/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      setCustomName(generatedName);
+    } else {
+      setCustomName('');
+    }
+  };
 
   React.useEffect(() => {
     if (showGoogleFallbackModal) {
@@ -224,9 +240,42 @@ export default function LoginPortal({
               </p>
             </div>
 
+            {/* Terms and Conditions Checkbox for Main Login */}
+            <div className="flex items-start gap-3 text-right bg-emerald-950/20 p-3.5 rounded-2xl border border-emerald-950/40">
+              <input
+                type="checkbox"
+                id="main-terms-checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 w-4.5 h-4.5 text-emerald-500 border-emerald-950 bg-emerald-950/50 rounded focus:ring-emerald-500 cursor-pointer accent-emerald-500"
+              />
+              <label htmlFor="main-terms-checkbox" className="text-[11px] sm:text-xs text-emerald-100/80 font-bold select-none cursor-pointer leading-relaxed">
+                {lang === 'ar' ? (
+                  <>
+                    أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">شروط الخدمة وسياسة الخصوصية</button> الخاصة بمنصة Systro لإنقاذ وسحب السيارات.
+                  </>
+                ) : (
+                  <>
+                    I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">Terms of Service & Privacy Policy</button> of Systro Rescue Network.
+                  </>
+                )}
+              </label>
+            </div>
+
             {/* Main Google Button */}
             <button
-              onClick={() => handleRealGoogleSignIn()}
+              onClick={() => {
+                if (!acceptedTerms) {
+                  triggerToast(
+                    lang === 'ar' 
+                      ? 'يرجى قراءة والموافقة على شروط الخدمة وسياسة الخصوصية للمتابعة! 📜' 
+                      : 'Please read and agree to the Terms of Service & Privacy Policy to proceed! 📜', 
+                    'warning'
+                  );
+                  return;
+                }
+                handleRealGoogleSignIn();
+              }}
               className="w-full py-4.5 bg-white hover:bg-slate-50 text-slate-800 font-extrabold rounded-2xl text-sm sm:text-[15px] transition-all flex items-center justify-center gap-3 shadow-xl border border-slate-100 hover:shadow-2xl cursor-pointer"
             >
               <svg className="w-5.5 h-5.5 shrink-0" viewBox="0 0 24 24">
@@ -252,7 +301,7 @@ export default function LoginPortal({
       {/* Google Chooser Fallback Dialog (matches user screenshot 1) */}
       {showGoogleFallbackModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white border border-slate-100 rounded-t-[28px] sm:rounded-[28px] max-w-sm w-full p-6 space-y-6 shadow-2xl text-slate-800 relative">
+          <div className="bg-white border border-slate-100 rounded-t-[28px] sm:rounded-[28px] max-w-sm w-full p-6 space-y-5 shadow-2xl text-slate-800 relative">
             
             {/* Top Close Button (matches layout) */}
             <button 
@@ -277,99 +326,102 @@ export default function LoginPortal({
               </div>
 
               <div className="space-y-1 text-center">
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight leading-tight select-none">
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight leading-tight select-none font-sans">
                   {lang === 'ar' ? 'تسجيل الدخول الآمن إلى "Systro"' : lang === 'he' ? 'התחברות מאובטחת אל "Systro"' : 'Secure Sign-In to "Systro"'}
                 </h2>
               </div>
             </div>
 
-            {!showManualForm ? (
-              <div className="space-y-5 animate-fade-in text-center">
-                <p className="text-xs text-slate-500 font-bold leading-relaxed px-2">
-                  {lang === 'ar' 
-                    ? 'اضغط أدناه للاتصال المباشر واسترجاع تفاصيل حسابك تلقائياً وبأمان من Google لمتابعة الدخول دون الحاجة لكتابة البيانات يدوياً.' 
-                    : lang === 'he'
-                    ? 'לחץ למטה כדי להתחבר ולקבל את פרטי החשבון שלך באופן אוטומטי ומאובטח מ-Google ללא צורך בהקלדה ידנית.'
-                    : 'Click below to connect and retrieve your account details automatically and securely from Google to sign in without typing.'}
-                </p>
+            <div className="space-y-4">
+              <p className="text-xs text-slate-500 font-bold leading-relaxed px-1 text-center">
+                {lang === 'ar' 
+                  ? 'يرجى إدخال بريدك الإلكتروني أدناه لاسترجاع حسابك تلقائياً وبأمان من Google لمتابعة الدخول دون تعبئة بيانات يدوية مكررة.' 
+                  : 'Please enter your email below to securely retrieve your account and log in automatically without repeating manual sign-up forms.'}
+              </p>
 
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const savedEmail = localStorage.getItem('systro_saved_google_email');
-                    const savedName = localStorage.getItem('systro_saved_google_name');
-                    if (savedEmail) {
-                      await handleRealGoogleSignIn(true, savedEmail, savedName || undefined);
-                    } else {
-                      triggerToast(
-                        lang === 'ar'
-                          ? 'لم يتم العثور على حساب Google محفوظ. الرجاء كتابة بريدك واسمك بالأسفل ليتم حفظه واستيراده مستقبلاً! ✨'
-                          : 'No saved Google account found. Please type your email & name below to save and import it in the future! ✨',
-                        'info'
-                      );
-                      setShowManualForm(true);
-                    }
-                  }}
-                  className="w-full py-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-sky-600/20 hover:shadow-lg cursor-pointer"
-                >
-                  <svg className="w-5 h-5 bg-white p-0.5 rounded-full shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                  </svg>
-                  <span>
-                    {lang === 'ar' ? 'استيراد الحساب والاتصال التلقائي' : lang === 'he' ? 'ייבוא חשבון והתחברות אוטומטית' : 'Import Account & Auto Connect'}
-                  </span>
-                </button>
-
-                <div className="pt-4 border-t border-slate-100 flex flex-col items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowManualForm(true)}
-                    className="text-xs font-extrabold text-sky-600 hover:text-sky-700 transition-colors cursor-pointer"
-                  >
-                    {lang === 'ar' ? 'أو أدخل بيانات حسابك يدوياً (كحل بديل)' : lang === 'he' ? 'או הזן את פרטי החשבון ידנית (חלופי)' : 'Or enter account details manually (alternative)'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowGoogleFallbackModal(false)}
-                    className="text-xs text-slate-400 hover:text-slate-500 font-bold transition-colors cursor-pointer"
-                  >
-                    {lang === 'ar' ? 'إلغاء وإغلاق البوابة' : lang === 'he' ? 'ביטול וסגירת השער' : 'Cancel & Close Portal'}
-                  </button>
-                </div>
+              {/* Dynamic Google Email Input */}
+              <div className="space-y-1">
+                <label className={`block text-[10px] font-extrabold text-slate-400 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                  {lang === 'ar' ? 'البريد الإلكتروني لحساب Google' : 'Google Account Email'}
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={customEmail}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  placeholder="example@gmail.com"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono text-sm focus:outline-none focus:border-sky-500 text-left"
+                />
               </div>
-            ) : (
-              <form 
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const trimmedName = customName.trim();
+
+              {/* Dynamic Name suggestions (hands-free!) */}
+              {customEmail && customName && (
+                <div className="bg-sky-50 border border-sky-100/50 p-2.5 rounded-xl flex items-center justify-between text-xs animate-fade-in">
+                  <div className={`flex flex-col gap-0.5 ${lang === 'ar' ? 'text-right w-full' : 'text-left w-full'}`}>
+                    <span className="text-[10px] text-sky-600 font-black">
+                      {lang === 'ar' ? 'الاسم المستنتج تلقائياً (يمكنك تعديله):' : 'Auto-detected Name (you can edit):'}
+                    </span>
+                    <input
+                      type="text"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      className={`text-slate-700 font-extrabold focus:outline-none bg-transparent w-full ${lang === 'ar' ? 'text-right' : 'text-left'}`}
+                      placeholder={lang === 'ar' ? 'الاسم الكامل' : 'Full name'}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Required Terms Checkbox inside Fallback Modal */}
+              <div className="flex items-start gap-2.5 text-right bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <input
+                  type="checkbox"
+                  id="fallback-terms-checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500 cursor-pointer"
+                />
+                <label htmlFor="fallback-terms-checkbox" className="text-[11px] text-slate-600 font-bold select-none cursor-pointer leading-relaxed text-right w-full">
+                  {lang === 'ar' ? (
+                    <>
+                      أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-sky-600 hover:underline inline font-black cursor-pointer">شروط الخدمة وسياسة الخصوصية</button> الخاصة بمنصة سيسترو.
+                    </>
+                  ) : (
+                    <>
+                      I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-sky-600 hover:underline inline font-black cursor-pointer">Terms of Service & Privacy Policy</button> of Systro.
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Import and Connect Button */}
+              <button
+                type="button"
+                onClick={async () => {
                   const trimmedEmail = customEmail.trim();
-                  if (!trimmedName || !trimmedEmail) {
+                  const trimmedName = customName.trim() || (lang === 'ar' ? "مستخدم سيسترو" : "Systro User");
+
+                  if (!trimmedEmail || !trimmedEmail.includes('@')) {
                     triggerToast(
                       lang === 'ar' 
-                        ? 'الرجاء تعبئة جميع الحقول بشكل صحيح!' 
-                        : lang === 'he'
-                        ? 'אנא מלא את כל השדות בצורה נכונה!'
-                        : 'Please fill in all fields correctly!', 
+                        ? 'يرجى إدخال بريد إلكتروني صحيح لحساب Google!' 
+                        : 'Please enter a valid Google email address!', 
                       'warning'
                     );
                     return;
                   }
-                  if (!trimmedEmail.includes('@')) {
+
+                  if (!acceptedTerms) {
                     triggerToast(
                       lang === 'ar' 
-                        ? 'الرجاء إدخال بريد إلكتروني صحيح!' 
-                        : lang === 'he'
-                        ? 'אנא הזן כתובת אימייל תקינה!'
-                        : 'Please enter a valid email address!', 
+                        ? 'يجب الموافقة على شروط الخدمة وسياسة الخصوصية للمتابعة! 📜' 
+                        : 'You must agree to the Terms of Service & Privacy Policy to proceed! 📜', 
                       'warning'
                     );
                     return;
                   }
-                  
-                  // Save user-specific details to localStorage so they can auto-import next time!
+
+                  // Save to localStorage for auto-import in subsequent sessions
                   localStorage.setItem('systro_saved_google_email', trimmedEmail);
                   localStorage.setItem('systro_saved_google_name', trimmedName);
 
@@ -377,64 +429,144 @@ export default function LoginPortal({
                   await handleGoogleSignIn(trimmedEmail, trimmedName);
                   triggerToast(
                     lang === 'ar' 
-                      ? `تم تسجيل الدخول بنجاح بحسابك: ${trimmedName}` 
-                      : lang === 'he'
-                      ? `התחברת בהצלחה עם החשבון: ${trimmedName}`
-                      : `Successfully logged in under your account: ${trimmedName}`, 
+                      ? `تم استيراد حساب Google الخاص بك (${trimmedEmail}) وتسجيل الدخول تلقائياً بنجاح! 🔐` 
+                      : `Google account (${trimmedEmail}) imported and logged in automatically! 🔐`, 
                     'success'
                   );
                 }}
-                className="space-y-4 animate-fade-in"
+                className="w-full py-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-sky-600/20 hover:shadow-lg cursor-pointer"
               >
-                <div className="space-y-1 text-left">
-                  <label className={`block text-[11px] font-bold text-slate-500 uppercase tracking-wide ${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}>
-                    {lang === 'ar' ? 'الاسم الكامل' : lang === 'he' ? 'שם מלא' : 'Full Name'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder={lang === 'ar' ? 'أدخل اسمك الكريم' : lang === 'he' ? 'הכנס את שמך המלא' : 'Enter your full name'}
-                    className={`w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-sky-500 font-bold ${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}
-                  />
-                </div>
+                <svg className="w-5 h-5 bg-white p-0.5 rounded-full shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <span>
+                  {lang === 'ar' ? 'استيراد الحساب والاتصال التلقائي' : lang === 'he' ? 'ייבוא חשבון והתחברות אוטומטית' : 'Import Account & Auto Connect'}
+                </span>
+              </button>
 
-                <div className="space-y-1 text-left">
-                  <label className={`block text-[11px] font-bold text-slate-500 uppercase tracking-wide ${lang === 'ar' || lang === 'he' ? 'text-right' : 'text-left'}`}>
-                    {lang === 'ar' ? 'البريد الإلكتروني للـ Google' : lang === 'he' ? 'כתובת אימייל של גוגל' : 'Google Email Address'}
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={customEmail}
-                    onChange={(e) => setCustomEmail(e.target.value)}
-                    placeholder="example@gmail.com"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-sky-500 font-mono text-left"
-                  />
-                </div>
+              <div className="pt-2 border-t border-slate-100 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleFallbackModal(false)}
+                  className="text-xs text-slate-400 hover:text-slate-500 font-bold transition-colors cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إلغاء وإغلاق البوابة' : lang === 'he' ? 'ביטול וסגירת השער' : 'Cancel & Close Portal'}
+                </button>
+              </div>
+            </div>
 
-                <div className="pt-2 flex flex-col gap-2">
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowManualForm(false);
-                      }}
-                      className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition-colors cursor-pointer text-center"
-                    >
-                      {lang === 'ar' ? 'رجوع للخلف' : lang === 'he' ? 'חזור' : 'Go Back'}
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl text-xs shadow-md shadow-sky-600/10 transition-colors cursor-pointer text-center"
-                    >
-                      {lang === 'ar' ? 'متابعة الدخول' : lang === 'he' ? 'המשך התחברות' : 'Continue'}
-                    </button>
+          </div>
+        </div>
+      )}
+
+      {/* Terms and Conditions Full Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-[#0B1513] border border-emerald-900 rounded-[28px] max-w-lg w-full p-6 space-y-6 shadow-2xl text-[#FDF6E2] relative max-h-[85vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-emerald-950 shrink-0">
+              <h3 className="text-lg font-black text-[#FCAD62] flex items-center gap-2 font-sans">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                {lang === 'ar' ? 'شروط الخدمة وسياسة الخصوصية' : 'Terms of Service & Privacy Policy'}
+              </h3>
+              <button 
+                onClick={() => setShowTermsModal(false)}
+                className="p-1.5 hover:bg-emerald-950/50 rounded-full transition-colors cursor-pointer text-[#FDF6E2]/50 hover:text-[#FDF6E2]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content (Scrollable) */}
+            <div className="overflow-y-auto space-y-4 pr-1 text-sm leading-relaxed text-emerald-100/80 text-right font-sans">
+              {lang === 'ar' ? (
+                <>
+                  <p className="font-extrabold text-white text-base">مرحباً بك في منصة سيسترو (Systro) لإنقاذ وسحب السيارات.</p>
+                  <p>باستخدامك لموقعنا والخدمات المتوفرة عليه، فإنك تقر وتوافق بشكل كامل على الشروط والالتزامات التالية لضمان تجربة آمنة وفعالة:</p>
+                  
+                  <div className="space-y-3 pt-2">
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">1. مشاركة الموقع الجغرافي (GPS)</h4>
+                      <p className="text-xs">تعتمد منصتنا بشكل رئيسي على تحديد موقعك الجغرافي الدقيق لإرسال أقرب فني إنقاذ أو سحب سيارات متاح إليك لتقديم المساعدة بأسرع وقت ممكن.</p>
+                    </div>
+
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">2. دقة وصحة البيانات</h4>
+                      <p className="text-xs">يجب على جميع المستخدمين (عملاء وفنيين) تزويد المنصة ببيانات حقيقية تشمل الاسم الصحيح، البريد الإلكتروني الفعال، رقم الهاتف، ومعلومات دقيقة عن العطل لضمان سلاسة تقديم الخدمة وتفادي أي عقبات.</p>
+                    </div>
+
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">3. الالتزام المالي والتسعير</h4>
+                      <p className="text-xs">تلتزم المنصة بتوفير تسعير عادل وشفاف للخدمات. ويقر العميل بالتزامه التام بدفع المبالغ المحددة والمتفق عليها لقاء الخدمة المقدمة من قبل فني الإنقاذ فور اكتمال عملية السحب أو الإصلاح.</p>
+                    </div>
+
+                    <div className="bg-[#1C1105]/40 p-3 rounded-xl border border-amber-950/40">
+                      <h4 className="font-black text-amber-400 mb-1">4. سياسة الاستخدام العادل والأمان</h4>
+                      <p className="text-xs">يُمنع استخدام المنصة لتقديم بلاغات أو طلبات وهمية بهدف تضليل فنيي الإنقاذ أو الإضرار بالعمليات. وسيتم حظر أي حساب يسيء الاستخدام أو يخرق بنود الأمان العامة بشكل فوري ونهائي.</p>
+                    </div>
+
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">5. حماية وتشفير البيانات</h4>
+                      <p className="text-xs">نحن نولي سرية بياناتك أقصى درجات الأهمية؛ يتم تشفير وحماية معلومات تسجيل دخولك بالكامل ولا يتم مشاركتها خارج نطاق إتمام طلبات المساعدة المعمدة.</p>
+                    </div>
                   </div>
-                </div>
-              </form>
-            )}
+                </>
+              ) : (
+                <>
+                  <p className="font-extrabold text-white text-base">Welcome to Systro Rescue & Towing Network.</p>
+                  <p>By accessing our platform and services, you agree to comply with and be bound by the following Terms & Conditions designed to ensure a secure, fair, and seamless experience:</p>
+                  
+                  <div className="space-y-3 pt-2 text-left">
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">1. Geolocation Access (GPS)</h4>
+                      <p className="text-xs">Our system requires real-time access to your GPS coordinates to correctly route and dispatch the closest qualified towing technician or roadside help to your exact location.</p>
+                    </div>
+
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">2. Information Accuracy</h4>
+                      <p className="text-xs">Users are required to enter correct personal profiles (Google Email, full name, phone number, and breakdown descriptions) to enable high-quality service coordination.</p>
+                    </div>
+
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">3. Payment Commitments</h4>
+                      <p className="text-xs">Clients agree to settle the clearly estimated or agreed service fares directly with the rescue professional upon successful delivery of roadside support.</p>
+                    </div>
+
+                    <div className="bg-[#1C1105]/40 p-3 rounded-xl border border-amber-950/40">
+                      <h4 className="font-black text-amber-400 mb-1">4. Fair & Authorized Use</h4>
+                      <p className="text-xs">Submitting false emergency help alerts, fake dispatch requests, or harassing technicians is strictly prohibited and results in immediate permanent IP & account bans.</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Accept Button inside Modal */}
+            <div className="pt-4 border-t border-emerald-950 flex gap-3 shrink-0">
+              <button
+                onClick={() => {
+                  setAcceptedTerms(true);
+                  setShowTermsModal(false);
+                  triggerToast(
+                    lang === 'ar' ? 'تمت الموافقة على الشروط والأحكام بنجاح! 📜' : 'Terms & Conditions agreed successfully! 📜',
+                    'success'
+                  );
+                }}
+                className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black rounded-xl text-sm transition-all cursor-pointer text-center shadow-lg shadow-emerald-600/20"
+              >
+                {lang === 'ar' ? 'أوافق على كافة الشروط' : 'I Agree to all terms'}
+              </button>
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="py-3.5 px-6 bg-emerald-950/50 hover:bg-emerald-950 text-emerald-300 font-bold rounded-xl text-sm transition-colors cursor-pointer text-center"
+              >
+                {lang === 'ar' ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
 
           </div>
         </div>
