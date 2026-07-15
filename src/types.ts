@@ -90,3 +90,16 @@ export interface SystemStats {
   satisfactionRate: number;
   activeEmergencies: number;
 }
+
+export interface InAppNotification {
+  id: string;
+  titleAr: string;
+  titleEn: string;
+  bodyAr: string;
+  bodyEn: string;
+  timestamp: string;
+  isRead: boolean;
+  type: 'new_request' | 'bid_submitted' | 'bid_accepted' | 'en_route' | 'arrived' | 'completed' | 'chat' | 'system';
+  targetId: string;
+}
+

@@ -17,6 +17,24 @@
   animation: pulse-ring 2s infinite ease-in-out;
 }
 
+@keyframes slide-down {
+  0% { transform: translate(-50%, -1rem); opacity: 0; }
+  100% { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@keyframes slide-left {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(0); }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-left {
+  animation: slide-left 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* =========================================================
    PREMIUM CHEERFUL BRIGHT LIGHT THEME OVERRIDES (WHITE THEME)
    ========================================================= */

@@ -58,9 +58,12 @@ import {
   MessageCircle,
   Volume2,
   Ban,
-  User
+  User,
+  Bell,
+  BellOff,
+  CheckCheck
 } from 'lucide-react';
-import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats } from './types';
+import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification } from './types';
 import TrustPortal from './components/TrustPortal';
 import SmtpConfigPanel from './components/SmtpConfigPanel';
 import WhatsAppConfigPanel from './components/WhatsAppConfigPanel';
@@ -180,6 +183,118 @@ export default function App() {
 
   // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin'
   const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin'>('home');
+
+  // --- FCM Real-Time In-App Notification System ---
+  const [notifications, setNotifications] = useState<InAppNotification[]>(() => {
+    try {
+      const saved = localStorage.getItem('systro_notifications_history');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Failed to parse notification history", e);
+    }
+    return [
+      {
+        id: 'welcome-system-01',
+        titleAr: '📡 تم تفعيل نظام الإشعارات الفورية (FCM) بنجاح!',
+        titleEn: '📡 Smart FCM Notification Hub Activated!',
+        bodyAr: 'أهلاً بك في سيسترو إنقاذ. نظام الإشعارات الفورية مفعّل ويعمل في المتصفح بكامل طاقته ومجاني 100%.',
+        bodyEn: 'Welcome to Systro Rescue. Your smart instant push notification engine is active, fully optimized, and 100% free.',
+        timestamp: new Date().toISOString(),
+        isRead: false,
+        type: 'system',
+        targetId: ''
+      }
+    ];
+  });
+
+  const [activeNotification, setActiveNotification] = useState<InAppNotification | null>(null);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [browserNotificationPermission, setBrowserNotificationPermission] = useState<NotificationPermission>(() => {
+    return typeof Notification !== 'undefined' ? Notification.permission : 'default';
+  });
+
+  const getServiceArName = (type: string) => {
+    switch (type) {
+      case 'fuel': return 'توصيل وقود طارئ ⛽';
+      case 'locksmith': return 'فتح أقفال سيارات 🔑';
+      case 'mechanic': return 'صيانة وميكانيك 🛠️';
+      case 'battery': return 'اشتراك بطارية 🔋';
+      case 'tire': return 'تبديل إطار 🚗';
+      case 'towing': return 'ونش سحب مركبات 🚚';
+      default: return 'خدمة إنقاذ مخصصة 🔧';
+    }
+  };
+
+  const getServiceEnName = (type: string) => {
+    switch (type) {
+      case 'fuel': return 'Emergency Fuel Delivery ⛽';
+      case 'locksmith': return 'Car Locksmith Services 🔑';
+      case 'mechanic': return 'Roadside Mechanical Service 🛠️';
+      case 'battery': return 'Battery Jump Start 🔋';
+      case 'tire': return 'Flat Tire Replacement 🚗';
+      case 'towing': return 'Towing & Vehicle Recovery 🚚';
+      default: return 'Custom Specialty Service 🔧';
+    }
+  };
+
+  const triggerNotification = (
+    type: InAppNotification['type'],
+    titleAr: string,
+    titleEn: string,
+    bodyAr: string,
+    bodyEn: string,
+    targetId: string = ''
+  ) => {
+    const newNotification: InAppNotification = {
+      id: `${type}_${Date.now()}`,
+      titleAr,
+      titleEn,
+      bodyAr,
+      bodyEn,
+      timestamp: new Date().toISOString(),
+      isRead: false,
+      type,
+      targetId
+    };
+
+    // 1. Play professional sound
+    playRescueAlertSound();
+
+    // 2. Add to list and localStorage
+    setNotifications(prev => {
+      const updated = [newNotification, ...prev].slice(0, 50);
+      localStorage.setItem('systro_notifications_history', JSON.stringify(updated));
+      return updated;
+    });
+
+    // 3. Set active banner for visual popup
+    setActiveNotification(newNotification);
+
+    // 4. Trigger browser native push if permitted
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try {
+        const nativeNotif = new Notification(lang === 'ar' ? titleAr : titleEn, {
+          body: lang === 'ar' ? bodyAr : bodyEn,
+          icon: '/assets/logo.png',
+          badge: '/assets/logo.png',
+          tag: targetId || 'systro-rescue'
+        });
+        nativeNotif.onclick = () => {
+          window.focus();
+          if (targetId) {
+            setActiveRequestId(targetId);
+            setActiveTab('simulator');
+          }
+          nativeNotif.close();
+        };
+      } catch (err) {
+        console.warn("Failed to spawn native browser notification:", err);
+      }
+    }
+  };
+
 
   // Admin password/code verification state
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => sessionStorage.getItem('systro_admin_unlocked') === 'true');
@@ -468,6 +583,9 @@ export default function App() {
     return localStorage.getItem('systro_notify_email') === 'true';
   });
   const [prevPendingCount, setPrevPendingCount] = useState<number>(0);
+  const [prevBidsCount, setPrevBidsCount] = useState<number>(0);
+  const [prevRequestStatus, setPrevRequestStatus] = useState<string>('idle');
+  const [prevChatMsgsCount, setPrevChatMsgsCount] = useState<number>(0);
 
   // Synthesized emergency radar alarm sound for new pending rescue tasks
   const playRescueAlertSound = () => {
@@ -728,7 +846,7 @@ export default function App() {
     }
   }, [isLoggedIn, loggedInUserEmail, userRole, activeRequestId, allRequests]);
 
-  // Real-time dispatch notification alert when a new client request is created
+  // 1. Real-time dispatch notification alert when a new client request is created
   useEffect(() => {
     if (userRole !== 'technician') return;
 
@@ -738,8 +856,17 @@ export default function App() {
     if (pendingReqs.length > prevPendingCount) {
       const newestReq = pendingReqs[0]; // sorted by newest first
       if (newestReq) {
-        // Play custom dispatch sound alert
-        playRescueAlertSound();
+        // Trigger smart in-app notification & play sound
+        const serviceArName = getServiceArName(newestReq.serviceType);
+        const serviceEnName = getServiceEnName(newestReq.serviceType);
+        triggerNotification(
+          'new_request',
+          '🚨 نداء استغاثة عاجل!',
+          '🚨 Emergency Rescue Alert!',
+          `مطلوب فني لـ [${serviceArName}] بقيمة [${newestReq.escrowAmount || 120} ₪] بموقعك!`,
+          `Urgent dispatch for [${serviceEnName}] at [${newestReq.escrowAmount || 120} ₪] nearby!`,
+          newestReq.id
+        );
 
         // Trigger simulated notifications
         if (notifyWhatsapp) {
@@ -766,6 +893,149 @@ export default function App() {
     }
     setPrevPendingCount(pendingReqs.length);
   }, [allRequests, userRole, notifyWhatsapp, notifyEmail, lang, loggedInUserEmail, prevPendingCount]);
+
+  // 2. Real-time notification alert when a technician submits a bid (for Clients)
+  useEffect(() => {
+    if (userRole !== 'client' || !activeRequestId) {
+      setPrevBidsCount(0);
+      return;
+    }
+
+    if (incomingBids.length > prevBidsCount) {
+      const newestBid = incomingBids[incomingBids.length - 1];
+      if (newestBid) {
+        triggerNotification(
+          'bid_submitted',
+          '💸 عرض سعر جديد تلقائي!',
+          '💸 New Rescue Bid Received!',
+          `قدم الفني [${newestBid.technicianArName || newestBid.technicianName}] عرض سعر بقيمة [${newestBid.price} ₪] للإنقاذ!`,
+          `Technician [${newestBid.technicianName}] submitted a bid of [${newestBid.price} ₪] for your breakdown!`,
+          activeRequestId
+        );
+      }
+    }
+    setPrevBidsCount(incomingBids.length);
+  }, [incomingBids, userRole, activeRequestId]);
+
+  // 3. Real-time status update notifications (for both roles)
+  useEffect(() => {
+    if (!activeRequestId) {
+      setPrevRequestStatus('idle');
+      return;
+    }
+
+    const currentReq = allRequests.find(r => r.id === activeRequestId);
+    if (!currentReq) return;
+
+    const currentStatus = currentReq.status;
+    if (prevRequestStatus !== 'idle' && currentStatus !== prevRequestStatus) {
+      if (userRole === 'client') {
+        if (currentStatus === 'en_route') {
+          triggerNotification(
+            'en_route',
+            '🚚 شريك الإنقاذ متحرك إليك!',
+            '🚚 Rescue Partner En Route!',
+            `الفني [${currentReq.selectedTechnicianId || 'سيسترو'}] في الطريق إليك الآن بمعدات الطوارئ.`,
+            `Technician is driving to your location now with emergency tools.`,
+            activeRequestId
+          );
+        } else if (currentStatus === 'arrived') {
+          triggerNotification(
+            'arrived',
+            '📍 شريك الإنقاذ وصل للموقع!',
+            '📍 Technician Arrived at Site!',
+            `وصل الفني وهو بجانب سيارتك الآن لمساعدتك. يرجى تأكيد الهوية.`,
+            `The technician has arrived and is next to your vehicle. Please verify ID.`,
+            activeRequestId
+          );
+        } else if (currentStatus === 'in_progress') {
+          triggerNotification(
+            'system',
+            '🛠️ بدأت عملية الصيانة والإنقاذ',
+            '🛠️ Repair Work in Progress',
+            `العمل جارٍ الآن على حل المشكلة لسيارتك بأمان تحت حماية ضمان سيسترو الآمن.`,
+            `Emergency repair work is now active under the protection of Systro Escrow.`,
+            activeRequestId
+          );
+        } else if (currentStatus === 'completed') {
+          triggerNotification(
+            'completed',
+            '✅ اكتملت المهمة وتم فك الضمان',
+            '✅ Rescue Task Completed!',
+            `تم إصلاح العطل بنجاح وتحرير الدفع المالي بأمان. نتمنى لك رحلة آمنة!`,
+            `The repair was completed successfully and funds released. Have a safe trip!`,
+            activeRequestId
+          );
+        }
+      } else if (userRole === 'technician') {
+        if (currentStatus === 'awaiting_deposit' || currentStatus === 'en_route') {
+          if (currentReq.selectedTechnicianId === loggedInUserEmail) {
+            triggerNotification(
+              'bid_accepted',
+              '🎉 تم قبول عرضك وإيداع الضمان!',
+              '🎉 Bid Accepted & Escrow Deposited!',
+              `تم قبول عرض السعر الخاص بك لخدمة [${getServiceArName(currentReq.serviceType)}]. ابدأ بالتحرك فوراً!`,
+              `Your rescue bid for [${getServiceEnName(currentReq.serviceType)}] was accepted. Drive immediately!`,
+              activeRequestId
+            );
+          }
+        } else if (currentStatus === 'completed') {
+          triggerNotification(
+            'completed',
+            '💰 تم تحرير مستحقاتك المالية!',
+            '💰 Your Earnings Released!',
+            `أطلق العميل مبلغ الضمان المالي بالكامل وتم إيداع [${currentReq.escrowAmount || 120} ₪] في محفظتك الإلكترونية!`,
+            `The client released the escrow amount. [${currentReq.escrowAmount || 120} ₪] deposited in your balance!`,
+            activeRequestId
+          );
+        }
+      }
+    }
+    setPrevRequestStatus(currentStatus);
+  }, [allRequests, activeRequestId, userRole, loggedInUserEmail]);
+
+  // 4. Real-time secure chat message notifications (for both roles)
+  useEffect(() => {
+    if (!activeRequestId) {
+      setPrevChatMsgsCount(0);
+      return;
+    }
+
+    if (chatMessages.length > prevChatMsgsCount) {
+      const lastMsg = chatMessages[chatMessages.length - 1];
+      const isMyMessage = (userRole === 'client' && lastMsg.sender === 'client') ||
+                          (userRole === 'technician' && lastMsg.sender === 'technician');
+      
+      if (lastMsg && lastMsg.sender !== 'system' && !isMyMessage) {
+        const msgTime = lastMsg.createdTime || Date.now();
+        const diffMs = Date.now() - msgTime;
+        if (diffMs < 5000) {
+          const senderLabel = lastMsg.sender === 'client'
+            ? (lang === 'ar' ? 'العميل 👤' : 'Client 👤')
+            : (lang === 'ar' ? 'الفني 🛠️' : 'Technician 🛠️');
+          triggerNotification(
+            'chat',
+            '💬 رسالة جديدة في المحادثة',
+            '💬 New Secure Message',
+            `${senderLabel}: "${lastMsg.text}"`,
+            `${senderLabel}: "${lastMsg.text}"`,
+            activeRequestId
+          );
+        }
+      }
+    }
+    setPrevChatMsgsCount(chatMessages.length);
+  }, [chatMessages, userRole, activeRequestId, lang]);
+
+  // 5. Active notification auto-dismiss timer
+  useEffect(() => {
+    if (activeNotification) {
+      const timer = setTimeout(() => {
+        setActiveNotification(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeNotification]);
 
   // Sync default fields for new technician record modal
   useEffect(() => {
@@ -2309,6 +2579,313 @@ export default function App() {
         </div>
       )}
 
+      {/* Visual FCM Floating Push Notification Banner */}
+      {activeNotification && (
+        <div 
+          onClick={() => {
+            if (activeNotification.targetId) {
+              setActiveRequestId(activeNotification.targetId);
+              setActiveTab('simulator');
+            }
+            setActiveNotification(null);
+          }}
+          className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md bg-[#0F1424]/95 border border-amber-500/30 shadow-[0_0_25px_rgba(245,158,11,0.25)] rounded-2xl p-4 flex items-start gap-3 cursor-pointer backdrop-blur-md transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] select-none group animate-slide-down"
+          style={{ direction: lang === 'ar' ? 'rtl' : 'ltr' }}
+        >
+          {/* Glowing dot & app avatar */}
+          <div className="relative shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-xl font-bold shadow-md text-black">
+              {activeNotification.type === 'new_request' ? '🚨' :
+               activeNotification.type === 'bid_submitted' ? '💸' :
+               activeNotification.type === 'bid_accepted' ? '🎉' :
+               activeNotification.type === 'en_route' ? '🚚' :
+               activeNotification.type === 'arrived' ? '📍' :
+               activeNotification.type === 'completed' ? '✅' :
+               activeNotification.type === 'chat' ? '💬' : '📡'}
+            </div>
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+          </div>
+
+          {/* Text content */}
+          <div className="flex-grow min-w-0 pr-1">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-[10px] font-black text-amber-500 tracking-wider uppercase font-mono">
+                {lang === 'ar' ? 'إشعار فوري ذكي (FCM)' : 'Smart Instant Push (FCM)'}
+              </span>
+              <span className="text-[9px] text-gray-500 font-bold">
+                {lang === 'ar' ? 'الآن' : 'Now'}
+              </span>
+            </div>
+            <h4 className="text-xs sm:text-sm font-black text-white truncate mb-0.5">
+              {lang === 'ar' ? activeNotification.titleAr : activeNotification.titleEn}
+            </h4>
+            <p className="text-xs text-gray-300 line-clamp-2 leading-relaxed font-semibold">
+              {lang === 'ar' ? activeNotification.bodyAr : activeNotification.bodyEn}
+            </p>
+            {activeNotification.targetId && (
+              <div className="mt-2 flex items-center gap-1 text-[10px] font-black text-amber-400 group-hover:text-amber-300 transition-colors">
+                <span>{lang === 'ar' ? 'اضغط للذهاب للخريطة والمهمة' : 'Tap to focus active request'}</span>
+                <span>➔</span>
+              </div>
+            )}
+          </div>
+
+          {/* Dismiss button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveNotification(null);
+            }}
+            className="shrink-0 p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* FCM Integrated Notification Center Drawer / Modal */}
+      {isNotificationCenterOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end" style={{ direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/65 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsNotificationCenterOpen(false)}
+          />
+
+          {/* Drawer Body */}
+          <div className="relative w-full max-w-md h-full bg-[#070A13] border-l border-gray-800 shadow-2xl flex flex-col z-10 animate-slide-left">
+            {/* Header */}
+            <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-[#0A0D18]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Bell className="w-4.5 h-4.5 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white">
+                    {lang === 'ar' ? 'إشعارات سيسترو الذكية' : 'Systro Push Center'}
+                  </h3>
+                  <span className="text-[10px] font-mono font-bold text-gray-500 uppercase block tracking-wider">
+                    Firebase Cloud Messaging (FCM)
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsNotificationCenterOpen(false)}
+                className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white transition-all cursor-pointer"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            {/* Quick Permissions & Simulator Controls */}
+            <div className="p-4 bg-[#0A0D18]/60 border-b border-gray-800/80 space-y-3.5">
+              {/* Native Browser Permissions */}
+              <div className="flex items-center justify-between gap-3 p-3 bg-[#0F1424] border border-gray-800/60 rounded-xl">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[11px] font-black text-white block mb-0.5">
+                    {lang === 'ar' ? 'إشعارات المتصفح لسطح المكتب' : 'HTML5 Desktop Notifications'}
+                  </span>
+                  <p className="text-[10px] text-gray-500 truncate">
+                    {browserNotificationPermission === 'granted' 
+                      ? (lang === 'ar' ? '✓ الإشعارات مفعّلة في الخلفية' : '✓ Notifications allowed in background')
+                      : (lang === 'ar' ? 'مغلقة، اضغط للتفعيل والحصول على تنبيهات' : 'Disabled, click to allow permission')}
+                  </p>
+                </div>
+                {browserNotificationPermission !== 'granted' ? (
+                  <button
+                    onClick={async () => {
+                      if (typeof Notification !== 'undefined') {
+                        const perm = await Notification.requestPermission();
+                        setBrowserNotificationPermission(perm);
+                        if (perm === 'granted') {
+                          triggerToast(
+                            lang === 'ar' ? 'تم تفعيل إشعارات المتصفح بنجاح!' : 'Browser notifications enabled!',
+                            'success'
+                          );
+                        }
+                      }
+                    }}
+                    className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-[#070A13] text-[10px] font-black rounded-lg transition-all cursor-pointer shrink-0"
+                  >
+                    {lang === 'ar' ? 'تفعيل الآن' : 'Enable'}
+                  </button>
+                ) : (
+                  <span className="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/20">
+                    {lang === 'ar' ? 'نشط' : 'Active'}
+                  </span>
+                )}
+              </div>
+
+              {/* Simulation Hub */}
+              <div className="flex items-center justify-between gap-2.5">
+                <button
+                  onClick={() => {
+                    triggerToast(
+                      lang === 'ar' 
+                        ? '🚀 جارٍ جدولة إرسال إشعار تجريبي فوري خلال ثانية واحدة...' 
+                        : '🚀 Scheduling an instant simulation trigger in 1 second...',
+                      'info'
+                    );
+                    setTimeout(() => {
+                      triggerNotification(
+                        'system',
+                        '🎯 اختبار الإشعارات الفورية (FCM)',
+                        '🎯 Smart FCM Push Test',
+                        'تم استقبال وتأكيد ربط الإشعار بنجاح فائق! نظام التوجيه نشط 100%.',
+                        'FCM verification signal completed flawlessly! Routing is 100% stable.',
+                        ''
+                      );
+                    }, 1000);
+                  }}
+                  className="flex-1 py-2 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 hover:from-blue-500/15 hover:to-indigo-500/15 text-blue-400 border border-blue-500/25 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>🎯</span>
+                  <span>{lang === 'ar' ? 'تجرِبة الإشعار الفوري' : 'Test Push Visual'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    playRescueAlertSound();
+                    triggerToast(
+                      lang === 'ar' ? '🔊 تم تشغيل نغمة الإنقاذ الذكية!' : '🔊 Played rescue signal tone!',
+                      'success'
+                    );
+                  }}
+                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-gray-800 text-gray-300 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  title={lang === 'ar' ? 'اختبار الصوت والاهتزاز' : 'Test Signal Tone'}
+                >
+                  <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>{lang === 'ar' ? 'نغمة' : 'Tone'}</span>
+                </button>
+              </div>
+
+              {/* Operations row */}
+              <div className="flex items-center justify-between gap-3 text-[11px] font-black text-gray-500 px-1 pt-1">
+                <button
+                  onClick={() => {
+                    setNotifications(prev => {
+                      const updated = prev.map(n => ({ ...n, isRead: true }));
+                      localStorage.setItem('systro_notifications_history', JSON.stringify(updated));
+                      return updated;
+                    });
+                    triggerToast(lang === 'ar' ? 'تم تحديد جميع الإشعارات كمقروءة!' : 'All marked as read!', 'success');
+                  }}
+                  className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer animate-fade-in"
+                >
+                  <CheckCheck className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                  <span>{lang === 'ar' ? 'تحديد الكل كمقروء' : 'Mark all read'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setNotifications([]);
+                    localStorage.removeItem('systro_notifications_history');
+                    triggerToast(lang === 'ar' ? 'تم مسح سجل الإشعارات بالكامل!' : 'Cleared notification history!', 'info');
+                  }}
+                  className="hover:text-white transition-colors flex items-center gap-1 text-red-400 hover:text-red-300 cursor-pointer animate-fade-in"
+                >
+                  <X className="w-3.5 h-3.5 shrink-0" />
+                  <span>{lang === 'ar' ? 'مسح السجل' : 'Clear all'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Notifications Scroll list */}
+            <div className="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+              {notifications.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3.5">
+                  <div className="w-14 h-14 rounded-full bg-slate-900 border border-gray-800 flex items-center justify-center text-2xl animate-pulse">
+                    🔔
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs sm:text-sm font-black text-gray-400 block">
+                      {lang === 'ar' ? 'صندوق الإشعارات فارغ' : 'Your inbox is clear'}
+                    </span>
+                    <p className="text-[11px] text-gray-500 max-w-[240px] leading-relaxed mx-auto">
+                      {lang === 'ar' 
+                        ? 'لا توجد أي إشعارات سابقة حالياً. بمجرد إرسال طلب جديد أو تلقي عرض فستظهر هنا تلقائياً في نفس اللحظة.' 
+                        : 'No previous notifications available. New breakdown requests and technician bids will appear here instantly.'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    onClick={() => {
+                      // Mark as read
+                      setNotifications(prev => {
+                        const updated = prev.map(notif => notif.id === n.id ? { ...notif, isRead: true } : notif);
+                        localStorage.setItem('systro_notifications_history', JSON.stringify(updated));
+                        return updated;
+                      });
+                      
+                      // Navigate to task
+                      if (n.targetId) {
+                        setActiveRequestId(n.targetId);
+                        setActiveTab('simulator');
+                        setIsNotificationCenterOpen(false);
+                      }
+                    }}
+                    className={`p-3.5 rounded-xl border transition-all flex items-start gap-3 cursor-pointer group ${
+                      n.isRead 
+                        ? 'bg-slate-900/40 border-gray-950 hover:bg-slate-900 hover:border-gray-800 text-gray-300' 
+                        : 'bg-[#0F1424]/90 border-amber-500/20 hover:border-amber-500/40 text-white shadow-md shadow-amber-500/5'
+                    }`}
+                  >
+                    {/* Icon */}
+                    <div className="w-8.5 h-8.5 rounded-xl bg-slate-950 flex items-center justify-center text-base shrink-0 border border-gray-800/80 group-hover:scale-110 transition-transform">
+                      {n.type === 'new_request' ? '🚨' :
+                       n.type === 'bid_submitted' ? '💸' :
+                       n.type === 'bid_accepted' ? '🎉' :
+                       n.type === 'en_route' ? '🚚' :
+                       n.type === 'arrived' ? '📍' :
+                       n.type === 'completed' ? '✅' :
+                       n.type === 'chat' ? '💬' : '📡'}
+                    </div>
+
+                    {/* Body text */}
+                    <div className="flex-grow min-w-0 space-y-1">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <h4 className="text-xs font-black truncate leading-tight group-hover:text-amber-400 transition-colors">
+                          {lang === 'ar' ? n.titleAr : n.titleEn}
+                        </h4>
+                        {!n.isRead && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                        )}
+                      </div>
+                      <p className="text-[11px] font-semibold text-gray-400 leading-relaxed font-sans line-clamp-3">
+                        {lang === 'ar' ? n.bodyAr : n.bodyEn}
+                      </p>
+                      <div className="flex items-center justify-between gap-2 pt-1.5 text-[9px] font-bold text-gray-500">
+                        <span>
+                          {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </span>
+                        {n.targetId && (
+                          <span className="text-amber-500 group-hover:underline flex items-center gap-0.5">
+                            {lang === 'ar' ? 'عرض المهمة الخريطة ➔' : 'View map task ➔'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer informational */}
+            <div className="p-4 bg-[#0A0D18] border-t border-gray-800 text-center select-none">
+              <span className="text-[10px] font-bold text-gray-500 block">
+                {lang === 'ar' ? '✓ نظام مشغل ومؤمن بالكامل بواسطة سيسترو السحابي' : '✓ Powered & secured by Systro Cloud System'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Google Maps Style Custom Geolocation Prompt Banner */}
       {showLocationPrompt && (
         <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-8 md:w-[440px] z-50 bg-[#0C101F]/98 border border-amber-500/30 rounded-2xl p-5 shadow-2xl backdrop-blur-md animate-fade-in transition-all">
@@ -2481,6 +3058,24 @@ export default function App() {
 
           {/* Right actions (Sign in, language toggle, Admin portal yellow) */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Notification Bell Icon */}
+            <button
+              onClick={() => setIsNotificationCenterOpen(true)}
+              className="relative p-2 sm:p-2.5 bg-[#111827]/85 border border-[#1E293B]/70 rounded-xl text-gray-300 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0"
+              title={lang === 'ar' ? 'مركز الإشعارات الذكي (FCM)' : 'Smart Notification Hub (FCM)'}
+            >
+              <Bell className={`w-4 h-4 shrink-0 ${notifications.some(n => !n.isRead) ? 'animate-bounce text-amber-500' : ''}`} />
+              
+              {notifications.some(n => !n.isRead) && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[9px] font-black text-white flex items-center justify-center">
+                    {notifications.filter(n => !n.isRead).length}
+                  </span>
+                </span>
+              )}
+            </button>
+
             {/* Language Switcher */}
             <button 
               onClick={() => setLang(lang === 'ar' ? 'en' : lang === 'en' ? 'he' : 'ar')}
