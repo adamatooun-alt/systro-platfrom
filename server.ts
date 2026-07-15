@@ -11,7 +11,11 @@ async function sendVerificationEmail(email: string, code: string): Promise<boole
   const port = process.env.SMTP_PORT;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || 'Systro Rescue Network <no-reply@systro.live>';
+  let from = process.env.SMTP_FROM || 'Systro Rescue Network <no-reply@systro.live>';
+
+  if (from && !from.includes('<') && user && user.includes('@')) {
+    from = `${from} <${user}>`;
+  }
 
   const isPlaceholderUser = /[\u0600-\u06FF]/.test(user || '') || (user && (user.includes('البريد') || user.includes('المرسل')));
   const isPlaceholderPass = /[\u0600-\u06FF]/.test(pass || '') || (pass && (pass.includes('كلمة') || pass.includes('مرور')));
@@ -28,9 +32,12 @@ async function sendVerificationEmail(email: string, code: string): Promise<boole
       port: Number(port) || 587,
       secure: Number(port) === 465,
       auth: { user, pass },
-      connectionTimeout: 4000, // 4 seconds max to connect
-      greetingTimeout: 4000,   // 4 seconds max to greet
-      socketTimeout: 5000      // 5 seconds socket inactivity
+      tls: {
+        rejectUnauthorized: false
+      },
+      connectionTimeout: 10000, // 10 seconds max to connect
+      greetingTimeout: 10000,   // 10 seconds max to greet
+      socketTimeout: 15000      // 15 seconds socket inactivity
     });
 
     await transporter.sendMail({
@@ -239,7 +246,10 @@ async function startServer() {
         host,
         port: Number(port) || 587,
         secure: Number(port) === 465,
-        auth: { user, pass }
+        auth: { user, pass },
+        tls: {
+          rejectUnauthorized: false
+        }
       });
 
       // Verify connection first
