@@ -178,13 +178,6 @@ async function startServer() {
     const normalizedEmail = email.trim().toLowerCase();
     const enteredCode = code.trim();
 
-    // Universal master bypass code for testing and development in sandbox
-    if (enteredCode === '123456') {
-      otpStore.delete(normalizedEmail);
-      res.json({ success: true });
-      return;
-    }
-
     const saved = otpStore.get(normalizedEmail);
 
     if (!saved) {

@@ -488,11 +488,6 @@ export default function LoginPortal({
                   <p className="font-mono text-xs text-white font-bold break-all bg-emerald-950/60 py-1.5 px-3 rounded-lg inline-block border border-emerald-900/30">
                     {customEmail}
                   </p>
-                  <p className="text-[10px] text-amber-400 font-bold mt-1.5 leading-normal">
-                    {lang === 'ar'
-                      ? '💡 إذا لم يصلك الرمز للبريد أو تأخر، يمكنك استخدام رمز الدخول الموحد "123456" للتجربة السريعة والمتابعة فوراً!'
-                      : '💡 If the code doesn\'t arrive or is delayed, you can use the master bypass code "123456" for instant access!'}
-                  </p>
                 </div>
 
 
@@ -681,11 +676,6 @@ export default function LoginPortal({
                     <p className="font-mono text-xs text-slate-700 font-bold break-all bg-white py-1 px-3.5 rounded-lg inline-block border border-slate-100">
                       {customEmail}
                     </p>
-                    <p className="text-[10px] text-amber-600 font-extrabold mt-1.5 leading-normal">
-                      {lang === 'ar'
-                        ? '💡 إذا لم يصلك الرمز للبريد أو تأخر، يمكنك استخدام رمز الدخول الموحد "123456" للتجربة السريعة والمتابعة فوراً!'
-                        : '💡 If the code doesn\'t arrive or is delayed, you can use the master bypass code "123456" for instant access!'}
-                    </p>
                   </div>
 
 
@@ -701,7 +691,7 @@ export default function LoginPortal({
                       maxLength={6}
                       value={fallbackOtpCode}
                       onChange={(e) => setFallbackOtpCode(e.target.value.replace(/\D/g, ''))}
-                      placeholder="123456"
+                      placeholder="******"
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono text-center text-lg font-bold tracking-widest focus:outline-none focus:border-sky-500"
                     />
                   </div>
