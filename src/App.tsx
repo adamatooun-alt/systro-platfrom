@@ -8,7 +8,7 @@ const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
   (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
   (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
-  '';
+  'AIzaSyB7xvKPc0DaRvfse9V1xsHApyeigvjaSL8';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { 
   doc, 
