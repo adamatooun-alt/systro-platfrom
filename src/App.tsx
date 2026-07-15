@@ -168,17 +168,17 @@ export default function App() {
 
   // Client Portal Sign-In Simulation State
   const [userRole, setUserRole] = useState<'client' | 'technician' | null>(() => {
-    const role = localStorage.getItem('systro_user_role');
+    const role = sessionStorage.getItem('systro_user_role');
     return (role === 'client' || role === 'technician') ? role : null;
   });
   const [portalTab, setPortalTab] = useState<'client' | 'tech'>('client');
   const [phoneNumber, setPhoneNumber] = useState(() => {
-    return localStorage.getItem('systro_phone_number') || '';
+    return sessionStorage.getItem('systro_phone_number') || '';
   });
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem('systro_is_logged_in') === 'true';
+    return sessionStorage.getItem('systro_is_logged_in') === 'true';
   });
   const [isTrustPortalOpen, setIsTrustPortalOpen] = useState(false);
   const [customDomain, setCustomDomain] = useState(() => {
@@ -248,10 +248,10 @@ export default function App() {
   const [showGoogleFallbackModal, setShowGoogleFallbackModal] = useState(false);
 
   const [loggedInUserEmail, setLoggedInUserEmail] = useState(() => {
-    return localStorage.getItem('systro_user_email') || '';
+    return sessionStorage.getItem('systro_user_email') || '';
   });
   const [loggedInUserName, setLoggedInUserName] = useState(() => {
-    return localStorage.getItem('systro_user_name') || '';
+    return sessionStorage.getItem('systro_user_name') || '';
   });
 
   // User Profile Modal & Permanent Account State
@@ -1984,8 +1984,8 @@ export default function App() {
   const handleRealGoogleSignIn = async (isFallbackMode: boolean = false, fallbackEmail?: string, fallbackName?: string) => {
     if (isFallbackMode || showGoogleFallbackModal) {
       // Bypasses popup blocks inside iframes - auto imports the verified user dynamically
-      const email = fallbackEmail || localStorage.getItem('systro_saved_google_email');
-      const name = fallbackName || localStorage.getItem('systro_saved_google_name');
+      const email = fallbackEmail || sessionStorage.getItem('systro_saved_google_email');
+      const name = fallbackName || sessionStorage.getItem('systro_saved_google_name');
       
       if (email) {
         const displayName = name || (lang === 'ar' ? "مستخدم جوجل" : "Google User");
@@ -2141,9 +2141,9 @@ export default function App() {
     setLoggedInUserEmail(resolvedEmail);
     setLoggedInUserName(resolvedName);
 
-    localStorage.setItem('systro_is_logged_in', 'true');
-    localStorage.setItem('systro_user_email', resolvedEmail);
-    localStorage.setItem('systro_user_name', resolvedName);
+    sessionStorage.setItem('systro_is_logged_in', 'true');
+    sessionStorage.setItem('systro_user_email', resolvedEmail);
+    sessionStorage.setItem('systro_user_name', resolvedName);
 
     try {
       const userDocRef = doc(db, "users", resolvedEmail);
@@ -2152,21 +2152,21 @@ export default function App() {
         const data = snapshot.data();
         if (data.name) {
           setLoggedInUserName(data.name);
-          localStorage.setItem('systro_user_name', data.name);
+          sessionStorage.setItem('systro_user_name', data.name);
         }
         if (data.role) {
           setUserRole(data.role);
-          localStorage.setItem('systro_user_role', data.role);
+          sessionStorage.setItem('systro_user_role', data.role);
         } else {
           setUserRole(null);
-          localStorage.removeItem('systro_user_role');
+          sessionStorage.removeItem('systro_user_role');
         }
         if (data.phone) {
           setPhoneNumber(data.phone);
-          localStorage.setItem('systro_phone_number', data.phone);
+          sessionStorage.setItem('systro_phone_number', data.phone);
         } else {
           setPhoneNumber('');
-          localStorage.removeItem('systro_phone_number');
+          sessionStorage.removeItem('systro_phone_number');
         }
       } else {
         // Create initial user document
@@ -2178,9 +2178,9 @@ export default function App() {
           createdAt: new Date().toISOString()
         }, { merge: true });
         setUserRole(null);
-        localStorage.removeItem('systro_user_role');
+        sessionStorage.removeItem('systro_user_role');
         setPhoneNumber('');
-        localStorage.removeItem('systro_phone_number');
+        sessionStorage.removeItem('systro_phone_number');
       }
     } catch (err) {
       console.error("Error persisting/fetching user from Firestore:", err);
@@ -2195,11 +2195,11 @@ export default function App() {
     setLoggedInUserEmail('');
     setLoggedInUserName('');
     setPhoneNumber('');
-    localStorage.removeItem('systro_is_logged_in');
-    localStorage.removeItem('systro_user_email');
-    localStorage.removeItem('systro_user_name');
-    localStorage.removeItem('systro_user_role');
-    localStorage.removeItem('systro_phone_number');
+    sessionStorage.removeItem('systro_is_logged_in');
+    sessionStorage.removeItem('systro_user_email');
+    sessionStorage.removeItem('systro_user_name');
+    sessionStorage.removeItem('systro_user_role');
+    sessionStorage.removeItem('systro_phone_number');
     triggerToast(lang === 'ar' ? 'تم تسجيل الخروج بنجاح!' : 'Logged out successfully!', 'info');
   };
 
@@ -2214,9 +2214,9 @@ export default function App() {
       setLoggedInUserName(profileNameInput.trim());
       setPhoneNumber(profilePhoneInput.trim());
 
-      // 2. Update localStorage
-      localStorage.setItem('systro_user_name', profileNameInput.trim());
-      localStorage.setItem('systro_phone_number', profilePhoneInput.trim());
+      // 2. Update sessionStorage
+      sessionStorage.setItem('systro_user_name', profileNameInput.trim());
+      sessionStorage.setItem('systro_phone_number', profilePhoneInput.trim());
 
       // 3. Update Firestore users collection
       const userDocRef = doc(db, "users", loggedInUserEmail);
@@ -2503,7 +2503,7 @@ export default function App() {
                   onClick={async () => {
                     const newRole = userRole === 'technician' ? 'client' : 'technician';
                     setUserRole(newRole);
-                    localStorage.setItem('systro_user_role', newRole);
+                    sessionStorage.setItem('systro_user_role', newRole);
                     
                     if (loggedInUserEmail) {
                       try {
@@ -2659,7 +2659,7 @@ export default function App() {
                 <button
                   onClick={async () => {
                     setUserRole('client');
-                    localStorage.setItem('systro_user_role', 'client');
+                    sessionStorage.setItem('systro_user_role', 'client');
                     if (loggedInUserEmail) {
                       try {
                         await setDoc(doc(db, "users", loggedInUserEmail), { role: 'client' }, { merge: true });
@@ -2677,7 +2677,7 @@ export default function App() {
                 <button
                   onClick={async () => {
                     setUserRole('technician');
-                    localStorage.setItem('systro_user_role', 'technician');
+                    sessionStorage.setItem('systro_user_role', 'technician');
                     if (loggedInUserEmail) {
                       try {
                         await setDoc(doc(db, "users", loggedInUserEmail), { role: 'technician' }, { merge: true });

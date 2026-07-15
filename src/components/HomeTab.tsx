@@ -150,7 +150,7 @@ export default function HomeTab({
             <button 
               onClick={async () => {
                 setUserRole('client');
-                localStorage.setItem('systro_user_role', 'client');
+                sessionStorage.setItem('systro_user_role', 'client');
                 if (loggedInUserEmail) {
                   try {
                     await setDoc(doc(db, "users", loggedInUserEmail), { role: 'client' }, { merge: true });
@@ -179,7 +179,7 @@ export default function HomeTab({
             <button 
               onClick={async () => {
                 setUserRole('technician');
-                localStorage.setItem('systro_user_role', 'technician');
+                sessionStorage.setItem('systro_user_role', 'technician');
                 if (loggedInUserEmail) {
                   try {
                     await setDoc(doc(db, "users", loggedInUserEmail), { role: 'technician' }, { merge: true });

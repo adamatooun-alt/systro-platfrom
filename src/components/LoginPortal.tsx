@@ -32,8 +32,8 @@ export default function LoginPortal({
   triggerToast,
   t,
 }: LoginPortalProps) {
-  const [customName, setCustomName] = React.useState(() => localStorage.getItem('systro_saved_google_name') || '');
-  const [customEmail, setCustomEmail] = React.useState(() => localStorage.getItem('systro_saved_google_email') || '');
+  const [customName, setCustomName] = React.useState(() => sessionStorage.getItem('systro_saved_google_name') || '');
+  const [customEmail, setCustomEmail] = React.useState(() => sessionStorage.getItem('systro_saved_google_email') || '');
   const [showManualForm, setShowManualForm] = React.useState(false);
   const [acceptedTerms, setAcceptedTerms] = React.useState(false);
   const [showTermsModal, setShowTermsModal] = React.useState(false);
@@ -60,8 +60,8 @@ export default function LoginPortal({
 
   React.useEffect(() => {
     if (showGoogleFallbackModal) {
-      setCustomName(localStorage.getItem('systro_saved_google_name') || '');
-      setCustomEmail(localStorage.getItem('systro_saved_google_email') || '');
+      setCustomName(sessionStorage.getItem('systro_saved_google_name') || '');
+      setCustomEmail(sessionStorage.getItem('systro_saved_google_email') || '');
       setFallbackOtpSent(false);
       setFallbackOtpCode('');
       setSimulatedCode('');
@@ -185,8 +185,8 @@ export default function LoginPortal({
 
       const data = await response.json();
       if (response.ok && data.success) {
-        localStorage.setItem('systro_saved_google_email', trimmedEmail);
-        localStorage.setItem('systro_saved_google_name', trimmedName);
+        sessionStorage.setItem('systro_saved_google_email', trimmedEmail);
+        sessionStorage.setItem('systro_saved_google_name', trimmedName);
 
         setShowGoogleFallbackModal(false);
         await handleGoogleSignIn(trimmedEmail, trimmedName);
