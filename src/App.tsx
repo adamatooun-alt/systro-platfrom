@@ -2052,19 +2052,9 @@ export default function App() {
       const data = await response.json();
       if (response.ok && data.success) {
         setOtpSentToEmail(true);
-        if (data.smtpNotConfigured) {
-          triggerToast(lang === 'ar' 
-            ? 'تنبيه: خادم البريد (SMTP) غير مهيأ في الإعدادات. تم تفعيل الرمز الافتراضي (123456) للمعاينة السريعة!' 
-            : 'Notice: SMTP is not configured. Default code (123456) is active for testing!', 'info');
-        } else if (data.smtpFailed) {
-          triggerToast(lang === 'ar' 
-            ? 'تنبيه: فشل خادم SMTP في الإرسال. تم تفعيل الرمز الافتراضي (123456) للمعاينة السريعة!' 
-            : 'Notice: SMTP delivery failed. Default code (123456) is active for testing!', 'warning');
-        } else {
-          triggerToast(lang === 'ar' 
-            ? 'تم إرسال رمز التحقق لبريدك الإلكتروني الحقيقي بنجاح! ✉️' 
-            : 'Verification code sent to your real email inbox successfully! ✉️', 'success');
-        }
+        triggerToast(lang === 'ar' 
+          ? 'تم إرسال رمز التحقق لبريدك الإلكتروني الحقيقي بنجاح! ✉️' 
+          : 'Verification code sent to your real email inbox successfully! ✉️', 'success');
       } else {
         triggerToast(data.error || (lang === 'ar' ? 'فشل إرسال رمز التحقق!' : 'Failed to send verification code!'), 'error');
       }

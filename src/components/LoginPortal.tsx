@@ -135,37 +135,15 @@ export default function LoginPortal({
       if (response.ok && data.success) {
         setFallbackOtpSent(true);
         setResendCooldown(600); // 10 minutes cooldown
-        if (data.smtpNotConfigured) {
-          setIsSmtpNotConfigured(true);
-          setIsSmtpFailed(false);
-          setFallbackOtpCode('123456'); // Pre-fill default code
-          triggerToast(
-            lang === 'ar' 
-              ? 'تنبيه: خادم البريد (SMTP) غير مهيأ في الإعدادات. تم تفعيل الرمز الافتراضي (123456) وتعبئته تلقائياً بالأسفل للمعاينة السريعة!' 
-              : 'Notice: SMTP is not configured. Default code (123456) is active and has been auto-filled below for testing!', 
-            'info'
-          );
-        } else if (data.smtpFailed) {
-          setIsSmtpNotConfigured(false);
-          setIsSmtpFailed(true);
-          setFallbackOtpCode('123456'); // Pre-fill default code
-          triggerToast(
-            lang === 'ar' 
-              ? 'تنبيه: فشل خادم SMTP في الإرسال. تم تفعيل الرمز الافتراضي (123456) وتعبئته تلقائياً بالأسفل للمعاينة السريعة!' 
-              : 'Notice: SMTP delivery failed. Default code (123456) is active and has been auto-filled below for testing!', 
-            'warning'
-          );
-        } else {
-          setIsSmtpNotConfigured(false);
-          setIsSmtpFailed(false);
-          setFallbackOtpCode(''); // Keep clear for real OTP code
-          triggerToast(
-            lang === 'ar' 
-              ? 'تم إرسال رمز التحقق لبريدك الإلكتروني الحقيقي بنجاح! ✉️' 
-              : 'Verification code sent to your real email inbox successfully! ✉️', 
-            'success'
-          );
-        }
+        setIsSmtpNotConfigured(false);
+        setIsSmtpFailed(false);
+        setFallbackOtpCode(''); // Keep clear for real OTP code
+        triggerToast(
+          lang === 'ar' 
+            ? 'تم إرسال رمز التحقق لبريدك الإلكتروني الحقيقي بنجاح! ✉️' 
+            : 'Verification code sent to your real email inbox successfully! ✉️', 
+          'success'
+        );
       } else {
         triggerToast(data.error || (lang === 'ar' ? 'فشل إرسال رمز التحقق!' : 'Failed to send verification code!'), 'error');
       }
@@ -504,54 +482,18 @@ export default function LoginPortal({
               </div>
             ) : (
               <div className="space-y-6 animate-fade-in">
-                {isSmtpNotConfigured ? (
-                  <div className="text-center space-y-2.5 bg-amber-950/40 border border-amber-500/30 p-4 rounded-2xl">
-                    <p className="text-xs text-amber-400 font-extrabold leading-relaxed">
-                      ⚠️ {lang === 'ar' 
-                        ? 'خادم البريد (SMTP) غير مهيأ في الإعدادات.' 
-                        : lang === 'he'
-                        ? 'שרת הדוא"ל (SMTP) אינו מוגדר בהגדרות.'
-                        : 'SMTP Mail Server is not configured in Settings.'}
-                    </p>
-                    <p className="text-xs text-amber-200 font-extrabold leading-relaxed">
-                      💡 {lang === 'ar'
-                        ? 'لقد تم تفعيل وتعبئة الرمز الافتراضي (123456) تلقائياً بالأسفل للمعاينة والتجربة الفورية. اضغط على زر التحقق للمتابعة!'
-                        : lang === 'he'
-                        ? 'קוד ברירת המחדל (123456) הוזן אוטומטית למטה לצורך בדיקה. לחץ על כפתור האימות להמשך!'
-                        : 'The default code (123456) has been auto-filled below for instant testing. Press the verify button to continue!'}
-                    </p>
-                  </div>
-                ) : isSmtpFailed ? (
-                  <div className="text-center space-y-2.5 bg-red-950/40 border border-red-500/30 p-4 rounded-2xl">
-                    <p className="text-xs text-red-400 font-extrabold leading-relaxed">
-                      ❌ {lang === 'ar' 
-                        ? 'فشل إرسال البريد الإلكتروني الفعلي عبر خادم SMTP.' 
-                        : lang === 'he'
-                        ? 'כישלון בשליחת דוא"ל דרך שרת SMTP.'
-                        : 'Failed to send real email via your SMTP server.'}
-                    </p>
-                    <p className="text-xs text-amber-200 font-extrabold leading-relaxed">
-                      💡 {lang === 'ar'
-                        ? 'تم تفعيل الرمز الافتراضي (123456) لتفادي عرقلة الدخول. يرجى التحقق من إعدادات SMTP في لوحة التحكم لاحقاً.'
-                        : lang === 'he'
-                        ? 'קוד ברירת המחדל (123456) הופעל כדי למנוע חסימה. אנא בדוק את הגדרות ה-SMTP שלך.'
-                        : 'Fallback code (123456) activated to avoid blocking access. Please check your SMTP settings in the dashboard.'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="text-center space-y-2 bg-emerald-950/40 border border-emerald-900/50 p-4 rounded-2xl">
-                    <p className="text-xs text-emerald-300 font-extrabold leading-relaxed">
-                      {lang === 'ar' 
-                        ? 'أرسلنا رمز تحقق آمن إلى البريد التالي:' 
-                        : lang === 'he'
-                        ? 'שלחנו קוד אימות מאובטח לאימייל הבא:'
-                        : 'Secure verification code has been sent to:'}
-                    </p>
-                    <p className="font-mono text-xs text-white font-bold break-all bg-emerald-950/60 py-1.5 px-3 rounded-lg inline-block border border-emerald-900/30">
-                      {customEmail}
-                    </p>
-                  </div>
-                )}
+                <div className="text-center space-y-2 bg-emerald-950/40 border border-emerald-900/50 p-4 rounded-2xl">
+                  <p className="text-xs text-emerald-300 font-extrabold leading-relaxed">
+                    {lang === 'ar' 
+                      ? 'أرسلنا رمز تحقق آمن إلى البريد التالي:' 
+                      : lang === 'he'
+                      ? 'שלחנו קוד אימות מאובטח לאימייל הבא:'
+                      : 'Secure verification code has been sent to:'}
+                  </p>
+                  <p className="font-mono text-xs text-white font-bold break-all bg-emerald-950/60 py-1.5 px-3 rounded-lg inline-block border border-emerald-900/30">
+                    {customEmail}
+                  </p>
+                </div>
 
 
 

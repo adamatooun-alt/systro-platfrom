@@ -107,35 +107,17 @@ async function startServer() {
     const isPlaceholderPass = /[\u0600-\u06FF]/.test(pass || '') || (pass && (pass.includes('كلمة') || pass.includes('مرور')));
 
     if (isPlaceholderUser || isPlaceholderPass) {
-      // SMTP configuration has placeholders. Fall back to 123456 for testing
-      const fallbackCode = "123456";
-      otpStore.set(normalizedEmail, {
-        code: fallbackCode,
-        expiresAt: Date.now() + 10 * 60 * 1000
-      });
-
-      res.json({
-        success: true,
-        sentViaSmtp: false,
-        smtpNotConfigured: true,
-        message: 'SMTP contains placeholders. Fallback code 123456 is active for testing.'
+      res.status(400).json({
+        success: false,
+        error: 'بيانات خادم SMTP تحتوي على قيم افتراضية. يرجى تهيئة خادم البريد بشكل صحيح لتلقي رمز التحقق.'
       });
       return;
     }
 
     if (!host || !user || !pass) {
-      // SMTP is not configured. Use 123456 as a safe fallback code so the login flow is never blocked
-      const fallbackCode = "123456";
-      otpStore.set(normalizedEmail, {
-        code: fallbackCode,
-        expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes from now
-      });
-
-      res.json({
-        success: true,
-        sentViaSmtp: false,
-        smtpNotConfigured: true,
-        message: 'SMTP is not configured. Fallback code 123456 is active for testing.'
+      res.status(400).json({
+        success: false,
+        error: 'خادم البريد (SMTP) غير مهيأ في الإعدادات. يرجى تهيئة خادم البريد بشكل صحيح لتلقي رمز التحقق.'
       });
       return;
     }
@@ -151,18 +133,9 @@ async function startServer() {
     const sent = await sendVerificationEmail(normalizedEmail, code);
 
     if (!sent) {
-      // SMTP sending failed. Use 123456 as a fallback code to prevent blocking the user
-      const fallbackCode = "123456";
-      otpStore.set(normalizedEmail, {
-        code: fallbackCode,
-        expiresAt: Date.now() + 10 * 60 * 1000
-      });
-
-      res.json({
-        success: true,
-        sentViaSmtp: false,
-        smtpFailed: true,
-        message: 'SMTP delivery failed. Fallback code 123456 is active for testing.'
+      res.status(500).json({
+        success: false,
+        error: 'فشل إرسال البريد الإلكتروني الفعلي عبر خادم SMTP. يرجى مراجعة إعدادات خادم البريد في لوحة التحكم.'
       });
       return;
     }
