@@ -16,7 +16,11 @@ import {
   Phone,
   Send,
   HeartHandshake,
-  Globe
+  Globe,
+  Search,
+  Languages,
+  Check,
+  X
 } from 'lucide-react';
 import { ServiceType, SystemStats } from '../types';
 
@@ -50,6 +54,50 @@ interface HomeTabProps {
   setShowSosButton?: (val: boolean) => void;
 }
 
+const globalLanguages = [
+  { code: 'ar', nameAr: 'العربية', nameEn: 'Arabic', flag: '🇸🇦' },
+  { code: 'en', nameAr: 'الإنجليزية', nameEn: 'English', flag: '🇺🇸' },
+  { code: 'he', nameAr: 'العبرية', nameEn: 'Hebrew', flag: '🇮🇱' },
+  { code: 'fr', nameAr: 'الفرنسية', nameEn: 'French', flag: '🇫🇷' },
+  { code: 'es', nameAr: 'الإسبانية', nameEn: 'Spanish', flag: '🇪🇸' },
+  { code: 'de', nameAr: 'الألمانية', nameEn: 'German', flag: '🇩🇪' },
+  { code: 'it', nameAr: 'الإيطالية', nameEn: 'Italian', flag: '🇮🇹' },
+  { code: 'tr', nameAr: 'التركية', nameEn: 'Turkish', flag: '🇹🇷' },
+  { code: 'ru', nameAr: 'الروسية', nameEn: 'Russian', flag: '🇷🇺' },
+  { code: 'zh-CN', nameAr: 'الصينية المبسطة', nameEn: 'Chinese', flag: '🇨🇳' },
+  { code: 'ja', nameAr: 'اليابانية', nameEn: 'Japanese', flag: '🇯🇵' },
+  { code: 'ko', nameAr: 'الكورية', nameEn: 'Korean', flag: '🇰🇷' },
+  { code: 'hi', nameAr: 'الهندية', nameEn: 'Hindi', flag: '🇮🇳' },
+  { code: 'pt', nameAr: 'البرتغالية', nameEn: 'Portuguese', flag: '🇵🇹' },
+  { code: 'nl', nameAr: 'الهولندية', nameEn: 'Dutch', flag: '🇳🇱' },
+  { code: 'pl', nameAr: 'البولندية', nameEn: 'Polish', flag: '🇵🇱' },
+  { code: 'uk', nameAr: 'الأوكرانية', nameEn: 'Ukrainian', flag: '🇺🇦' },
+  { code: 'ro', nameAr: 'الرومانية', nameEn: 'Romanian', flag: '🇷🇴' },
+  { code: 'el', nameAr: 'اليونانية', nameEn: 'Greek', flag: '🇬🇷' },
+  { code: 'sv', nameAr: 'السويدية', nameEn: 'Swedish', flag: '🇸🇪' },
+  { code: 'no', nameAr: 'النرويجية', nameEn: 'Norwegian', flag: '🇳🇴' },
+  { code: 'da', nameAr: 'الدانماركية', nameEn: 'Danish', flag: '🇩🇰' },
+  { code: 'fi', nameAr: 'الفنلندية', nameEn: 'Finnish', flag: '🇫🇮' },
+  { code: 'th', nameAr: 'التايلاندية', nameEn: 'Thai', flag: '🇹🇭' },
+  { code: 'vi', nameAr: 'الفيتنامية', nameEn: 'Vietnamese', flag: '🇻🇳' },
+  { code: 'id', nameAr: 'الإندونيسية', nameEn: 'Indonesian', flag: '🇮🇩' },
+  { code: 'ms', nameAr: 'الماليزية', nameEn: 'Malay', flag: '🇲🇾' },
+  { code: 'fa', nameAr: 'الفارسية', nameEn: 'Persian', flag: '🇮🇷' },
+  { code: 'ur', nameAr: 'الأوردو', nameEn: 'Urdu', flag: '🇵🇰' },
+  { code: 'sw', nameAr: 'السواحيلية', nameEn: 'Swahili', flag: '🇰🇪' },
+  { code: 'tl', nameAr: 'التاغالوغية', nameEn: 'Tagalog', flag: '🇵🇭' },
+  { code: 'bg', nameAr: 'البلغارية', nameEn: 'Bulgarian', flag: '🇧🇬' },
+  { code: 'hr', nameAr: 'الكرواتية', nameEn: 'Croatian', flag: '🇭🇷' },
+  { code: 'cs', nameAr: 'التشيكية', nameEn: 'Czech', flag: '🇨🇿' },
+  { code: 'hu', nameAr: 'الهنغارية', nameEn: 'Hungarian', flag: '🇭🇺' },
+  { code: 'is', nameAr: 'الآيسلندية', nameEn: 'Icelandic', flag: '🇮🇸' },
+  { code: 'ka', nameAr: 'الجورجية', nameEn: 'Georgian', flag: '🇬🇪' },
+  { code: 'mt', nameAr: 'المالطية', nameEn: 'Maltese', flag: '🇲🇹' },
+  { code: 'sr', nameAr: 'الصربية', nameEn: 'Serbian', flag: '🇷🇸' },
+  { code: 'sk', nameAr: 'السلوفاكية', nameEn: 'Slovak', flag: '🇸🇰' },
+  { code: 'sl', nameAr: 'السلوفينية', nameEn: 'Slovenian', flag: '🇸🇮' }
+];
+
 export default function HomeTab({
   lang,
   isLoggedIn,
@@ -78,6 +126,45 @@ export default function HomeTab({
   const [isSubmittingIssue, setIsSubmittingIssue] = useState(false);
   const [isTranslateLoaded, setIsTranslateLoaded] = useState(false);
   const [showTranslateWidget, setShowTranslateWidget] = useState(false);
+  const [translateSearchQuery, setTranslateSearchQuery] = useState('');
+  const [translateSelectedLang, setTranslateSelectedLang] = useState('');
+
+  const triggerGoogleTranslate = (code: string, name: string) => {
+    setTranslateSelectedLang(code);
+    
+    // Attempt 1: Find the native Google Translate select element and trigger a change
+    const selectEl = document.querySelector('.goog-te-combo') as HTMLSelectElement;
+    if (selectEl) {
+      selectEl.value = code;
+      selectEl.dispatchEvent(new Event('change'));
+      triggerToast(
+        lang === 'ar' 
+          ? `✅ تم تحويل لغة الموقع بنجاح إلى: ${name}` 
+          : lang === 'he'
+          ? `✅ שפת האתר שונתה בהצלחה ל: ${name}`
+          : `✅ Website translated successfully to: ${name}`,
+        'success'
+      );
+    } else {
+      // Attempt 2: Set standard google trans cookie
+      const cookieValue = `/auto/${code}`;
+      document.cookie = `googtrans=${cookieValue}; path=/;`;
+      document.cookie = `googtrans=${cookieValue}; path=/; domain=${window.location.hostname};`;
+      
+      triggerToast(
+        lang === 'ar' 
+          ? `🔄 جاري تحويل لغة الموقع إلى ${name}...` 
+          : lang === 'he'
+          ? `🔄 מתרגם את האתר ל-${name}...`
+          : `🔄 Translating website to ${name}...`,
+        'success'
+      );
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    }
+  };
 
   const handleSubmitIssue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -321,32 +408,166 @@ export default function HomeTab({
                 <span>🌍 {lang === 'ar' ? 'تفعيل الترجمة الفورية لجميع اللغات' : lang === 'he' ? 'הפעל תרגום מיידי' : 'Activate Instant Translation'}</span>
               </button>
             ) : (
-              <div className="w-full p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl flex flex-col items-center gap-2">
-                <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider animate-pulse">
-                  {lang === 'ar' ? 'اختر لغتك المفضلة من القائمة بالأسفل:' : lang === 'he' ? 'בחר את השפה המועדפת עליך למטה:' : 'Select your language from the dropdown below:'}
-                </span>
-                
-                {/* Mount target for Google Translate Element */}
-                <div id="google_translate_element" className="min-h-[42px] flex items-center justify-center py-1"></div>
-                
-                <button
-                  onClick={() => {
-                    try {
-                      const iframe = document.querySelector('.goog-te-banner-frame') as HTMLIFrameElement;
-                      if (iframe) {
-                        const restoreButton = iframe.contentWindow?.document.querySelector('.goog-te-button button') as HTMLButtonElement;
-                        if (restoreButton) restoreButton.click();
-                      } else {
+              <div className="w-full flex flex-col gap-4 text-right rtl:text-right ltr:text-left">
+                {/* Search Language Input field */}
+                <div className="relative w-full">
+                  <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-orange-500/70">
+                    <Search className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={translateSearchQuery}
+                    onChange={(e) => setTranslateSearchQuery(e.target.value)}
+                    placeholder={
+                      lang === 'ar' 
+                        ? '🔍 ابحث عن أي لغة في العالم (مثال: فرنسية، إسبانية، صينية)...' 
+                        : lang === 'he'
+                        ? '🔍 חפש כל שפה בעולם (למשל: רוסית, ספרדית, סינית)...'
+                        : '🔍 Search any language (e.g., Spanish, German, French)...'
+                    }
+                    className="w-full pl-4 pr-10 py-2.5 text-xs bg-white/5 border border-orange-500/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-all font-bold"
+                  />
+                  {translateSearchQuery && (
+                    <button
+                      onClick={() => setTranslateSearchQuery('')}
+                      className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 hover:text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick select language pills (most popular ones) */}
+                <div className="flex flex-wrap gap-1.5 items-center justify-center py-1">
+                  <span className="text-[10px] font-bold text-gray-500 mr-1">
+                    {lang === 'ar' ? 'سريع:' : lang === 'he' ? 'מהיר:' : 'Quick:'}
+                  </span>
+                  {[
+                    { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+                    { code: 'en', name: 'English', flag: '🇺🇸' },
+                    { code: 'he', name: 'עברית', flag: '🇮🇱' },
+                    { code: 'fr', name: 'Français', flag: '🇫🇷' },
+                    { code: 'es', name: 'Español', flag: '🇪🇸' },
+                    { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
+                    { code: 'ru', name: 'Русский', flag: '🇷🇺' }
+                  ].map((quick) => (
+                    <button
+                      key={quick.code}
+                      type="button"
+                      onClick={() => triggerGoogleTranslate(quick.code, quick.name)}
+                      className={`px-2.5 py-1 text-[11px] font-black rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
+                        translateSelectedLang === quick.code
+                          ? 'bg-orange-500 text-white border-orange-400 shadow-md shadow-orange-500/20'
+                          : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'
+                      }`}
+                    >
+                      <span>{quick.flag}</span>
+                      <span>{quick.name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Filtered Languages Search Results Grid */}
+                <div className="max-h-48 overflow-y-auto pr-1 flex flex-col gap-1 custom-scrollbar border border-white/5 bg-black/20 rounded-xl p-2">
+                  {globalLanguages
+                    .filter(item => {
+                      const q = translateSearchQuery.toLowerCase().trim();
+                      if (!q) return false; // Only show results if user is actively searching
+                      return (
+                        item.nameAr.includes(q) ||
+                        item.nameEn.toLowerCase().includes(q) ||
+                        item.code.toLowerCase().includes(q)
+                      );
+                    })
+                    .map((item) => (
+                      <button
+                        key={item.code}
+                        type="button"
+                        onClick={() => triggerGoogleTranslate(item.code, item.nameAr)}
+                        className={`w-full px-3 py-2 text-xs font-bold rounded-lg flex items-center justify-between transition-all cursor-pointer ${
+                          translateSelectedLang === item.code
+                            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40'
+                            : 'bg-white/[0.02] hover:bg-white/[0.06] text-gray-300 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{item.flag}</span>
+                          <span>{item.nameAr}</span>
+                          <span className="text-[10px] text-gray-500 font-normal">({item.nameEn})</span>
+                        </div>
+                        {translateSelectedLang === item.code && (
+                          <Check className="w-3.5 h-3.5 text-orange-500" />
+                        )}
+                      </button>
+                    ))}
+                  
+                  {/* If user is not searching, show a friendly helper message */}
+                  {!translateSearchQuery && (
+                    <div className="py-6 text-center flex flex-col items-center justify-center gap-1.5 text-gray-500">
+                      <Languages className="w-6 h-6 text-orange-500/30 animate-pulse" />
+                      <p className="text-[10px] font-bold">
+                        {lang === 'ar'
+                          ? 'اكتب اسم أي لغة بالصندوق أعلاه للبحث والترجمة الفورية!'
+                          : lang === 'he'
+                          ? 'הקלד שם של שפה כלשהי בתיבה למעלה כדי לחפש ולתרגם!'
+                          : 'Type any language name in the search box to filter & translate!'}
+                      </p>
+                      <p className="text-[9px] text-gray-600 font-normal">
+                        {lang === 'ar'
+                          ? 'ندعم أكثر من 100 لغة حول العالم عبر خوادم Google'
+                          : lang === 'he'
+                          ? 'תמיכה במעל 100 שפות שונות ברחבי העולם'
+                          : 'Over 100+ languages supported worldwide'}
+                      </p>
+                    </div>
+                  )}
+
+                  {translateSearchQuery && globalLanguages.filter(item => {
+                    const q = translateSearchQuery.toLowerCase().trim();
+                    return (
+                      item.nameAr.includes(q) ||
+                      item.nameEn.toLowerCase().includes(q) ||
+                      item.code.toLowerCase().includes(q)
+                    );
+                  }).length === 0 && (
+                    <div className="py-6 text-center text-gray-500 text-[10px] font-bold">
+                      {lang === 'ar' ? '❌ عذراً، لم نجد لغة مطابقة لبحثك.' : lang === 'he' ? '❌ לא נמצאו תוצאות עבור החיפוש שלך.' : '❌ Sorry, no matching languages found.'}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col items-center gap-2.5 mt-1 border-t border-white/5 pt-3">
+                  {/* Direct Dropdown target for native Google Translate frame mounting */}
+                  <div className="flex items-center gap-2 w-full justify-center">
+                    <span className="text-[10px] font-black text-gray-500">
+                      {lang === 'ar' ? 'اختيار اللغة التقليدي:' : lang === 'he' ? 'בחירת שפה קלאסית:' : 'Classic Language Selector:'}
+                    </span>
+                    <div id="google_translate_element" className="min-h-[42px] flex items-center justify-center py-1"></div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        const iframe = document.querySelector('.goog-te-banner-frame') as HTMLIFrameElement;
+                        if (iframe) {
+                          const restoreButton = iframe.contentWindow?.document.querySelector('.goog-te-button button') as HTMLButtonElement;
+                          if (restoreButton) restoreButton.click();
+                        } else {
+                          // Clear standard translation cookies to reload in original
+                          document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+                          window.location.reload();
+                        }
+                      } catch (e) {
                         window.location.reload();
                       }
-                    } catch (e) {
-                      window.location.reload();
-                    }
-                  }}
-                  className="text-[9px] text-gray-500 hover:text-red-400 font-bold transition-colors mt-1 underline cursor-pointer"
-                >
-                  {lang === 'ar' ? 'إعادة الموقع للغة الأصلية (إعادة تحميل)' : lang === 'he' ? 'אפס לשפה המקורית (רענן)' : 'Restore Original Language (Reload)'}
-                </button>
+                    }}
+                    className="text-[10px] text-orange-500 hover:text-orange-400 font-black transition-colors underline cursor-pointer flex items-center gap-1"
+                  >
+                    <span>🔄 {lang === 'ar' ? 'إعادة الموقع للغة الأصلية' : lang === 'he' ? 'חזור לשפת המקור' : 'Restore Original Language'}</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
