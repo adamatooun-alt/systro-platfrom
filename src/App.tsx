@@ -61,7 +61,12 @@ import {
   User,
   Bell,
   BellOff,
-  CheckCheck
+  CheckCheck,
+  Car,
+  Hammer,
+  HelpCircle,
+  Droplets,
+  Wind
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -424,13 +429,33 @@ export default function App() {
   });
 
   // Services mapping utilities
-  const getServiceIcon = (iconName: string) => {
-    switch (iconName?.toLowerCase()) {
+  const getServiceIcon = (iconName: string, serviceName?: string) => {
+    const iconKey = iconName?.toLowerCase() || '';
+    const nameLower = (serviceName || '').toLowerCase();
+    
+    // Check keywords first to map custom dynamic services beautifully
+    if (nameLower.includes('تكسي') || nameLower.includes('taxi') || nameLower.includes('سائق')) return Car;
+    if (nameLower.includes('نجار') || nameLower.includes('carpenter') || nameLower.includes('خشب')) return Hammer;
+    if (nameLower.includes('استفسار') || nameLower.includes('سؤال') || nameLower.includes('help') || nameLower.includes('info') || nameLower.includes('query')) return HelpCircle;
+    if (nameLower.includes('ميكانيك') || nameLower.includes('mechanic') || nameLower.includes('صيانة') || nameLower.includes('تصليح')) return Wrench;
+    if (nameLower.includes('كهربا') || nameLower.includes('battery') || nameLower.includes('شحن') || nameLower.includes('بطارية')) return Zap;
+    if (nameLower.includes('سباك') || nameLower.includes('plumber') || nameLower.includes('مياه') || nameLower.includes('مواسير')) return Droplets;
+    if (nameLower.includes('تكييف') || nameLower.includes('ac') || nameLower.includes('تبريد') || nameLower.includes('هواء')) return Wind;
+    if (nameLower.includes('سحب') || nameLower.includes('towing') || nameLower.includes('ونش') || nameLower.includes('نقل')) return Truck;
+    if (nameLower.includes('قفل') || nameLower.includes('مفتاح') || nameLower.includes('lock') || nameLower.includes('key')) return Key;
+    if (nameLower.includes('وقود') || nameLower.includes('بنزين') || nameLower.includes('ديزل') || nameLower.includes('fuel')) return Fuel;
+
+    switch (iconKey) {
       case 'fuel': return Fuel;
       case 'key': return Key;
       case 'wrench': return Wrench;
       case 'truck': return Truck;
       case 'zap': return Zap;
+      case 'car': return Car;
+      case 'hammer': return Hammer;
+      case 'help': return HelpCircle;
+      case 'droplets': return Droplets;
+      case 'wind': return Wind;
       default: return Wrench;
     }
   };
@@ -448,14 +473,41 @@ export default function App() {
 
   // Derived Services configuration list loaded in real-time from Firestore database
   const servicesList = dbServices.length > 0 
-    ? dbServices.map(s => ({
-        id: s.id as ServiceType,
-        name: lang === 'ar' ? (s.arName || s.name) : s.name,
-        desc: lang === 'ar' ? (s.arDescription || s.description) : s.description,
-        icon: getServiceIcon(s.icon),
-        color: getServiceColor(s.id),
-        basePrice: s.basePrice || 120,
-      }))
+    ? dbServices.map(s => {
+        let finalDesc = lang === 'ar' ? (s.arDescription || s.description) : (s.description || s.arDescription);
+        if (!finalDesc || finalDesc.length < 5) {
+          const nameLower = `${s.arName || ''} ${s.name || ''}`.toLowerCase();
+          if (nameLower.includes('نجار') || nameLower.includes('carpenter')) {
+            finalDesc = lang === 'ar' 
+              ? 'خدمات نجارة طارئة وإصلاح الأبواب، النوافذ، الأثاث، والأقفال الخشبية في موقعك بكفاءة ودقة عالية.' 
+              : 'Emergency carpentry services: repair of wooden doors, windows, furniture, and locks at your location with high precision.';
+          } else if (nameLower.includes('تكسي') || nameLower.includes('taxi') || nameLower.includes('سائق')) {
+            finalDesc = lang === 'ar' 
+              ? 'خدمة توصيل ونقل طارئة وسريعة عبر سيارات تاكسي مريحة وموثوقة لضمان وصولك الآمن لوجهتك.' 
+              : 'Emergency rapid transit & taxi service. Clean, reliable cars with certified drivers to reach your destination safely.';
+          } else if (nameLower.includes('ميكانيك') || nameLower.includes('mechanic')) {
+            finalDesc = lang === 'ar' 
+              ? 'ميكانيكي متنقل لفحص الأعطال الميكانيكية والكهربائية الطارئة للمركبة وإصلاحها فوراً على الطريق.' 
+              : 'On-the-go mechanical service. Quick diagnostics, engine checks, minor repairs to get you rolling safely.';
+          } else if (nameLower.includes('استفسار') || nameLower.includes('عام') || nameLower.includes('consult')) {
+            finalDesc = lang === 'ar' 
+              ? 'طلب استشارة أو دعم فني عام حول عطل غير معروف، لمساعدتك وتوجيه الفني المناسب لمعاينة حالتك.' 
+              : 'General inquiry or technical support regarding undefined vehicle faults to match you with the correct responder.';
+          } else {
+            finalDesc = lang === 'ar'
+              ? 'خدمة طارئة متخصصة يقدمها فنيون شركاء معتمدون ومجهزون بالكامل لإنقاذك في أسرع وقت.'
+              : 'Specialized emergency service delivered by certified, fully equipped partner technicians to rescue you immediately.';
+          }
+        }
+        return {
+          id: s.id as ServiceType,
+          name: lang === 'ar' ? (s.arName || s.name) : s.name,
+          desc: finalDesc,
+          icon: getServiceIcon(s.icon, `${s.arName || ''} ${s.name || ''}`),
+          color: getServiceColor(s.id),
+          basePrice: s.basePrice || 120,
+        };
+      })
     : [
         {
           id: 'fuel' as ServiceType,
@@ -511,9 +563,18 @@ export default function App() {
     }
   });
   const [selectedService, setSelectedService] = useState<ServiceType>('towing');
+  const [approximatePrice, setApproximatePrice] = useState<number>(150);
   const [problemDescription, setProblemDescription] = useState('');
   const [simStatus, setSimStatus] = useState<RequestStatus>('idle');
   const [liveRequest, setLiveRequest] = useState<RescueRequest | null>(null);
+
+  // Sync approximate price with selected service in real time
+  useEffect(() => {
+    const serviceObj = servicesList.find(s => s.id === selectedService);
+    if (serviceObj) {
+      setApproximatePrice(serviceObj.basePrice);
+    }
+  }, [selectedService, dbServices]);
 
   // New List-driven State
   const [allRequests, setAllRequests] = useState<RescueRequest[]>([]);
@@ -1501,6 +1562,7 @@ export default function App() {
         description: problemDescription,
         status: "pending_bids",
         escrowAmount: 0,
+        approximatePrice: Number(approximatePrice),
         selectedTechnicianId: null,
         timestamp: new Date().toISOString()
       });
@@ -4160,6 +4222,10 @@ export default function App() {
                                       <span className="text-[10px] text-gray-400 font-bold block mt-0.5">
                                         {lang === 'ar' ? 'الخدمة المطلوبة:' : 'Requested service:'} <span className="text-amber-500 font-extrabold">{req.serviceType}</span>
                                       </span>
+                                      <span className="text-[10px] text-amber-400 font-extrabold block mt-1 flex items-center justify-start gap-1">
+                                        <span>💰</span>
+                                        <span>{lang === 'ar' ? `السعر التقريبي للزبون: ${req.approximatePrice || 150} ₪` : `Client Approx Price: ${req.approximatePrice || 150} ₪`}</span>
+                                      </span>
                                     </div>
 
                                     <button 
@@ -4168,6 +4234,7 @@ export default function App() {
                                           setSelectedBidRequest(null);
                                         } else {
                                           setSelectedBidRequest(req);
+                                          setCustomBidPrice(String(req.approximatePrice || 150));
                                           // Set pinnedLocation temporarily so technician can see where the client is on their map!
                                           setPinnedLocation({ lat: req.locationLat, lng: req.locationLng });
                                           triggerToast(lang === 'ar' ? 'تم تحديد موقع العميل على الخريطة!' : 'Client breakdown pinned on live map!', 'info');
@@ -4211,6 +4278,13 @@ export default function App() {
                                             className="w-full px-3 py-2 bg-[#050505] border border-gray-900 rounded-lg text-white font-mono text-center"
                                           />
                                         </div>
+                                      </div>
+
+                                      {/* Customized Pricing Help Note for Technician */}
+                                      <div className="text-[10px] text-gray-400 bg-amber-500/5 p-3 rounded-xl border border-amber-500/15 leading-relaxed font-semibold">
+                                        {lang === 'ar' 
+                                          ? `💡 يطلب العميل سعراً تقريبياً بحدود [${req.approximatePrice || 150} ₪]. بصفتك شريكاً مستقلاً، يرجى تقديم عرض السعر المناسب والملائم لك والذي يغطي تكلفة انتقالك ومعداتك (حيث يختلف تسعير كل فني عن الآخر).` 
+                                          : `💡 The client has proposed an approximate price of [${req.approximatePrice || 150} ₪]. As an independent partner, please submit the price that is suitable for you based on your distance and tools (since pricing varies for each technician).`}
                                       </div>
 
                                       <button 
@@ -4281,25 +4355,107 @@ export default function App() {
 
                       <div className="space-y-4">
                         {/* Choose service */}
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">
                             {t.simFormService}
                           </label>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {servicesList.map(s => {
                               const IconComponent = s.icon;
                               const isSel = selectedService === s.id;
+                              const displayName = lang === 'ar' ? s.name.split(' (')[0] : s.name.split(' (')[1]?.replace(')', '') || s.name;
                               return (
                                 <div 
                                   key={s.id}
                                   onClick={() => setSelectedService(s.id)}
-                                  className={`p-3.5 bg-[#0F1424] border rounded-xl flex items-center gap-2 cursor-pointer transition-all select-none ${isSel ? 'border-amber-500/80 bg-amber-500/5 text-amber-400 font-extrabold' : 'border-gray-900 text-gray-400 hover:text-white'}`}
+                                  className={`group p-4 bg-[#0F1424] border rounded-2xl flex flex-col items-center justify-between text-center cursor-pointer transition-all duration-300 select-none relative overflow-hidden ${
+                                    isSel 
+                                      ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/20 shadow-lg shadow-amber-500/5 scale-[1.03]' 
+                                      : 'border-slate-200 dark:border-slate-800 hover:border-amber-500/50 hover:bg-[#131a30]/80 hover:scale-[1.01]'
+                                  }`}
                                 >
-                                  <IconComponent className="w-4.5 h-4.5 shrink-0" />
-                                  <span className="text-xs truncate">{lang === 'ar' ? s.name.split(' (')[0] : s.name.split(' (')[1]?.replace(')', '') || s.name}</span>
+                                  {isSel && (
+                                    <div className="absolute top-2.5 right-2.5 bg-amber-500 text-slate-950 p-0.5 rounded-full z-10 shadow-sm animate-fade-in">
+                                      <Check className="w-3 h-3 stroke-[3]" />
+                                    </div>
+                                  )}
+
+                                  <div className={`w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-2xl mb-3 transition-all duration-300 ${
+                                    isSel 
+                                      ? 'bg-amber-500/20 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)] animate-pulse' 
+                                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 group-hover:scale-110 group-hover:bg-amber-500/5 group-hover:text-amber-500'
+                                  }`}>
+                                    <IconComponent className={`w-6.5 h-6.5 md:w-8 md:h-8 transition-transform duration-300 ${isSel ? 'scale-105' : ''}`} />
+                                  </div>
+
+                                  <div className="space-y-1.5 flex-1 flex flex-col justify-between w-full">
+                                    <span className={`text-xs md:text-sm font-black tracking-tight text-center block ${
+                                      isSel ? 'text-amber-600 dark:text-amber-400 font-black' : 'text-slate-800 dark:text-slate-200 font-bold'
+                                    }`}>
+                                      {displayName}
+                                    </span>
+
+                                    <p className={`text-[10px] md:text-[11px] leading-relaxed text-center px-1 block font-medium transition-colors ${
+                                      isSel ? 'text-slate-700 dark:text-slate-300 font-bold' : 'text-slate-500 dark:text-slate-400'
+                                    }`}>
+                                      {s.desc}
+                                    </p>
+
+                                    <div className="pt-2">
+                                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-mono tracking-wider transition-all ${
+                                        isSel 
+                                          ? 'bg-amber-500/25 text-amber-600 dark:text-amber-400 font-black' 
+                                          : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold'
+                                      }`}>
+                                        {lang === 'ar' ? 'الأساسي:' : 'Base:'} {s.basePrice} ₪
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
                               );
                             })}
+                          </div>
+                        </div>
+
+                        {/* Approximate Price Section */}
+                        <div className="p-4 bg-gradient-to-br from-[#111827]/60 to-[#0F1424]/90 border border-amber-500/20 rounded-2xl space-y-3 animate-fade-in text-right">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="text-right flex-1 min-w-0">
+                              <span className="text-[10px] font-black text-amber-500 tracking-wider uppercase block font-mono">
+                                {lang === 'ar' ? 'سعر تقريبي مقترح من المنصة' : 'Suggested Approximate Price'}
+                              </span>
+                              <p className="text-[11px] text-gray-400 font-bold mt-1">
+                                {lang === 'ar' 
+                                  ? 'سعر تقديري أولي، سيقوم كل فني بتقديم عرضه الملائم:' 
+                                  : 'Initial estimated price. Technicians will submit their own customized bids:'}
+                              </p>
+                            </div>
+                            {/* Interactive Price Adjuster */}
+                            <div className="flex items-center gap-2.5 bg-[#050505] p-1.5 border border-gray-800 rounded-xl shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setApproximatePrice(prev => Math.max(50, prev - 10))}
+                                className="w-8 h-8 rounded-lg bg-gray-900 border border-gray-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-gray-800 hover:text-amber-400 font-extrabold text-sm transition-all cursor-pointer"
+                              >
+                                -
+                              </button>
+                              <span className="text-sm font-black text-amber-500 font-mono min-w-[50px] text-center">
+                                {approximatePrice} ₪
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setApproximatePrice(prev => Math.min(1000, prev + 10))}
+                                className="w-8 h-8 rounded-lg bg-gray-900 border border-gray-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-gray-800 hover:text-amber-400 font-extrabold text-sm transition-all cursor-pointer"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className="text-[10px] text-gray-400 bg-amber-500/5 p-2 rounded-xl border border-amber-500/10 leading-relaxed font-semibold">
+                            {lang === 'ar' 
+                              ? '🚨 تنويه: يختلف كل فني عن الآخر في التسعير حسب بُعد المسافة والمعدات اللازمة. بعد تأكيد الطلب، ستتلقى عروض أسعار منافسة لتختار منها الأنسب لك.' 
+                              : '🚨 Disclaimer: Technicians vary in pricing based on distance and needed gear. After submitting, you will receive customized bids to select your preferred choice.'}
                           </div>
                         </div>
 
@@ -4337,6 +4493,28 @@ export default function App() {
                         {t.simBidsTitle}
                       </h3>
 
+                      {/* Active Request Overview Card */}
+                      {liveRequest && (
+                        <div className="p-4 bg-gradient-to-br from-[#0A0B10] to-[#0F1424] border border-gray-900 rounded-2xl space-y-3 text-right">
+                          <div className="flex items-center justify-between gap-4 border-b border-gray-950 pb-2.5">
+                            <div>
+                              <span className="text-[9px] text-gray-500 font-bold block uppercase">{lang === 'ar' ? 'الخدمة المطلوبة' : 'Requested Service'}</span>
+                              <span className="text-xs font-black text-white">{lang === 'ar' ? getServiceArName(liveRequest.serviceType) : getServiceEnName(liveRequest.serviceType)}</span>
+                            </div>
+                            <div className="text-left flex-1 text-left min-w-0">
+                              <span className="text-[9px] text-gray-500 font-bold block uppercase">{lang === 'ar' ? 'السعر التقريبي المطلوب' : 'Approximate Price Proposed'}</span>
+                              <span className="text-sm font-black text-amber-500 font-mono">{liveRequest.approximatePrice || 150} ₪</span>
+                            </div>
+                          </div>
+                          
+                          <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">
+                            {lang === 'ar' 
+                              ? '🔄 طلبك نشط الآن وتتلقاه شبكة الفنيين. نظراً لأن تسعير وتكلفة الخدمة تختلف من فني لآخر حسب المسافة والمعدات، ستصلك عروض أسعار ملائمة لكل فني بالأسفل لتختار الأنسب لك.' 
+                              : '🔄 Your request is live and is being reviewed by our technician network. Since each technician has different pricing depending on distance and tools, you will receive tailored bids below to choose the best option.'}
+                          </p>
+                        </div>
+                      )}
+
                       {incomingBids.length === 0 ? (
                         <div className="p-12 text-center space-y-4">
                           <div className="w-12 h-12 rounded-full border-2 border-dashed border-amber-500/40 border-t-amber-500 animate-spin mx-auto"></div>
@@ -4371,7 +4549,7 @@ export default function App() {
 
                                 <div className="text-right rtl:text-right ltr:text-left">
                                   <span className="text-[9px] text-gray-500 font-bold block uppercase">{t.simBidEta}</span>
-                                  <span className="text-xs font-black text-white font-mono block">{bid.etaMinutes} {lang === 'ar' ? 'دقيقة' : 'Min'}</span>
+                                  <span className="text-xs font-black text-slate-900 dark:text-white font-mono block">{bid.etaMinutes} {lang === 'ar' ? 'دقيقة' : 'Min'}</span>
                                 </div>
 
                                 {/* Select bid */}
@@ -4475,7 +4653,7 @@ export default function App() {
                         {/* Overall payment info */}
                         <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-gray-850">
                           <span className="text-gray-400">{t.vaultResValue}:</span>
-                          <span className="text-xl font-black text-white font-mono">{selectedBid.price} ₪</span>
+                          <span className="text-xl font-black text-amber-500 font-mono">{selectedBid.price} ₪</span>
                         </div>
                       </div>
 
@@ -5032,7 +5210,7 @@ export default function App() {
                         <span className="text-[10px] text-gray-500 block uppercase font-mono">{esc.serviceType} / ID: {esc.id}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-black text-white font-mono">{esc.amount} ₪</span>
+                        <span className="font-black text-amber-500 font-mono">{esc.amount} ₪</span>
                         <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
                           esc.status === 'escrowed' 
                             ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20' 
@@ -5277,7 +5455,7 @@ export default function App() {
 
                         <div className="text-[10px] space-y-1 text-gray-500">
                           <div>
-                            {lang === 'ar' ? 'السعر المقترح:' : 'Proposed Price:'} <span className="text-white font-bold">{service.basePrice} ₪</span>
+                            {lang === 'ar' ? 'السعر المقترح:' : 'Proposed Price:'} <span className="text-amber-500 font-bold">{service.basePrice} ₪</span>
                           </div>
                           <div>
                             {lang === 'ar' ? 'بواسطة:' : 'By:'} <span className="text-white font-bold">{service.requestedByName || service.requestedBy || 'Anonymous'}</span>

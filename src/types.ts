@@ -38,6 +38,7 @@ export interface RescueRequest {
   description: string;
   status: RequestStatus;
   escrowAmount: number;
+  approximatePrice?: number;
   selectedTechnicianId: string | null;
   timestamp: string;
 }

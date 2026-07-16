@@ -94,7 +94,7 @@ export default function ServicesTab({
               <div className="md:col-span-3 text-center space-y-3">
                 <div className="text-xs font-bold text-gray-400 uppercase">
                   {lang === 'ar' ? 'السعر التقديري الأساسي:' : 'Estimated Base Price:'}
-                  <span className="text-lg font-black text-white font-mono block mt-1">{service.basePrice} ₪</span>
+                  <span className="text-lg font-black text-amber-500 font-mono block mt-1">{service.basePrice} ₪</span>
                 </div>
 
                 <button 
