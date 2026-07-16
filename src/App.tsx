@@ -66,7 +66,8 @@ import {
   Hammer,
   HelpCircle,
   Droplets,
-  Wind
+  Wind,
+  ShieldAlert
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -158,6 +159,19 @@ export default function App() {
   });
 
   const t = translations[lang];
+  
+  // Floating SOS Button Toggle State (Persisted in localStorage, default to true)
+  const [showSosButton, setShowSosButton] = useState<boolean>(() => {
+    const saved = localStorage.getItem('systro_show_sos');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const [isSosPanelOpen, setIsSosPanelOpen] = useState<boolean>(false);
+
+  // Save preference on change
+  useEffect(() => {
+    localStorage.setItem('systro_show_sos', String(showSosButton));
+  }, [showSosButton]);
 
   // Dynamic Google Maps API Key State
   const [mapsKey, setMapsKey] = useState<string>(() => {
@@ -232,6 +246,18 @@ export default function App() {
     }
   };
 
+  const getServiceHeName = (type: string) => {
+    switch (type) {
+      case 'fuel': return 'אספקת דלק חירום ⛽';
+      case 'locksmith': return 'פריצת מנעולים לרכב 🔑';
+      case 'mechanic': return 'מכונאות וחשמל דרך 🛠️';
+      case 'battery': return 'הנעה או החלפת מצבר 🔋';
+      case 'tire': return 'החלפת פנצ׳ר 🚗';
+      case 'towing': return 'גרירה וחילוץ רכבים 🚚';
+      default: return 'שירות חילוץ מותאם אישית 🔧';
+    }
+  };
+
   const getServiceEnName = (type: string) => {
     switch (type) {
       case 'fuel': return 'Emergency Fuel Delivery ⛽';
@@ -244,20 +270,30 @@ export default function App() {
     }
   };
 
+  const getServiceLabel = (type: string) => {
+    if (lang === 'ar') return getServiceArName(type);
+    if (lang === 'he') return getServiceHeName(type);
+    return getServiceEnName(type);
+  };
+
   const triggerNotification = (
     type: InAppNotification['type'],
     titleAr: string,
     titleEn: string,
     bodyAr: string,
     bodyEn: string,
-    targetId: string = ''
+    targetId: string = '',
+    titleHe?: string,
+    bodyHe?: string
   ) => {
     const newNotification: InAppNotification = {
       id: `${type}_${Date.now()}`,
       titleAr,
       titleEn,
+      titleHe,
       bodyAr,
       bodyEn,
+      bodyHe,
       timestamp: new Date().toISOString(),
       isRead: false,
       type,
@@ -280,12 +316,15 @@ export default function App() {
     // 4. Trigger browser native push if permitted
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       try {
-        const nativeNotif = new Notification(lang === 'ar' ? titleAr : titleEn, {
-          body: lang === 'ar' ? bodyAr : bodyEn,
-          icon: '/assets/logo.png',
-          badge: '/assets/logo.png',
-          tag: targetId || 'systro-rescue'
-        });
+        const nativeNotif = new Notification(
+          lang === 'ar' ? titleAr : lang === 'he' ? (titleHe || titleEn) : titleEn,
+          {
+            body: lang === 'ar' ? bodyAr : lang === 'he' ? (bodyHe || bodyEn) : bodyEn,
+            icon: '/assets/logo.png',
+            badge: '/assets/logo.png',
+            tag: targetId || 'systro-rescue'
+          }
+        );
         nativeNotif.onclick = () => {
           window.focus();
           if (targetId) {
@@ -474,34 +513,48 @@ export default function App() {
   // Derived Services configuration list loaded in real-time from Firestore database
   const servicesList = dbServices.length > 0 
     ? dbServices.map(s => {
-        let finalDesc = lang === 'ar' ? (s.arDescription || s.description) : (s.description || s.arDescription);
+        let finalDesc = lang === 'ar' 
+          ? (s.arDescription || s.description) 
+          : lang === 'he'
+          ? (s.heDescription || s.description || s.arDescription)
+          : (s.description || s.arDescription);
         if (!finalDesc || finalDesc.length < 5) {
-          const nameLower = `${s.arName || ''} ${s.name || ''}`.toLowerCase();
-          if (nameLower.includes('نجار') || nameLower.includes('carpenter')) {
+          const nameLower = `${s.arName || ''} ${s.name || ''} ${s.heName || ''}`.toLowerCase();
+          if (nameLower.includes('نجار') || nameLower.includes('carpenter') || nameLower.includes('נגר')) {
             finalDesc = lang === 'ar' 
               ? 'خدمات نجارة طارئة وإصلاح الأبواب، النوافذ، الأثاث، والأقفال الخشبية في موقعك بكفاءة ودقة عالية.' 
+              : lang === 'he'
+              ? 'שירותי נגרות חירום: תיקון דלתות עץ, חלונות, רהיטים ומנעולים במיקומך בדיוק רב.'
               : 'Emergency carpentry services: repair of wooden doors, windows, furniture, and locks at your location with high precision.';
-          } else if (nameLower.includes('تكسي') || nameLower.includes('taxi') || nameLower.includes('سائق')) {
+          } else if (nameLower.includes('تكسي') || nameLower.includes('taxi') || nameLower.includes('سائق') || nameLower.includes('מונית')) {
             finalDesc = lang === 'ar' 
               ? 'خدمة توصيل ونقل طارئة وسريعة عبر سيارات تاكسي مريحة وموثوقة لضمان وصولك الآمن لوجهتك.' 
+              : lang === 'he'
+              ? 'שירות מוניות מהיר וחירום. רכבים נקיים ואמינים עם נהגים מורשים להגעה בטוחה ליעדך.'
               : 'Emergency rapid transit & taxi service. Clean, reliable cars with certified drivers to reach your destination safely.';
-          } else if (nameLower.includes('ميكانيك') || nameLower.includes('mechanic')) {
+          } else if (nameLower.includes('ميكانيك') || nameLower.includes('mechanic') || nameLower.includes('מכונאי')) {
             finalDesc = lang === 'ar' 
               ? 'ميكانيكي متنقل لفحص الأعطال الميكانيكية والكهربائية الطارئة للمركبة وإصلاحها فوراً على الطريق.' 
+              : lang === 'he'
+              ? 'שירות מכונאי נייד. אבחון מהיר, בדיקת מנוע ותיקונים קלים כדי שתוכל להמשיך לנסוע בבטחה.'
               : 'On-the-go mechanical service. Quick diagnostics, engine checks, minor repairs to get you rolling safely.';
-          } else if (nameLower.includes('استفسار') || nameLower.includes('عام') || nameLower.includes('consult')) {
+          } else if (nameLower.includes('استفسار') || nameLower.includes('عام') || nameLower.includes('consult') || nameLower.includes('ייעוץ')) {
             finalDesc = lang === 'ar' 
               ? 'طلب استشارة أو دعم فني عام حول عطل غير معروف، لمساعدتك وتوجيه الفني المناسب لمعاينة حالتك.' 
+              : lang === 'he'
+              ? 'ייעוץ כללי או תמיכה טכנית לגבי תקלות רכב לא מזוהות כדי להתאים לך את איש המקצוע הנכון.'
               : 'General inquiry or technical support regarding undefined vehicle faults to match you with the correct responder.';
           } else {
             finalDesc = lang === 'ar'
               ? 'خدمة طارئة متخصصة يقدمها فنيون شركاء معتمدون ومجهزون بالكامل لإنقاذك في أسرع وقت.'
+              : lang === 'he'
+              ? 'שירות חירום מיוחד הניתן על ידי טכנאים שותפים מוסמכים ומצוידים במלואם לחילוץ מיידי.'
               : 'Specialized emergency service delivered by certified, fully equipped partner technicians to rescue you immediately.';
           }
         }
         return {
           id: s.id as ServiceType,
-          name: lang === 'ar' ? (s.arName || s.name) : s.name,
+          name: lang === 'ar' ? (s.arName || s.name) : lang === 'he' ? (s.heName || s.name || s.arName) : s.name,
           desc: finalDesc,
           icon: getServiceIcon(s.icon, `${s.arName || ''} ${s.name || ''}`),
           color: getServiceColor(s.id),
@@ -614,7 +667,7 @@ export default function App() {
   const [websiteIssues, setWebsiteIssues] = useState<{ id: string; name?: string; phone?: string; issue: string; createdAt?: any }[]>([]);
 
   // Pending custom specialties/services awaiting Admin approval
-  const [pendingServices, setPendingServices] = useState<{ id: string; name: string; arName: string; description: string; arDescription: string; basePrice: number; requestedBy?: string; requestedByName?: string; status: string; createdAt?: any }[]>([]);
+  const [pendingServices, setPendingServices] = useState<{ id: string; name: string; arName: string; heName?: string; description: string; arDescription: string; heDescription?: string; basePrice: number; requestedBy?: string; requestedByName?: string; status: string; createdAt?: any }[]>([]);
 
   // Registered users state (clients and technicians)
   const [registeredUsers, setRegisteredUsers] = useState<{ id: string; email: string; name: string; role: 'client' | 'technician' | null; phone?: string; createdAt?: any }[]>([]);
@@ -3089,7 +3142,7 @@ export default function App() {
               className="flex items-center gap-1.5 px-2.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl text-[9px] sm:text-[10px] font-black transition-all cursor-pointer shrink-0 animate-fade-in"
             >
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shrink-0"></span>
-              <span className="hidden sm:inline">{lang === 'ar' ? `نطاق موثق: ${customDomain}` : `Verified: ${customDomain}`}</span>
+              <span className="hidden sm:inline">{lang === 'ar' ? `نطاق موثق: ${customDomain}` : lang === 'he' ? `דומיין מאומת: ${customDomain}` : `Verified: ${customDomain}`}</span>
               <span className="sm:hidden">{customDomain} 📡</span>
             </button>
           )}
@@ -3238,7 +3291,7 @@ export default function App() {
               <button
                 onClick={handleLogout}
                 className="lg:hidden p-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-xl text-red-400 transition-all cursor-pointer flex items-center justify-center shrink-0"
-                title={lang === 'ar' ? 'تسجيل الخروج' : 'Logout'}
+                title={lang === 'ar' ? 'تسجيل الخروج' : lang === 'he' ? 'התנתק' : 'Logout'}
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -3254,7 +3307,7 @@ export default function App() {
               }`}
             >
               <Lock className="w-3.5 h-3.5" />
-              <span>{lang === 'ar' ? 'بوابة الإدارة' : 'Admin Gate'}</span>
+              <span>{lang === 'ar' ? 'بوابة الإدارة' : lang === 'he' ? 'שער ניהול' : 'Admin Gate'}</span>
             </button>
           </div>
         </div>
@@ -3281,6 +3334,8 @@ export default function App() {
           triggerToast={triggerToast}
           loggedInUserName={loggedInUserName}
           loggedInUserEmail={loggedInUserEmail}
+          showSosButton={showSosButton}
+          setShowSosButton={setShowSosButton}
         />
       )}
 
@@ -4498,11 +4553,11 @@ export default function App() {
                         <div className="p-4 bg-gradient-to-br from-[#0A0B10] to-[#0F1424] border border-gray-900 rounded-2xl space-y-3 text-right">
                           <div className="flex items-center justify-between gap-4 border-b border-gray-950 pb-2.5">
                             <div>
-                              <span className="text-[9px] text-gray-500 font-bold block uppercase">{lang === 'ar' ? 'الخدمة المطلوبة' : 'Requested Service'}</span>
-                              <span className="text-xs font-black text-white">{lang === 'ar' ? getServiceArName(liveRequest.serviceType) : getServiceEnName(liveRequest.serviceType)}</span>
+                              <span className="text-[9px] text-gray-500 font-bold block uppercase">{lang === 'ar' ? 'الخدمة المطلوبة' : lang === 'he' ? 'שירות מבוקש' : 'Requested Service'}</span>
+                              <span className="text-xs font-black text-white">{getServiceLabel(liveRequest.serviceType)}</span>
                             </div>
                             <div className="text-left flex-1 text-left min-w-0">
-                              <span className="text-[9px] text-gray-500 font-bold block uppercase">{lang === 'ar' ? 'السعر التقريبي المطلوب' : 'Approximate Price Proposed'}</span>
+                              <span className="text-[9px] text-gray-500 font-bold block uppercase">{lang === 'ar' ? 'السعر التقريبي المطلوب' : lang === 'he' ? 'מחיר מוצע משוער' : 'Approximate Price Proposed'}</span>
                               <span className="text-sm font-black text-amber-500 font-mono">{liveRequest.approximatePrice || 150} ₪</span>
                             </div>
                           </div>
@@ -5236,7 +5291,7 @@ export default function App() {
 
               {disputesList.length === 0 ? (
                 <p className="text-xs text-gray-500 text-center py-10 font-semibold">
-                  {lang === 'ar' ? 'لا توجد بلاغات خلاف مالي مفتوحة حالياً في النظام.' : 'No active financial disputes currently open.'}
+                  {lang === 'ar' ? 'لا توجد بلاغات خلاف مالي مفتوحة حالياً في النظام.' : lang === 'he' ? 'אין כרגע מחלוקות כספיות פעילות במערכת.' : 'No active financial disputes currently open.'}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -5285,199 +5340,44 @@ export default function App() {
 
           </div>
 
-          {/* New: Technician Records Management Panel for Admin */}
+          {/* New: Technician Records Management Panel for Admin / Pending Specialties */}
           <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-850 pb-3">
-              <div className="text-right">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 justify-start">
-                  <Users className="w-5 h-5 text-amber-500" />
-                  <span>{lang === 'ar' ? 'إدارة السجلات الفنية ومزودي الخدمة 🛠️' : 'Technician Records Management 🛠️'}</span>
-                </h3>
-                <p className="text-[10px] text-gray-400 font-semibold mt-1">
-                  {lang === 'ar' 
-                    ? 'يمكنك من هنا إضافة فنيين ومزودي خدمات جدد لأي تصنيف خدمة في المنصة بشكل يدوي ومباشر.' 
-                    : 'Add certified technicians or emergency service providers manually to any category index.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {dbServices.map(service => {
-                const serviceTechs = dbTechnicians.filter(t => t.serviceId === service.id || t.specialties?.includes(service.id));
-                return (
-                  <div key={service.id} className="p-4 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-4 text-right">
-                    <div className="space-y-1 text-right">
-                      <span className="text-xs font-black text-amber-400 block">{lang === 'ar' ? service.name.split(' (')[0] : service.name}</span>
-                      <span className="text-[10px] text-gray-500 font-semibold block">{lang === 'ar' ? service.description || service.desc : service.desc}</span>
-                      <div className="text-[9px] text-gray-400 font-bold mt-1">
-                        {lang === 'ar' ? `عدد الفنيين المسجلين: ${serviceTechs.length}` : `Technicians count: ${serviceTechs.length}`}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setSelectedServiceIdForRecord(service.id);
-                        setShowAddRecordModal(true);
-                      }}
-                      className="w-full py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border border-amber-500/25 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <span>➕</span>
-                      <span>{lang === 'ar' ? 'إضافة سجل فني' : 'Add Tech Record'}</span>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* New: Website Bug Reports & Technical Issues Panel for Admin */}
-          <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-850 pb-3">
-              <div className="text-right">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 justify-start">
-                  <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse shrink-0"></span>
-                  <span>{lang === 'ar' ? 'بلاغات المشاكل والأعطال المرسلة من المستخدمين 🚨' : 'User Bug Reports & Platform Issues 🚨'}</span>
-                </h3>
-                <p className="text-[10px] text-gray-400 font-semibold mt-1">
-                  {lang === 'ar' 
-                    ? 'هنا تجد جميع البلاغات والشكاوى التقنية التي أرسلها المستخدمون من خلال النموذج الموجود في أسفل الموقع.' 
-                    : 'View technical complaints and feedback submitted by users via the support form at the footer.'}
-                </p>
-              </div>
-              <span className="bg-amber-500/15 text-amber-500 border border-amber-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-                {lang === 'ar' ? `إجمالي التقارير: ${websiteIssues.length}` : `Total Reports: ${websiteIssues.length}`}
-              </span>
-            </div>
-
-            {websiteIssues.length === 0 ? (
-              <p className="text-xs text-gray-500 text-center py-10 font-semibold">
-                {lang === 'ar' ? 'لا توجد أي بلاغات أو مشاكل مسجلة حالياً! الموقع يعمل بكفاءة تامة. ✨' : 'No issues reported yet! Platform running smoothly. ✨'}
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {websiteIssues.map((issue) => {
-                  const dateStr = issue.createdAt?.seconds 
-                    ? new Date(issue.createdAt.seconds * 1000).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US') 
-                    : lang === 'ar' ? 'غير متوفر' : 'N/A';
-                  return (
-                    <div key={issue.id} className="p-5 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-4 text-right relative">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between border-b border-gray-900 pb-2">
-                          <span className="text-[10px] font-mono text-gray-500">{dateStr}</span>
-                          <button 
-                            onClick={() => handleDeleteWebsiteIssue(issue.id)}
-                            className="text-gray-500 hover:text-red-500 transition-colors p-1 rounded-lg cursor-pointer text-xs"
-                            title={lang === 'ar' ? 'حذف البلاغ' : 'Delete Report'}
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                        
-                        <div className="space-y-1.5">
-                          <p className="text-xs text-gray-400 font-medium leading-relaxed bg-[#0F1424]/50 p-3 rounded-xl border border-gray-900">
-                            "{issue.issue}"
-                          </p>
-                        </div>
-
-                        <div className="space-y-1 pt-1">
-                          <span className="text-[10px] text-gray-500 block">
-                            {lang === 'ar' ? 'المرسل:' : 'Submitted By:'} <strong className="text-white font-black">{issue.name || 'Anonymous'}</strong>
-                          </span>
-                          <span className="text-[10px] text-gray-500 block">
-                            {lang === 'ar' ? 'رقم الهاتف:' : 'Contact Phone:'} <strong className="text-white font-black font-mono">{issue.phone || 'N/A'}</strong>
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Direct action to chat/call if phone provided */}
-                      {issue.phone && issue.phone !== 'Not Provided' && (
-                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-900">
-                          <a 
-                            href={`tel:${issue.phone}`}
-                            className="py-1.5 bg-[#111827] hover:bg-gray-800 text-gray-300 hover:text-white rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1"
-                          >
-                            📞 {lang === 'ar' ? 'اتصال' : 'Call'}
-                          </a>
-                          <a 
-                            href={`https://wa.me/${issue.phone.replace(/[^0-9]/g, '')}`}
-                            target="_blank"
-                            referrerPolicy="no-referrer"
-                            className="py-1.5 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 hover:text-emerald-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1"
-                          >
-                            💬 {lang === 'ar' ? 'واتساب' : 'WhatsApp'}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* New: Pending Specialty / Service Requests Panel for Admin */}
-          <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-850 pb-3">
-              <div className="text-right">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 justify-start">
-                  <span className="w-2.5 h-2.5 bg-cyan-500 rounded-full animate-pulse shrink-0"></span>
-                  <span>{lang === 'ar' ? 'طلبات إضافة تخصصات جديدة معلقة ⏳' : 'Pending Custom Specialty Requests ⏳'}</span>
-                </h3>
-                <p className="text-[10px] text-gray-400 font-semibold mt-1">
-                  {lang === 'ar' 
-                    ? 'هنا تجد جميع طلبات الخدمات والتخصصات المخصصة المقترحة من الفنيين والمستخدمين. وافق عليها لنشرها مباشرة بالموقع.' 
-                    : 'Manage custom trade & service requests. Approving them will publish them directly on the platform.'}
-                </p>
-              </div>
-              <span className="bg-cyan-500/15 text-cyan-500 border border-cyan-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-                {lang === 'ar' ? `طلبات معلقة: ${pendingServices.length}` : `Pending: ${pendingServices.length}`}
-              </span>
-            </div>
+            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider border-b border-gray-850 pb-3 flex items-center gap-2 justify-start">
+              <Wrench className="w-5 h-5 text-amber-500" />
+              <span>{lang === 'ar' ? 'مقترحات الخدمات المخصصة المعلقة 🛠️' : lang === 'he' ? 'הצעות שירות מותאמות אישית ממתינות 🛠️' : 'Pending Custom Service Proposals 🛠️'}</span>
+            </h3>
 
             {pendingServices.length === 0 ? (
               <p className="text-xs text-gray-500 text-center py-10 font-semibold">
-                {lang === 'ar' ? 'لا توجد أي طلبات تخصصات معلقة حالياً! ✨' : 'No pending specialty requests! ✨'}
+                {lang === 'ar' ? 'لا توجد طلبات خدمات مخصصة معلقة حالياً.' : lang === 'he' ? 'אין כרגע הצעות שירות מותאמות אישית ממתינות.' : 'No pending custom service proposals currently.'}
               </p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pendingServices.map((service) => {
+              <div className="space-y-4">
+                {pendingServices.map(service => {
                   return (
-                    <div key={service.id} className="p-5 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-4 text-right relative animate-fade-in">
-                      <div className="space-y-3">
-                        <div className="space-y-1">
-                          <h4 className="text-xs font-black text-white">{service.arName || service.name}</h4>
-                          <span className="text-[9px] font-mono text-gray-500 block">ID: {service.id}</span>
+                    <div key={service.id} className="p-4 bg-[#0A0B10] border border-gray-900 rounded-xl space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="text-xs font-black text-white">{lang === 'ar' ? service.arName : lang === 'he' ? (service.heName || service.name) : service.name}</h4>
+                          <span className="text-[9px] text-gray-500 block">By: {service.requestedByName || service.requestedBy}</span>
                         </div>
-                        
-                        <p className="text-xs text-gray-400 font-medium leading-relaxed bg-[#0F1424]/50 p-3 rounded-xl border border-gray-900">
-                          "{service.arDescription || service.description}"
-                        </p>
-
-                        <div className="text-[10px] space-y-1 text-gray-500">
-                          <div>
-                            {lang === 'ar' ? 'السعر المقترح:' : 'Proposed Price:'} <span className="text-amber-500 font-bold">{service.basePrice} ₪</span>
-                          </div>
-                          <div>
-                            {lang === 'ar' ? 'بواسطة:' : 'By:'} <span className="text-white font-bold">{service.requestedByName || service.requestedBy || 'Anonymous'}</span>
-                          </div>
-                          <div className="text-[9px] text-gray-600 block truncate">
-                            {service.requestedBy}
-                          </div>
-                        </div>
+                        <span className="font-black text-amber-500 text-[10px]">{service.basePrice} ₪</span>
                       </div>
-
+                      <p className="text-[10px] text-gray-400 leading-relaxed">
+                        {lang === 'ar' ? service.arDescription : lang === 'he' ? (service.heDescription || service.description) : service.description}
+                      </p>
                       <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-900">
                         <button 
                           onClick={() => handleApprovePendingService(service)}
                           className="py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          ✅ {lang === 'ar' ? 'قبول ونشر' : 'Accept & Publish'}
+                          ✅ {lang === 'ar' ? 'قبول ونشر' : lang === 'he' ? 'אשר ופרסם' : 'Accept & Publish'}
                         </button>
                         <button 
                           onClick={() => handleRejectPendingService(service.id)}
                           className="py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          🗑️ {lang === 'ar' ? 'رفض وحذف' : 'Reject & Delete'}
+                          🗑️ {lang === 'ar' ? 'رفض وحذف' : lang === 'he' ? 'דחה ומחק' : 'Reject & Delete'}
                         </button>
                       </div>
                     </div>
@@ -5487,22 +5387,24 @@ export default function App() {
             )}
           </div>
 
-          {/* New: Registered Users List (Clients & Technicians) Panel for Admin */}
+          {/* Registered Users List Panel for Admin */}
           <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-850 pb-3">
               <div className="text-right">
                 <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 justify-start">
                   <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse shrink-0"></span>
-                  <span>{lang === 'ar' ? 'سجل المستخدمين المسجلين (العملاء والفنيين) 👥' : 'Registered Users Registry (Clients & Technicians) 👥'}</span>
+                  <span>{lang === 'ar' ? 'سجل المستخدمين المسجلين (العملاء والفنيين) 👥' : lang === 'he' ? 'פנקס משתמשים רשומים (לקוחות וטכנאים) 👥' : 'Registered Users Registry (Clients & Technicians) 👥'}</span>
                 </h3>
                 <p className="text-[10px] text-gray-400 font-semibold mt-1">
                   {lang === 'ar' 
                     ? 'قائمة بجميع العملاء والفنيين المسجلين في النظام مع بيانات البريد الإلكتروني والهاتف وأدوارهم.' 
+                    : lang === 'he'
+                    ? 'רשימה מקיפה של כל הלקוחות והטכנאים הרשומים במערכת עם אימייל, טלפון ותפקידי גישה.'
                     : 'Comprehensive list of all registered clients & technicians with their email, phone, and access roles.'}
                 </p>
               </div>
               <span className="bg-amber-500/15 text-amber-500 border border-amber-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-                {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
+                {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : lang === 'he' ? `סה״כ: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
               </span>
             </div>
 
@@ -5512,7 +5414,7 @@ export default function App() {
                 type="text"
                 value={adminUserSearch}
                 onChange={(e) => setAdminUserSearch(e.target.value)}
-                placeholder={lang === 'ar' ? 'ابحث بالاسم، البريد الإلكتروني أو الجوال...' : 'Search by name, email or phone...'}
+                placeholder={lang === 'ar' ? 'ابحث بالاسم، البريد الإلكتروني أو الجوال...' : lang === 'he' ? 'חפש לפי שם, אימייל או טלפון...' : 'Search by name, email or phone...'}
                 className="flex-1 px-4 py-2.5 bg-[#0A0B10] border border-gray-800 rounded-xl text-white text-xs font-bold focus:border-amber-500 outline-none transition-colors"
               />
               
@@ -5521,25 +5423,25 @@ export default function App() {
                   onClick={() => setAdminUserRoleFilter('all')}
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'all' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
                 >
-                  {lang === 'ar' ? 'الكل' : 'All'}
+                  {lang === 'ar' ? 'الكل' : lang === 'he' ? 'הכל' : 'All'}
                 </button>
                 <button
                   onClick={() => setAdminUserRoleFilter('client')}
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'client' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
                 >
-                  {lang === 'ar' ? 'العملاء' : 'Clients'}
+                  {lang === 'ar' ? 'العملاء' : lang === 'he' ? 'לקוחות' : 'Clients'}
                 </button>
                 <button
                   onClick={() => setAdminUserRoleFilter('technician')}
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'technician' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
                 >
-                  {lang === 'ar' ? 'الفنيين' : 'Techs'}
+                  {lang === 'ar' ? 'الفنيين' : lang === 'he' ? 'טכנאים' : 'Techs'}
                 </button>
                 <button
                   onClick={() => setAdminUserRoleFilter('unassigned')}
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'unassigned' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
                 >
-                  {lang === 'ar' ? 'غير محدد' : 'Guest'}
+                  {lang === 'ar' ? 'غير محدد' : lang === 'he' ? 'אורח' : 'Guest'}
                 </button>
               </div>
             </div>
@@ -5559,7 +5461,7 @@ export default function App() {
               return true;
             }).length === 0 ? (
               <p className="text-xs text-gray-500 text-center py-10 font-semibold">
-                {lang === 'ar' ? 'لا يوجد أي مستخدمين يطابقون خيارات البحث حالياً!' : 'No registered users match your search criteria!'}
+                {lang === 'ar' ? 'لا يوجد أي مستخدمين يطابقون خيارات البحث حالياً!' : lang === 'he' ? 'אין משתמשים רשומים התואמים את קריטריוני החיפוש!' : 'No registered users match your search criteria!'}
               </p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -5581,40 +5483,40 @@ export default function App() {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-2 border-b border-gray-900/40 pb-2">
                           <div className="text-right">
-                            <h4 className="text-xs font-black text-white">{u.name || (lang === 'ar' ? 'مستخدم بدون اسم' : 'Unnamed User')}</h4>
+                            <h4 className="text-xs font-black text-white">{u.name || (lang === 'ar' ? 'مستخدم بدون اسم' : lang === 'he' ? 'משתמש ללא שם' : 'Unnamed User')}</h4>
                             <span className="text-[9px] font-mono text-gray-500 block truncate max-w-[180px]">{u.email}</span>
                           </div>
 
                           {/* Role Badge */}
                           {u.role === 'technician' ? (
                             <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-black px-2 py-0.5 rounded-full select-none shrink-0">
-                              🛠️ {lang === 'ar' ? 'فني إنقاذ' : 'Rescue Tech'}
+                              🛠️ {lang === 'ar' ? 'فني إنقاذ' : lang === 'he' ? 'טכנאי חילוץ' : 'Rescue Tech'}
                             </span>
                           ) : u.role === 'client' ? (
                             <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-black px-2 py-0.5 rounded-full select-none shrink-0">
-                              👤 {lang === 'ar' ? 'عميل مقطوع' : 'Stranded Client'}
+                              👤 {lang === 'ar' ? 'عميل مقطوع' : lang === 'he' ? 'לקוח תקוע' : 'Stranded Client'}
                             </span>
                           ) : (
                             <span className="bg-slate-500/10 text-slate-400 border border-slate-500/20 text-[9px] font-black px-2 py-0.5 rounded-full select-none shrink-0">
-                              🧭 {lang === 'ar' ? 'زائر غير محدد' : 'Guest/New'}
+                              🧭 {lang === 'ar' ? 'زائر غير محدد' : lang === 'he' ? 'אורח/חדש' : 'Guest/New'}
                             </span>
                           )}
                         </div>
 
                         <div className="text-[10px] space-y-1 text-gray-400 font-semibold">
                           <div className="flex justify-between">
-                            <span className="text-gray-500">{lang === 'ar' ? 'الجوال:' : 'Phone:'}</span>
-                            <span className="text-white font-bold">{u.phone || (lang === 'ar' ? 'غير متوفر' : 'N/A')}</span>
+                            <span className="text-gray-500">{lang === 'ar' ? 'الجوال:' : lang === 'he' ? 'טלפון נייד:' : 'Phone:'}</span>
+                            <span className="text-white font-bold">{u.phone || (lang === 'ar' ? 'غير متوفر' : lang === 'he' ? 'לא זמין' : 'N/A')}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-500">{lang === 'ar' ? 'تاريخ التسجيل:' : 'Registered On:'}</span>
+                            <span className="text-gray-500">{lang === 'ar' ? 'تاريخ التسجيل:' : lang === 'he' ? 'תאריך הרשמה:' : 'Registered On:'}</span>
                             <span className="text-white font-mono">
                               {u.createdAt ? (
                                 typeof u.createdAt === 'string' ? u.createdAt.split('T')[0] : 
                                 u.createdAt.seconds ? new Date(u.createdAt.seconds * 1000).toLocaleDateString() : 
-                                lang === 'ar' ? 'تاريخ صحيح' : 'Valid date'
+                                lang === 'ar' ? 'تاريخ صحيح' : lang === 'he' ? 'תאריך תקין' : 'Valid date'
                               ) : (
-                                lang === 'ar' ? 'غير محدد' : 'Not Pinned'
+                                lang === 'ar' ? 'غير محدد' : lang === 'he' ? 'לא מוגדר' : 'Not Pinned'
                               )}
                             </span>
                           </div>
@@ -5630,31 +5532,31 @@ export default function App() {
                             referrerPolicy="no-referrer"
                             className="py-1.5 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 hover:text-emerald-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
                           >
-                            💬 {lang === 'ar' ? 'واتساب' : 'WhatsApp'}
+                            💬 {lang === 'ar' ? 'واتساب' : lang === 'he' ? 'וואטסאפ' : 'WhatsApp'}
                           </a>
                         ) : (
                           <button
                             disabled
                             className="py-1.5 bg-gray-900 text-gray-600 rounded-lg text-[10px] font-black text-center cursor-not-allowed opacity-50"
                           >
-                            💬 {lang === 'ar' ? 'لا يوجد هاتف' : 'No Phone'}
+                            💬 {lang === 'ar' ? 'لا يوجد هاتف' : lang === 'he' ? 'אין טלפון' : 'No Phone'}
                           </button>
                         )}
                         <button 
                           onClick={async () => {
-                            if (confirm(lang === 'ar' ? `هل أنت متأكد من رغبتك في إزالة حساب المستخدم: ${u.name || u.email} نهائياً؟` : `Are you sure you want to permanently delete user: ${u.name || u.email}?`)) {
+                            if (confirm(lang === 'ar' ? `هل أنت متأكد من رغبتك في إزالة حساب المستخدم: ${u.name || u.email} نهائياً؟` : lang === 'he' ? `האם אתה בטוח שברצונך למחוק לצמיתות את המשתמש: ${u.name || u.email}?` : `Are you sure you want to permanently delete user: ${u.name || u.email}?`)) {
                               try {
                                 await deleteDoc(doc(db, "users", u.id));
-                                triggerToast(lang === 'ar' ? 'تم حذف حساب المستخدم بنجاح!' : 'User account deleted successfully!', 'success');
+                                triggerToast(lang === 'ar' ? 'تم حذف حساب المستخدم بنجاح!' : lang === 'he' ? 'חשבון המשתמש נמחק בהצלחה!' : 'User account deleted successfully!', 'success');
                               } catch (err) {
                                 console.error("Error deleting user:", err);
-                                triggerToast(lang === 'ar' ? 'فشل في حذف حساب المستخدم.' : 'Failed to delete user account.', 'error');
+                                triggerToast(lang === 'ar' ? 'فشل في حذف حساب المستخدم.' : lang === 'he' ? 'מחיקת חשבון המשתמש נכשלה.' : 'Failed to delete user account.', 'error');
                               }
                             }
                           }}
                           className="py-1.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          🗑️ {lang === 'ar' ? 'حذف الحساب' : 'Delete'}
+                          🗑️ {lang === 'ar' ? 'حذف الحساب' : lang === 'he' ? 'מחק חשבון' : 'Delete'}
                         </button>
                       </div>
                     </div>
@@ -5668,88 +5570,148 @@ export default function App() {
         )
       )}
 
-
-
-      {/* Edit Profile Modal */}
-      {showProfileModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-fade-in">
+      {/* Add Custom Service Modal */}
+      {showCustomServiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="w-full max-w-md bg-[#0F1424] border border-gray-800 p-6 rounded-3xl space-y-6 relative text-right rtl:text-right ltr:text-left">
             <button 
-              onClick={() => setShowProfileModal(false)}
+              onClick={() => setShowCustomServiceModal(false)}
               className="absolute top-4 left-4 text-gray-400 hover:text-white text-sm font-bold cursor-pointer"
             >
               ✕
             </button>
-            <div className="space-y-2 text-center font-sans">
-              <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-2">
-                <User className="w-6 h-6 text-amber-500 animate-pulse" />
-              </div>
-              <h3 className="text-base font-black text-white">
-                {lang === 'ar' ? 'تعديل الملف الشخصي' : lang === 'he' ? 'עריכת פרופיל משתמש' : 'Edit User Profile'}
+            <div className="space-y-2 text-center">
+              <h3 className="text-lg font-black text-white">
+                {lang === 'ar' ? 'إضافة خدمة مخصصة جديدة' : lang === 'he' ? 'הוסף שירות מותאם אישית חדש' : 'Add New Custom Service'}
               </h3>
-              <p className="text-[11px] text-gray-400 font-bold">
-                {lang === 'ar' ? 'حافظ على بيانات حسابك محدثة ومزامنة دائمًا' : 'Keep your profile details synchronized and updated'}
+              <p className="text-xs text-gray-400 font-medium">
+                {lang === 'ar' 
+                  ? 'قم بوصف الخدمة لإضافتها مباشرة في قاعدة البيانات ولتظهر لجميع الفنيين والعملاء.' 
+                  : lang === 'he'
+                  ? 'תאר את השירות כדי להוסיף אותו ישירות למסד הנתונים ויופיע לכל הטכנאים והלקוחות.'
+                  : 'Specify service details to add it dynamically to the live Firestore collection.'}
               </p>
             </div>
 
-            <div className="space-y-4 font-sans">
+            <div className="space-y-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'البريد الإلكتروني (غير قابل للتعديل):' : 'Email Address (Read-only):'}
+                  {lang === 'ar' ? 'اسم الخدمة (بالعربية):' : lang === 'he' ? 'שם השירות (ערבית):' : 'Service Name (Arabic):'}
                 </label>
                 <input 
                   type="text" 
-                  value={loggedInUserEmail}
-                  disabled
-                  className="w-full px-4 py-2.5 bg-[#0A0B10]/60 border border-gray-900 text-gray-500 font-bold text-xs select-none cursor-not-allowed"
+                  required
+                  placeholder="مثال: ميكانيكي هيدروليك ونظام فرامل"
+                  value={customServiceNameAr}
+                  onChange={(e) => setCustomServiceNameAr(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'الاسم بالكامل:' : 'Full Name:'}
+                  {lang === 'ar' ? 'اسم الخدمة (بالإنجليزي):' : lang === 'he' ? 'שם השירות (אנגלית):' : 'Service Name (English):'}
                 </label>
                 <input 
                   type="text" 
-                  value={profileNameInput}
-                  onChange={(e) => setProfileNameInput(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl text-right rtl:text-right"
+                  required
+                  placeholder="e.g. Brake & Hydraulic Specialist"
+                  value={customServiceNameEn}
+                  onChange={(e) => setCustomServiceNameEn(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'رقم الهاتف / الجوال:' : 'Phone Number:'}
+                  {lang === 'ar' ? 'شرح ووصف الخدمة (بالعربية):' : lang === 'he' ? 'תיאור השירות (ערבית):' : 'Description (Arabic):'}
                 </label>
-                <input 
-                  type="text" 
-                  value={profilePhoneInput}
-                  onChange={(e) => setProfilePhoneInput(e.target.value)}
-                  placeholder={lang === 'ar' ? 'مثال: 0599000000' : 'e.g. +972599000000'}
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl text-right rtl:text-right"
+                <textarea 
+                  required
+                  rows={2}
+                  placeholder="شرح موجز للخدمة وكيفية مساعدة السيارات المتعلطة..."
+                  value={customServiceDescAr}
+                  onChange={(e) => setCustomServiceDescAr(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors resize-none"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'نوع الحساب الحالي:' : 'Current Account Role:'}
+                  {lang === 'ar' ? 'شرح ووصف الخدمة (بالإنجليزي):' : lang === 'he' ? 'תיאור השירות (אנגלית):' : 'Description (English):'}
                 </label>
-                <div className="px-4 py-2.5 bg-[#0A0B10] border border-gray-900 text-amber-500 font-extrabold text-xs rounded-xl flex items-center justify-between">
-                  <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded font-black uppercase">
-                    {userRole === 'technician' ? (lang === 'ar' ? 'فني إصلاح 🛠️' : 'Provider') : (lang === 'ar' ? 'زبون 🚗' : 'Client')}
-                  </span>
-                  <span className="text-gray-400 font-bold text-[10px]">
-                    {lang === 'ar' ? 'لتغيير نوع الحساب، استخدم زر التحويل في شريط القائمة العلوي' : 'To switch, use the role toggle button in the top menu'}
-                  </span>
-                </div>
+                <textarea 
+                  required
+                  rows={2}
+                  placeholder="Short explanation of the service scope..."
+                  value={customServiceDescEn}
+                  onChange={(e) => setCustomServiceDescEn(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors resize-none"
+                />
               </div>
 
-              <button 
-                onClick={handleSaveProfile}
-                className="w-full py-3 bg-amber-500 hover:bg-amber-400 active:scale-[0.99] text-black font-extrabold text-xs rounded-xl transition-all cursor-pointer shadow-lg shadow-amber-500/10 flex items-center justify-center gap-1.5 mt-2"
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase">
+                  {lang === 'ar' ? 'السعر الأساسي التقديري (₪):' : lang === 'he' ? 'מחיר בסיס משוער (₪):' : 'Base Price (₪):'}
+                </label>
+                <input 
+                  type="text" 
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  required
+                  value={customServicePrice}
+                  onChange={(e) => setCustomServicePrice(cleanInput(e.target.value))}
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-mono text-xs transition-colors"
+                />
+              </div>
+
+              <button
+                onClick={async () => {
+                  const priceNum = Number(customServicePrice);
+                  if (!customServiceNameAr.trim() || !customServiceNameEn.trim() || !customServiceDescAr.trim() || !customServiceDescEn.trim() || isNaN(priceNum) || priceNum <= 0) {
+                    triggerToast(
+                      lang === 'ar' 
+                        ? 'الرجاء تعبئة جميع الحقول وإدخال سعر صحيح!' 
+                        : lang === 'he'
+                        ? 'אנא מלא את כל השדות והזן מחיר תקין!'
+                        : 'Please fill all fields and enter a valid price!', 
+                      'warning'
+                    );
+                    return;
+                  }
+                  const newServiceId = `custom_${Date.now()}`;
+                  const newPending = {
+                    id: newServiceId,
+                    name: customServiceNameEn,
+                    arName: customServiceNameAr,
+                    description: customServiceDescEn,
+                    arDescription: customServiceDescAr,
+                    icon: 'wrench',
+                    basePrice: priceNum,
+                    requestedBy: loggedInUserEmail || 'Unknown',
+                    requestedByName: loggedInUserName || 'Unknown',
+                    status: 'pending',
+                    createdAt: Date.now()
+                  };
+                  await setDoc(doc(db, "pending_services", newServiceId), newPending);
+                  setShowCustomServiceModal(false);
+                  setCustomServiceNameAr('');
+                  setCustomServiceNameEn('');
+                  setCustomServiceDescAr('');
+                  setCustomServiceDescEn('');
+                  setCustomServicePrice('150');
+                  triggerToast(
+                    lang === 'ar' 
+                      ? 'تم إرسال اقتراح الخدمة المخصصة للمسؤول آدم عطون للموافقة عليها ونشرها بالشبكة قريباً!' 
+                      : lang === 'he'
+                      ? 'הצעת השירות נשלחה למנהל אדם עתון לאישור ופרסום ברשת בקרוב!'
+                      : 'Custom service proposal submitted to administrator Adam Atoun for review!', 
+                    'success'
+                  );
+                }}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black rounded-xl text-xs transition-colors cursor-pointer"
               >
-                <span>💾</span>
-                <span>{lang === 'ar' ? 'حفظ البيانات والمزامنة' : 'Save Details & Synchronize'}</span>
+                {lang === 'ar' ? 'إرسال الخدمة المخصصة للمراجعة والموافقة' : lang === 'he' ? 'שלח שירות מותאם אישית לאישור' : 'Submit Custom Service for Approval'}
               </button>
             </div>
           </div>
@@ -5773,6 +5735,8 @@ export default function App() {
               <p className="text-xs text-gray-400 font-medium">
                 {lang === 'ar' 
                   ? `أنت تقوم بالتسجيل لخدمة: ${selectedServiceIdForRecord}` 
+                  : lang === 'he'
+                  ? `רושם עבור מזהה שירות: ${selectedServiceIdForRecord}`
                   : `Registering for service ID: ${selectedServiceIdForRecord}`}
               </p>
             </div>
@@ -5780,7 +5744,7 @@ export default function App() {
             <div className="space-y-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'الاسم بالكامل للتقني:' : 'Full Name of Technician:'}
+                  {lang === 'ar' ? 'الاسم بالكامل للتقني:' : lang === 'he' ? 'שם מלא של הטכנאי:' : 'Full Name of Technician:'}
                 </label>
                 <input 
                   type="text" 
@@ -5792,7 +5756,7 @@ export default function App() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'البريد الإلكتروني للتقني:' : 'Technician Email Address:'}
+                  {lang === 'ar' ? 'البريد الإلكتروني للتقني:' : lang === 'he' ? 'אימייל של הטכנאי:' : 'Technician Email Address:'}
                 </label>
                 <input 
                   type="email" 
@@ -5804,7 +5768,7 @@ export default function App() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'رقم الهاتف:' : 'Phone Number:'}
+                  {lang === 'ar' ? 'رقم الهاتف:' : lang === 'he' ? 'מספר טלפון:' : 'Phone Number:'}
                 </label>
                 <input 
                   type="text" 
@@ -5818,7 +5782,7 @@ export default function App() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'نوع وموديل المركبة:' : 'Vehicle Model:'}
+                  {lang === 'ar' ? 'نوع وموديل المركبة:' : lang === 'he' ? 'סוג ודגם רכב:' : 'Vehicle Model:'}
                 </label>
                 <input 
                   type="text" 
@@ -5832,7 +5796,7 @@ export default function App() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'رقم لوحة المركبة:' : 'Vehicle Plate Number:'}
+                  {lang === 'ar' ? 'رقم لوحة المركبة:' : lang === 'he' ? 'מספר לוחית רישוי:' : 'Vehicle Plate Number:'}
                 </label>
                 <input 
                   type="text" 
@@ -5847,7 +5811,7 @@ export default function App() {
               <button
                 onClick={async () => {
                   if (!adminTechName.trim() || !adminTechEmail.trim() || !providerPhone.trim() || !providerCarModel.trim() || !providerPlateNumber.trim()) {
-                    triggerToast(lang === 'ar' ? 'الرجاء ملء جميع الحقول!' : 'Please fill all fields!', 'warning');
+                    triggerToast(lang === 'ar' ? 'الرجاء ملء جميع الحقول!' : lang === 'he' ? 'נא למלא את כל השדות!' : 'Please fill all fields!', 'warning');
                     return;
                   }
                   const newTechId = `tech_${Date.now()}`;
@@ -5876,148 +5840,18 @@ export default function App() {
                   setProviderPhone('');
                   setProviderCarModel('');
                   setProviderPlateNumber('');
-                  triggerToast(lang === 'ar' ? 'تم إضافة السجل كفني بنجاح!' : 'Technician record added successfully!', 'success');
-                }}
-                className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black rounded-xl text-xs transition-colors cursor-pointer"
-              >
-                {lang === 'ar' ? 'حفظ وتأكيد السجل' : 'Save & Confirm Record'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Custom Service Modal */}
-      {showCustomServiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fade-in">
-          <div className="w-full max-w-md bg-[#0F1424] border border-gray-800 p-6 rounded-3xl space-y-6 relative text-right rtl:text-right ltr:text-left">
-            <button 
-              onClick={() => setShowCustomServiceModal(false)}
-              className="absolute top-4 left-4 text-gray-400 hover:text-white text-sm font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-            <div className="space-y-2 text-center">
-              <h3 className="text-lg font-black text-white">
-                {lang === 'ar' ? 'إضافة خدمة مخصصة جديدة' : lang === 'he' ? 'הוסף שירות מותאם אישית חדש' : 'Add New Custom Service'}
-              </h3>
-              <p className="text-xs text-gray-400 font-medium">
-                {lang === 'ar' 
-                  ? 'قم بوصف الخدمة لإضافتها مباشرة في قاعدة البيانات ولتظهر لجميع الفنيين والعملاء.' 
-                  : 'Specify service details to add it dynamically to the live Firestore collection.'}
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'اسم الخدمة (بالعربية):' : 'Service Name (Arabic):'}
-                </label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="مثال: ميكانيكي هيدروليك ونظام فرامل"
-                  value={customServiceNameAr}
-                  onChange={(e) => setCustomServiceNameAr(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'اسم الخدمة (بالإنجليزي):' : 'Service Name (English):'}
-                </label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="e.g. Brake & Hydraulic Specialist"
-                  value={customServiceNameEn}
-                  onChange={(e) => setCustomServiceNameEn(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'شرح ووصف الخدمة (بالعربية):' : 'Description (Arabic):'}
-                </label>
-                <textarea 
-                  required
-                  rows={2}
-                  placeholder="شرح موجز للخدمة وكيفية مساعدة السيارات المتعلطة..."
-                  value={customServiceDescAr}
-                  onChange={(e) => setCustomServiceDescAr(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors resize-none"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'شرح ووصف الخدمة (بالإنجليزي):' : 'Description (English):'}
-                </label>
-                <textarea 
-                  required
-                  rows={2}
-                  placeholder="Short explanation of the service scope..."
-                  value={customServiceDescEn}
-                  onChange={(e) => setCustomServiceDescEn(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors resize-none"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'السعر الأساسي التقديري (₪):' : 'Base Price (₪):'}
-                </label>
-                <input 
-                  type="text" 
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  required
-                  value={customServicePrice}
-                  onChange={(e) => setCustomServicePrice(cleanInput(e.target.value))}
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-mono text-xs transition-colors"
-                />
-              </div>
-
-              <button
-                onClick={async () => {
-                  const priceNum = Number(customServicePrice);
-                  if (!customServiceNameAr.trim() || !customServiceNameEn.trim() || !customServiceDescAr.trim() || !customServiceDescEn.trim() || isNaN(priceNum) || priceNum <= 0) {
-                    triggerToast(lang === 'ar' ? 'الرجاء تعبئة جميع الحقول وإدخال سعر صحيح!' : 'Please fill all fields and enter a valid price!', 'warning');
-                    return;
-                  }
-                  const newServiceId = `custom_${Date.now()}`;
-                  const newPending = {
-                    id: newServiceId,
-                    name: customServiceNameEn,
-                    arName: customServiceNameAr,
-                    description: customServiceDescEn,
-                    arDescription: customServiceDescAr,
-                    icon: 'wrench',
-                    basePrice: priceNum,
-                    requestedBy: loggedInUserEmail || 'Unknown',
-                    requestedByName: loggedInUserName || 'Unknown',
-                    status: 'pending',
-                    createdAt: Date.now()
-                  };
-                  await setDoc(doc(db, "pending_services", newServiceId), newPending);
-                  setShowCustomServiceModal(false);
-                  setCustomServiceNameAr('');
-                  setCustomServiceNameEn('');
-                  setCustomServiceDescAr('');
-                  setCustomServiceDescEn('');
-                  setCustomServicePrice('150');
                   triggerToast(
                     lang === 'ar' 
-                      ? 'تم إرسال اقتراح الخدمة المخصصة للمسؤول آدم عطون للموافقة عليها ونشرها بالشبكة قريباً!' 
-                      : 'Custom service proposal submitted to administrator Adam Atoun for review!', 
+                      ? 'تم إضافة السجل كفني بنجاح!' 
+                      : lang === 'he'
+                      ? 'רשומת טכנאי נוספה בהצלחה!'
+                      : 'Technician record added successfully!', 
                     'success'
                   );
                 }}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black rounded-xl text-xs transition-colors cursor-pointer"
+                className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black rounded-xl text-xs transition-colors cursor-pointer"
               >
-                {lang === 'ar' ? 'إرسال الخدمة المخصصة للمراجعة والموافقة' : 'Submit Custom Service for Approval'}
+                {lang === 'ar' ? 'حفظ وتأكيد السجل' : lang === 'he' ? 'שמור ואשר רשומה' : 'Save & Confirm Record'}
               </button>
             </div>
           </div>
@@ -6031,7 +5865,7 @@ export default function App() {
           className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'home' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
         >
           <Home className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'الرئيسية' : 'Home'}</span>
+          <span>{lang === 'ar' ? 'الرئيسية' : lang === 'he' ? 'דף הבית' : 'Home'}</span>
         </button>
         
         <button 
@@ -6039,7 +5873,7 @@ export default function App() {
           className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'services' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
         >
           <Wrench className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'الخدمات' : 'Services'}</span>
+          <span>{lang === 'ar' ? 'الخدمات' : lang === 'he' ? 'שירותים' : 'Services'}</span>
         </button>
 
         <button 
@@ -6049,7 +5883,7 @@ export default function App() {
           className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
         >
           <Activity className="w-5 h-5 animate-pulse shrink-0" />
-          <span>{lang === 'ar' ? 'الخدمة' : 'Simulator'}</span>
+          <span>{lang === 'ar' ? 'الخدمة' : lang === 'he' ? 'סימולטור' : 'Simulator'}</span>
         </button>
 
         <button 
@@ -6057,9 +5891,168 @@ export default function App() {
           className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'admin' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
         >
           <Lock className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'الإدارة' : 'Admin'}</span>
+          <span>{lang === 'ar' ? 'الإدارة' : lang === 'he' ? 'ניהול' : 'Admin'}</span>
         </button>
       </div>
+
+      {/* Floating SOS button */}
+      {showSosButton && (
+        <button 
+          onClick={() => setIsSosPanelOpen(true)}
+          className="fixed bottom-20 md:bottom-8 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-red-600 to-orange-600 text-white font-black text-sm tracking-wider shadow-[0_0_20px_rgba(239,68,68,0.5)] flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-all duration-300 group border-2 border-white/10"
+          id="floating-sos-button"
+        >
+          <div className="absolute inset-0 rounded-full bg-red-500/30 animate-ping group-hover:animate-none opacity-75"></div>
+          <span className="relative z-10 font-mono tracking-tight text-[15px] font-black animate-pulse">SOS</span>
+        </button>
+      )}
+
+      {/* Sliding Left Emergency SOS Drawer */}
+      {isSosPanelOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden select-none" id="sos-emergency-portal-container">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
+            onClick={() => setIsSosPanelOpen(false)}
+          />
+
+          {/* Drawer container sliding from left */}
+          <div className="absolute top-0 bottom-0 left-0 w-full max-w-[360px] bg-[#0A0B12] border-r border-gray-800 shadow-[20px_0_40px_rgba(0,0,0,0.8)] p-6 flex flex-col justify-between z-50 animate-slide-right text-right rtl:text-right ltr:text-left">
+            <div className="space-y-6">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-800/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-red-600/10 flex items-center justify-center text-red-500 shadow-sm shadow-red-500/5">
+                    <AlertTriangle className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-white">
+                      {lang === 'ar' ? 'بوابة الطوارئ والإنقاذ' : lang === 'he' ? 'מוקד חירום והצלה' : 'Emergency & Rescue Portal'}
+                    </h3>
+                    <p className="text-[10px] text-red-400 font-bold tracking-tight">
+                      {lang === 'ar' ? 'اتصال مباشر وسريع بنقرة واحدة' : lang === 'he' ? 'חיוג מהיר בנגיעה אחת' : 'Direct one-tap emergency call'}
+                    </p>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => setIsSosPanelOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-gray-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-800 cursor-pointer transition-colors"
+                >
+                  <span className="text-sm font-black">✕</span>
+                </button>
+              </div>
+
+              {/* Info Box */}
+              <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-xl space-y-1">
+                <p className="text-[11px] text-red-400 font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                  {lang === 'ar' ? 'أرقام إنقاذ معتمدة لضمان سلامتك' : lang === 'he' ? 'מוקדי חירום מאושרים לבטיחותך' : 'Certified rescue hotlines for your safety'}
+                </p>
+                <p className="text-[10px] text-gray-400 leading-relaxed font-medium">
+                  {lang === 'ar' 
+                    ? 'في الحالات الطبية أو الحوادث الخطيرة، اتصل فوراً بالأرقام المباشرة أدناه للتواصل مع أقرب طاقم إنقاذ ومسعفين.'
+                    : lang === 'he'
+                    ? 'במצבים רפואיים או בתאונות דרכים קשות, התקשר מיד למספרי החירום למענה מהיר.'
+                    : 'In medical situations or traffic accidents, call immediately to reach nearby responders.'}
+                </p>
+              </div>
+
+              {/* Emergency Buttons Grid */}
+              <div className="space-y-4">
+                
+                {/* Button 1: Israeli Police (and Netivei Israel) */}
+                <div className="p-4 bg-gradient-to-br from-[#111827] to-[#0F1424] border border-gray-800 rounded-2xl hover:border-blue-500/40 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                      <ShieldAlert className="w-5.5 h-5.5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-white">
+                        {lang === 'ar' ? 'الشرطة الإسرائيلية (100)' : lang === 'he' ? 'משטרת ישראל (100)' : 'Israel Police (100)'}
+                      </h4>
+                      <p className="text-[9px] text-gray-400 font-bold">
+                        {lang === 'ar' ? 'مركز طوارئ العمليات والشرطة' : lang === 'he' ? 'מוקד חירום משטרתי' : 'Police & Dispatch'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <a 
+                      href="tel:100"
+                      className="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-[11px] rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 text-center cursor-pointer"
+                    >
+                      <span>📞 {lang === 'ar' ? 'الشرطة 100' : lang === 'he' ? 'משטרה 100' : 'Police 100'}</span>
+                    </a>
+                    <a 
+                      href="tel:2120"
+                      className="py-2 px-3 bg-gray-800 hover:bg-gray-750 text-gray-200 border border-gray-700 font-black text-[11px] rounded-xl flex items-center justify-center gap-1.5 transition-all active:scale-95 text-center cursor-pointer"
+                    >
+                      <span>🛣️ {lang === 'ar' ? 'شركة الطرق' : lang === 'he' ? 'נתיבי ישראל' : 'Road Co.'}</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* Button 2: United Hatzalah (איחود הצלה - 1221) */}
+                <div className="p-4 bg-gradient-to-br from-[#111827] to-[#1C120C] border border-orange-500/10 rounded-2xl hover:border-orange-500/40 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {/* Custom stylized Orange & White Hatzalah SVG Badge */}
+                      <div className="w-10 h-10 rounded-full bg-[#FF5A00] flex items-center justify-center text-white shadow-md relative overflow-hidden shrink-0 border-2 border-white/20">
+                        <svg className="w-6.5 h-6.5" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <circle cx="50" cy="50" r="45" fill="#FF5A00" />
+                          <circle cx="50" cy="50" r="35" fill="none" stroke="#FFFFFF" strokeWidth="4" />
+                          {/* Glowing medical cross star shape */}
+                          <path d="M50 15 L58 42 L85 50 L58 58 L50 85 L42 58 L15 50 L42 42 Z" fill="#FFFFFF" />
+                          <circle cx="50" cy="50" r="12" fill="#FF5A00" />
+                          <path d="M50 38 V62 M38 50 H62" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-orange-500">
+                          {lang === 'ar' ? 'إيحود هتسالا (1221)' : lang === 'he' ? 'איחוד הצלה (1221)' : 'United Hatzalah (1221)'}
+                        </h4>
+                        <p className="text-[9px] text-gray-400 font-bold">
+                          {lang === 'ar' ? 'الإسعاف والإنقاذ الطبي السريع' : lang === 'he' ? 'מוקד רפואי וסיוע מהיר' : 'Medical First Response'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-gray-400 font-medium mb-3 leading-relaxed">
+                    {lang === 'ar' 
+                      ? 'منظمة إنقاذ تطوعية تقدم استجابة طبية فورية للمصابين والمرضى حتى وصول سيارات الإسعاف.'
+                      : lang === 'he'
+                      ? 'ארגון הצלה התנדבותי המעניק סיוע רפואי מיידי לפצועים וחולים עד להגעת האמבולנס.'
+                      : 'National volunteer paramedic organization delivering instant medical aid within seconds.'}
+                  </p>
+
+                  <a 
+                    href="tel:1221"
+                    className="w-full py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-orange-500/10 active:scale-95 cursor-pointer"
+                  >
+                    <span>📞 {lang === 'ar' ? 'اتصال عاجل: 1221' : lang === 'he' ? 'שיחת חירום: 1221' : 'Call Emergency: 1221'}</span>
+                  </a>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Footer copyright style */}
+            <div className="pt-4 border-t border-gray-800 text-center space-y-1 mt-auto">
+              <span className="text-[8px] font-mono tracking-widest text-gray-500 block uppercase">
+                {lang === 'ar' ? 'سيسترو للإنقاذ والضمان المالي 🛡️' : lang === 'he' ? 'סיסטרו חילוץ והסדר נאמנות מאובטח 🛡️' : 'Systro Rescue & Escrow Secure 🛡️'}
+              </span>
+              <span className="text-[9px] text-gray-500 font-bold block">
+                {lang === 'ar' ? 'نسخة الطوارئ المعتمدة' : lang === 'he' ? 'גרסת חירום רשמית ומאושרת' : 'Emergency Certified Suite'}
+              </span>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

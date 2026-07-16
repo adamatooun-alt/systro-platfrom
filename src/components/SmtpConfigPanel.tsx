@@ -265,11 +265,11 @@ export default function SmtpConfigPanel({
             {isTesting ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>{lang === 'ar' ? 'جاري الفحص والإرسال...' : 'Testing...'}</span>
+                <span>{lang === 'ar' ? 'جاري الفحص والإرسال...' : lang === 'he' ? 'בודק ושולח...' : 'Testing...'}</span>
               </>
             ) : (
               <>
-                <span>{lang === 'ar' ? 'إرسال رسالة تجريبية 🚀' : 'Send Test Email 🚀'}</span>
+                <span>{lang === 'ar' ? 'إرسال رسالة تجريبية 🚀' : lang === 'he' ? 'שלח אימייל בדיקה 🚀' : 'Send Test Email 🚀'}</span>
               </>
             )}
           </button>
@@ -282,7 +282,7 @@ export default function SmtpConfigPanel({
               : 'bg-red-50 border border-red-200 text-red-800'
           }`}>
             <p className="font-extrabold flex items-center gap-1.5 justify-end">
-              <span>{testResult.success ? (lang === 'ar' ? 'نجاح الاختبار بنجاح 🎉' : 'Test Succeeded! 🎉') : (lang === 'ar' ? 'فشل فحص الاتصال ❌' : 'Test Failed ❌')}</span>
+              <span>{testResult.success ? (lang === 'ar' ? 'نجاح الاختبار بنجاح 🎉' : lang === 'he' ? 'הבדיקה הצליחה בהצלחה 🎉' : 'Test Succeeded! 🎉') : (lang === 'ar' ? 'فشل فحص الاتصال ❌' : lang === 'he' ? 'בדיקת החיבור נכשלה ❌' : 'Test Failed ❌')}</span>
             </p>
             <p className="text-[11px] leading-relaxed font-semibold">{testResult.message}</p>
           </div>
@@ -319,12 +319,12 @@ export default function SmtpConfigPanel({
           {activeGuide === 'gmail' && (
             <div className="space-y-2 text-xs text-slate-600 leading-relaxed font-bold">
               <p className="text-slate-800 font-black text-[11px]">
-                {lang === 'ar' ? '1. إعدادات حساب Google Gmail الخاص بك:' : '1. Google Gmail App Password Integration:'}
+                {lang === 'ar' ? '1. إعدادات حساب Google Gmail الخاص بك:' : lang === 'he' ? '1. הגדרות חשבון Google Gmail שלך:' : '1. Google Gmail App Password Integration:'}
               </p>
               <ul className="list-disc pr-4 space-y-1 text-[11px]">
-                <li>{lang === 'ar' ? 'قم بتفعيل المصادقة الثنائية (2-Step Verification) في إعدادات أمان حساب Google.' : 'Enable 2-Step Verification on your Google Account Security Settings.'}</li>
-                <li>{lang === 'ar' ? 'اذهب إلى صفحة "App Passwords" وقم بإنشاء كلمة مرور تطبيق جديدة باسم "Systro".' : 'Go to App Passwords page, and create a custom security credential named "Systro".'}</li>
-                <li>{lang === 'ar' ? 'انسخ الرمز المكون من 16 حرفاً الناتج واضعه في الـ Configuration.' : 'Copy the generated 16-letter application key code securely.'}</li>
+                <li>{lang === 'ar' ? 'قم بتفعيل المصادقة الثنائية (2-Step Verification) في إعدادات أمان حساب Google.' : lang === 'he' ? 'הפעל אימות דו-שלבי (2-Step Verification) בהגדרות האבטחה של חשבון Google שלך.' : 'Enable 2-Step Verification on your Google Account Security Settings.'}</li>
+                <li>{lang === 'ar' ? 'اذهب إلى صفحة "App Passwords" وقم بإنشاء كلمة مرور تطبيق جديدة باسم "Systro".' : lang === 'he' ? 'עבור לדף "סיסמאות אפליקציה" (App Passwords) וצור סיסמת אפליקציה חדשה בשם "Systro".' : 'Go to App Passwords page, and create a custom security credential named "Systro".'}</li>
+                <li>{lang === 'ar' ? 'انسخ الرمز المكون من 16 حرفاً الناتج واضعه في الـ Configuration.' : lang === 'he' ? 'העתק את הקוד בן 16 התווים שנוצר והזן אותו בהגדרות.' : 'Copy the generated 16-letter application key code securely.'}</li>
               </ul>
               
               <div className="bg-slate-900 text-slate-200 p-3.5 rounded-xl font-mono text-[10px] space-y-1 text-left select-all">
@@ -340,12 +340,12 @@ export default function SmtpConfigPanel({
           {activeGuide === 'brevo' && (
             <div className="space-y-2 text-xs text-slate-600 leading-relaxed font-bold">
               <p className="text-slate-800 font-black text-[11px]">
-                {lang === 'ar' ? '2. إعدادات خادم Brevo (Sendinblue) المجاني:' : '2. Brevo (Sendinblue) Free Relay SMTP Provider:'}
+                {lang === 'ar' ? '2. إعدادات خادم Brevo (Sendinblue) المجاني:' : lang === 'he' ? '2. הגדרות שרת Brevo (Sendinblue) החינמי:' : '2. Brevo (Sendinblue) Free Relay SMTP Provider:'}
               </p>
               <ul className="list-disc pr-4 space-y-1 text-[11px]">
-                <li>{lang === 'ar' ? 'قم بالتسجيل مجاناً في Brevo.com واذهب إلى لوحة تحكم SMTP & API.' : 'Sign up free on Brevo.com and navigate to SMTP & API Keys dashboard.'}</li>
-                <li>{lang === 'ar' ? 'انسخ عنوان الـ SMTP Host وقم بتوليد مفتاح SMTP Password جديد.' : 'Copy the public SMTP Host details and create a secure custom SMTP Master Password Key.'}</li>
-                <li>{lang === 'ar' ? 'Brevo يمنحك 300 رسالة يومياً بشكل مجاني تماماً.' : 'Brevo gives you 300 high-delivery emails per day 100% free of charge.'}</li>
+                <li>{lang === 'ar' ? 'قم بالتسجيل مجاناً في Brevo.com واذهب إلى لوحة تحكم SMTP & API.' : lang === 'he' ? 'הרשם בחינם באתר Brevo.com ועבור ללוח הבקרה SMTP & API.' : 'Sign up free on Brevo.com and navigate to SMTP & API Keys dashboard.'}</li>
+                <li>{lang === 'ar' ? 'انسخ عنوان الـ SMTP Host وقم بتوليد مفتاح SMTP Password جديد.' : lang === 'he' ? 'העתק את כתובת ה-SMTP Host וצור מפתח סיסמת SMTP חדש.' : 'Copy the public SMTP Host details and create a secure custom SMTP Master Password Key.'}</li>
+                <li>{lang === 'ar' ? 'Brevo يمنحك 300 رسالة يومياً بشكل مجاني تماماً.' : lang === 'he' ? 'Brevo מעניקה לך 300 אימיילים ביום בחינם לחלוטין.' : 'Brevo gives you 300 high-delivery emails per day 100% free of charge.'}</li>
               </ul>
               
               <div className="bg-slate-900 text-slate-200 p-3.5 rounded-xl font-mono text-[10px] space-y-1 text-left select-all">
@@ -361,12 +361,12 @@ export default function SmtpConfigPanel({
           {activeGuide === 'resend' && (
             <div className="space-y-2 text-xs text-slate-600 leading-relaxed font-bold">
               <p className="text-slate-800 font-black text-[11px]">
-                {lang === 'ar' ? '3. إعدادات خادم Resend.com المطور والحديث:' : '3. Resend.com Premium Developer Email API Integration:'}
+                {lang === 'ar' ? '3. إعدادات خادم Resend.com المطور والحديث:' : lang === 'he' ? '3. הגדרות שרת Resend.com המודרני למפתחים:' : '3. Resend.com Premium Developer Email API Integration:'}
               </p>
               <ul className="list-disc pr-4 space-y-1 text-[11px]">
-                <li>{lang === 'ar' ? 'سجل في Resend.com وقم بإنشاء API Key بصلاحية إرسال كاملة.' : 'Create a developer account on Resend.com and issue a Sending API Key.'}</li>
-                <li>{lang === 'ar' ? 'استخدم "smtp.resend.com" كخادم وبورت 465 أو 587.' : 'Use "smtp.resend.com" as host with port 465 or 587.'}</li>
-                <li>{lang === 'ar' ? 'اسم المستخدم يجب أن يكون دائماً "resend" لمصادقة التوصيل.' : 'Username must be set exactly to "resend" to complete authentication.'}</li>
+                <li>{lang === 'ar' ? 'سجل في Resend.com وقم بإنشاء API Key بصلاحية إرسال كاملة.' : lang === 'he' ? 'הרשם ל-Resend.com וצור מפתח API עם הרשאות שליחה מלאות.' : 'Create a developer account on Resend.com and issue a Sending API Key.'}</li>
+                <li>{lang === 'ar' ? 'استخدم "smtp.resend.com" كخادم وبورت 465 أو 587.' : lang === 'he' ? 'השתמש ב-"smtp.resend.com" כשרת ובפורט 465 או 587.' : 'Use "smtp.resend.com" as host with port 465 or 587.'}</li>
+                <li>{lang === 'ar' ? 'اسم المستخدم يجب أن يكون دائماً "resend" لمصادقة التوصيل.' : lang === 'he' ? 'שם המשתמש חייב להיות תמיד "resend" כדי לאמת את החיבור.' : 'Username must be set exactly to "resend" to complete authentication.'}</li>
               </ul>
               
               <div className="bg-slate-900 text-slate-200 p-3.5 rounded-xl font-mono text-[10px] space-y-1 text-left select-all">
@@ -380,7 +380,7 @@ export default function SmtpConfigPanel({
           )}
 
           <div className="pt-3 border-t border-slate-200/60 text-[10px] text-slate-500 font-bold flex items-center justify-end gap-1">
-            <span>{lang === 'ar' ? 'أدخل هذه المتغيرات في الإعدادات لتثبيت التوصيل الدائم.' : 'Specify these variables in the Settings menu or .env configuration.'}</span>
+            <span>{lang === 'ar' ? 'أدخل هذه المتغيرات في الإعدادات لتثبيت التوصيل الدائم.' : lang === 'he' ? 'הזן את המשתנים הללו בהגדרות כדי להתקין את החיבור הקבוע.' : 'Specify these variables in the Settings menu or .env configuration.'}</span>
             <ShieldAlert className="w-3.5 h-3.5 text-slate-400" />
           </div>
         </div>

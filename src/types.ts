@@ -4,8 +4,10 @@ export interface ServiceDetails {
   id: ServiceType;
   name: string;
   arName: string;
+  heName?: string;
   description: string;
   arDescription: string;
+  heDescription?: string;
   icon: string;
   basePrice: number;
   currency: string;
@@ -96,8 +98,10 @@ export interface InAppNotification {
   id: string;
   titleAr: string;
   titleEn: string;
+  titleHe?: string;
   bodyAr: string;
   bodyEn: string;
+  bodyHe?: string;
   timestamp: string;
   isRead: boolean;
   type: 'new_request' | 'bid_submitted' | 'bid_accepted' | 'en_route' | 'arrived' | 'completed' | 'chat' | 'system';

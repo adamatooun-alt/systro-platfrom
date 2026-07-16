@@ -45,6 +45,8 @@ interface HomeTabProps {
   triggerToast: (text: string, type?: 'success' | 'warning' | 'info' | 'error') => void;
   loggedInUserName: string;
   loggedInUserEmail: string;
+  showSosButton?: boolean;
+  setShowSosButton?: (val: boolean) => void;
 }
 
 export default function HomeTab({
@@ -66,6 +68,8 @@ export default function HomeTab({
   triggerToast,
   loggedInUserName,
   loggedInUserEmail,
+  showSosButton = true,
+  setShowSosButton,
 }: HomeTabProps) {
   const [reporterName, setReporterName] = useState('');
   const [reporterPhone, setReporterPhone] = useState('');
@@ -78,6 +82,8 @@ export default function HomeTab({
       triggerToast(
         lang === 'ar' 
           ? 'الرجاء كتابة تفاصيل المشكلة أولاً!' 
+          : lang === 'he'
+          ? 'אנא הזן את פרטי הבעיה תחילה!'
           : 'Please enter the details of the issue first!', 
         'warning'
       );
@@ -96,6 +102,8 @@ export default function HomeTab({
       triggerToast(
         lang === 'ar' 
           ? '✅ تم إرسال البلاغ بنجاح! شكراً لمساعدتنا في تحسين شبكة سيسترو.' 
+          : lang === 'he'
+          ? '✅ הדיווח נשלח בהצלחה! תודה שסייעת לנו לשפר את סיסטרו.'
           : '✅ Issue submitted successfully! Thank you for helping us improve Systro.', 
         'success'
       );
@@ -109,6 +117,8 @@ export default function HomeTab({
       triggerToast(
         lang === 'ar' 
           ? '❌ عذراً، فشل إرسال البلاغ. الرجاء المحاولة مجدداً.' 
+          : lang === 'he'
+          ? '❌ מצטערים, שליחת הדיווח נכשלה. אנא נסה שנית.'
           : '❌ Sorry, failed to submit issue. Please try again.', 
         'error'
       );
@@ -205,6 +215,50 @@ export default function HomeTab({
             </button>
           </div>
 
+          {/* SOS Floating Button Widget Configurator */}
+          {setShowSosButton && (
+            <div className="mt-8 mx-auto max-w-lg p-4 bg-gradient-to-br from-[#111827]/80 to-[#0F1424]/90 border border-amber-500/10 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl backdrop-blur-md text-right rtl:text-right ltr:text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+                  <AlertTriangle className="w-5.5 h-5.5 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs md:text-sm font-black text-white">
+                    {lang === 'ar' ? 'زر الطوارئ السريع SOS 🚨' : lang === 'he' ? 'לחצן חירום מהיר SOS 🚨' : 'SOS Emergency Button 🚨'}
+                  </h4>
+                  <p className="text-[10px] md:text-[11px] text-gray-400 font-bold leading-normal mt-0.5">
+                    {lang === 'ar' 
+                      ? 'تفعيل زر عائم أحمر بأسفل الشاشة للاتصال بالشرطة وطواقم الإسعاف فوراً.' 
+                      : lang === 'he'
+                      ? 'הצג לחצן אדום צף בתחתית המסך לחיוג מהיר למשטרה וצוותי רפואה.'
+                      : 'Display a floating emergency action button for rapid dials.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowSosButton(!showSosButton);
+                  triggerToast(
+                    lang === 'ar' 
+                      ? (!showSosButton ? '✅ تم إظهار زر SOS العائم بأسفل الشاشة!' : '❌ تم إخفاء زر SOS العائم') 
+                      : lang === 'he'
+                      ? (!showSosButton ? '✅ לחצן SOS הופעל בהצלחה!' : '❌ לחצן SOS הוסתר')
+                      : (!showSosButton ? '✅ SOS floating button is now visible!' : '❌ SOS floating button hidden'), 
+                    'info'
+                  );
+                }}
+                className={`px-4 py-2 rounded-xl text-[11px] font-black tracking-wide border transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                  showSosButton 
+                    ? 'bg-red-500/10 text-red-400 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]' 
+                    : 'bg-gray-900 text-gray-500 border-gray-800'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${showSosButton ? 'bg-red-500 animate-pulse' : 'bg-gray-700'}`}></span>
+                <span>{lang === 'ar' ? (showSosButton ? 'زر SOS نشط' : 'إظهار زر SOS') : lang === 'he' ? (showSosButton ? 'פעיל' : 'הצג לחצן') : (showSosButton ? 'SOS Enabled' : 'Show SOS')}</span>
+              </button>
+            </div>
+          )}
+
           {/* Tag Checklist */}
           <div className="pt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs font-bold text-gray-400 select-none">
             <div className="flex items-center gap-2">
@@ -300,7 +354,14 @@ export default function HomeTab({
                   } else {
                     const element = document.getElementById('login-portal-section');
                     if (element) element.scrollIntoView({ behavior: 'smooth' });
-                    triggerToast(lang === 'ar' ? 'الرجاء تسجيل الدخول أولاً لطلب الخدمة المباشرة!' : 'Please sign in first to submit a live rescue request!', 'info');
+                    triggerToast(
+                      lang === 'ar' 
+                        ? 'الرجاء تسجيل الدخول أولاً لطلب الخدمة المباشرة!' 
+                        : lang === 'he'
+                        ? 'אנא התחבר תחילה כדי להזמין שירות חילוץ ישיר!'
+                        : 'Please sign in first to submit a live rescue request!', 
+                      'info'
+                    );
                   }
                 }}
                 className="p-6 bg-[#0F1424]/60 hover:bg-[#0F1424]/90 border border-gray-800 hover:border-gray-700 rounded-3xl transition-all duration-300 cursor-pointer flex flex-col justify-between group h-64"
@@ -323,7 +384,13 @@ export default function HomeTab({
                 </div>
 
                 <div className="text-xs font-bold text-amber-500 flex items-center gap-1.5 self-end">
-                  <span>{lang === 'ar' ? 'جرب الخدمة الآن' : 'Test service now'}</span>
+                  <span>
+                    {lang === 'ar' 
+                      ? 'جرب الخدمة الآن' 
+                      : lang === 'he'
+                      ? 'נסה את השירות כעת'
+                      : 'Test service now'}
+                  </span>
                   <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                 </div>
               </div>
@@ -400,7 +467,7 @@ export default function HomeTab({
             <div className="p-5 bg-[#0F1424] border border-gray-800 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="space-y-1">
                 <span className="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">{t.vaultResValue}</span>
-                <span className="text-2xl font-black text-white font-mono">150 ₪ <span className="text-xs text-gray-400 font-bold font-sans">({lang === 'ar' ? 'شيكل' : 'Shekel'})</span></span>
+                <span className="text-2xl font-black text-white font-mono">150 ₪ <span className="text-xs text-gray-400 font-bold font-sans">({lang === 'ar' ? 'شيكل' : lang === 'he' ? 'שקל' : 'Shekel'})</span></span>
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                 <span className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-extrabold px-3 py-1 rounded-full uppercase">
@@ -458,18 +525,28 @@ export default function HomeTab({
           <div className="lg:col-span-5 space-y-6 text-right rtl:text-right ltr:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-xs font-bold uppercase tracking-wider">
               <HeartHandshake className="w-4 h-4 text-amber-500" />
-              <span>{lang === 'ar' ? 'فريق الدعم والمساندة الفنية' : 'Support & Technical Assistance'}</span>
+              <span>
+                {lang === 'ar' 
+                  ? 'فريق الدعم والمساندة الفنية' 
+                  : lang === 'he'
+                  ? 'צוות תמיכה וסיוע טכני'
+                  : 'Support & Technical Assistance'}
+              </span>
             </div>
 
             <div className="space-y-3">
               <h3 className="text-2xl md:text-3xl font-black text-white leading-tight">
                 {lang === 'ar' 
                   ? 'هل تواجه أي مشاكل أو أعطال في المنصة؟' 
+                  : lang === 'he'
+                  ? 'נתקלת בבעיה או תקלה בפלטפורמה?'
                   : 'Facing any issues or bugs on the platform?'}
               </h3>
               <p className="text-sm text-gray-400 font-medium leading-relaxed">
                 {lang === 'ar' 
                   ? 'ملاحظاتك تهمنا كثيراً لتطوير الخدمة! إذا صادفتك أي مشكلة برمجية، تأخير، أو خطأ في النظام، يرجى كتابتها فوراً ليصل تقريرك مباشرة إلى المهندس آدم عطون للمتابعة الفورية.' 
+                  : lang === 'he'
+                  ? 'המשוב שלך חשוב לנו מאוד לפיתוח השירות! אם נתקלת בבעיית תוכנה, עיכוב או שגיאת מערכת, אנא דווח עליה כאן כדי להגיע למהנדס אדם עטון באופן מיידי לטיפול פתרון.'
                   : 'Your feedback is extremely valuable to us! If you encounter any software bugs, delays, or system errors, please report them here to reach Eng. Adam Atoun immediately for resolving.'}
               </p>
             </div>
@@ -478,10 +555,18 @@ export default function HomeTab({
             <div className="bg-[#0A0B10]/90 border border-gray-800 p-6 rounded-3xl space-y-5 shadow-xl">
               <div className="space-y-1">
                 <h4 className="text-sm font-black text-white">
-                  {lang === 'ar' ? 'للتواصل الهاتفي الفوري والطارئ:' : 'Direct Phone & Instant WhatsApp:'}
+                  {lang === 'ar' 
+                    ? 'للتواصل الهاتفي الفوري والطارئ:' 
+                    : lang === 'he'
+                    ? 'ליצירת קשר טלפוני מיידי ודחוף:'
+                    : 'Direct Phone & Instant WhatsApp:'}
                 </h4>
                 <p className="text-xs text-gray-500 font-semibold">
-                  {lang === 'ar' ? 'يمكنك التحدث مباشرة مع الإدارة والدعم الفني على مدار الساعة.' : 'Get in touch with the management and support team anytime.'}
+                  {lang === 'ar' 
+                    ? 'يمكنك التحدث مباشرة مع الإدارة والدعم الفني على مدار الساعة.' 
+                    : lang === 'he'
+                    ? 'תוכל לדבר ישירות עם ההנהלה ותמיכה טכנית 24/7.'
+                    : 'Get in touch with the management and support team anytime.'}
                 </p>
               </div>
 
@@ -496,7 +581,7 @@ export default function HomeTab({
                   </span>
                 </div>
                 <span className="text-[10px] font-bold text-amber-500 uppercase font-mono bg-amber-500/10 px-2 py-0.5 rounded animate-pulse">
-                  {lang === 'ar' ? 'نشط الآن' : 'LIVE SUPPORT'}
+                  {lang === 'ar' ? 'نشط الآن' : lang === 'he' ? 'פעיל כעת' : 'LIVE SUPPORT'}
                 </span>
               </div>
 
@@ -507,7 +592,7 @@ export default function HomeTab({
                   className="py-3 px-4 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm text-center"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  <span>{lang === 'ar' ? 'اتصال مباشر' : 'Direct Call'}</span>
+                  <span>{lang === 'ar' ? 'اتصال مباشر' : lang === 'he' ? 'חיוג ישיר' : 'Direct Call'}</span>
                 </a>
                 <a 
                   href="https://wa.me/972538316779"
@@ -516,7 +601,7 @@ export default function HomeTab({
                   className="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md text-center"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
-                  <span>{lang === 'ar' ? 'واتس اب مباشر' : 'WhatsApp'}</span>
+                  <span>{lang === 'ar' ? 'واتس اب مباشر' : lang === 'he' ? 'וואטסאפ ישיר' : 'WhatsApp'}</span>
                 </a>
               </div>
             </div>
@@ -527,10 +612,20 @@ export default function HomeTab({
             <div className="space-y-1">
               <h4 className="text-lg font-black text-white flex items-center gap-2 justify-start">
                 <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
-                <span>{lang === 'ar' ? 'نموذج الإبلاغ المباشر عن مشكلة' : 'Direct Issue Report Form'}</span>
+                <span>
+                  {lang === 'ar' 
+                    ? 'نموذج الإبلاغ المباشر عن مشكلة' 
+                    : lang === 'he'
+                    ? 'טופס דיווח ישיר על בעיה'
+                    : 'Direct Issue Report Form'}
+                </span>
               </h4>
               <p className="text-xs text-gray-400 font-semibold">
-                {lang === 'ar' ? 'سيتم إرسال هذا التقرير فوراً إلى لوحة تحكم المسؤول.' : 'Your report will be sent directly to the Admin Dashboard.'}
+                {lang === 'ar' 
+                  ? 'سيتم إرسال هذا التقرير فوراً إلى لوحة تحكم المسؤول.' 
+                  : lang === 'he'
+                  ? 'דיווח זה יישלח ישירות ללוח הבקרה של המנהל.'
+                  : 'Your report will be sent directly to the Admin Dashboard.'}
               </p>
             </div>
 
@@ -538,26 +633,34 @@ export default function HomeTab({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    {lang === 'ar' ? 'اسمك الكريم (اختياري):' : 'Your Name (Optional):'}
+                    {lang === 'ar' 
+                      ? 'اسمك الكريم (اختياري):' 
+                      : lang === 'he'
+                      ? 'שמך המלא (אופציונלי):'
+                      : 'Your Name (Optional):'}
                   </label>
                   <input 
                     type="text"
                     value={reporterName}
                     onChange={(e) => setReporterName(e.target.value)}
-                    placeholder={lang === 'ar' ? 'مثال: أحمد العبد' : 'e.g. John Doe'}
+                    placeholder={lang === 'ar' ? 'مثال: أحمد العبد' : lang === 'he' ? 'לדוגמה: ישראל ישראלי' : 'e.g. John Doe'}
                     className="w-full px-4 py-3 bg-[#0F1424] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    {lang === 'ar' ? 'رقم هاتفك للتواصل (اختياري):' : 'Phone Number (Optional):'}
+                    {lang === 'ar' 
+                      ? 'رقم هاتفك للتواصل (اختياري):' 
+                      : lang === 'he'
+                      ? 'מספר הטלפון שלך (אופציונלי):'
+                      : 'Phone Number (Optional):'}
                   </label>
                   <input 
                     type="text"
                     value={reporterPhone}
                     onChange={(e) => setReporterPhone(e.target.value)}
-                    placeholder={lang === 'ar' ? 'مثال: +972 59-123-4567' : 'e.g. +972 59-123-4567'}
+                    placeholder={lang === 'ar' ? 'مثال: +972 59-123-4567' : lang === 'he' ? 'לדוגמה: +972 50-123-4567' : 'e.g. +972 59-123-4567'}
                     className="w-full px-4 py-3 bg-[#0F1424] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl"
                   />
                 </div>
@@ -565,14 +668,24 @@ export default function HomeTab({
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  {lang === 'ar' ? 'تفاصيل العطل أو المشكلة بدقة:' : 'Detailed Description of the Issue:'}
+                  {lang === 'ar' 
+                    ? 'تفاصيل العطل أو المشكلة بدقة:' 
+                    : lang === 'he'
+                    ? 'פרטי התקלה או הבעיה במדויק:'
+                    : 'Detailed Description of the Issue:'}
                 </label>
                 <textarea 
                   required
                   rows={4}
                   value={reporterIssue}
                   onChange={(e) => setReporterIssue(e.target.value)}
-                  placeholder={lang === 'ar' ? 'صف المشكلة التي واجهتك، أين حدثت، وما الذي ظهر لك على الشاشة بالتفصيل...' : 'Please describe the bug or issue, where did it happen, and any errors displayed...'}
+                  placeholder={
+                    lang === 'ar' 
+                      ? 'صف المشكلة التي واجهتك، أين حدثت، وما الذي ظهر لك على الشاشة بالتفصيل...' 
+                      : lang === 'he'
+                      ? 'תאר את הבעיה בה נתקלת, היכן היא התרחשה ומה הופיע על המסך בפירוט...'
+                      : 'Please describe the bug or issue, where did it happen, and any errors displayed...'
+                  }
                   className="w-full px-4 py-3 bg-[#0F1424] border border-gray-800 focus:border-amber-500 outline-none text-white font-medium text-xs transition-colors rounded-xl resize-none"
                 />
               </div>
@@ -585,12 +698,24 @@ export default function HomeTab({
                 {isSubmittingIssue ? (
                   <>
                     <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                    <span>{lang === 'ar' ? 'جاري إرسال البلاغ...' : 'Sending Report...'}</span>
+                    <span>
+                      {lang === 'ar' 
+                        ? 'جاري إرسال البلاغ...' 
+                        : lang === 'he'
+                        ? 'שולח דיווח...'
+                        : 'Sending Report...'}
+                    </span>
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4 shrink-0" />
-                    <span>{lang === 'ar' ? 'إرسال البلاغ فوراً للمهندس آدم عطون' : 'Submit Issue to Eng. Adam Atoun'}</span>
+                    <span>
+                      {lang === 'ar' 
+                        ? 'إرسال البلاغ فوراً للمهندس آدم عطون' 
+                        : lang === 'he'
+                        ? 'שלח דיווח מיידי למהנדס אדם עטון'
+                        : 'Submit Issue to Eng. Adam Atoun'}
+                    </span>
                   </>
                 )}
               </button>
@@ -628,7 +753,14 @@ export default function HomeTab({
               <button 
                 onClick={() => {
                   if (!isLoggedIn) {
-                    triggerToast(lang === 'ar' ? 'سجل دخولك للدخول إلى بوابة طلبات الطوارئ!' : 'Sign in to access the emergency rescue portal!', 'warning');
+                    triggerToast(
+                      lang === 'ar' 
+                        ? 'سجل دخولك للدخول إلى بوابة طلبات الطوارئ!' 
+                        : lang === 'he'
+                        ? 'התחבר כדי לגשת לפורטל קריאות חירום!'
+                        : 'Sign in to access the emergency rescue portal!', 
+                      'warning'
+                    );
                   } else {
                     setActiveTab('simulator');
                   }
@@ -644,7 +776,11 @@ export default function HomeTab({
           {/* Bottom Copyright & admin access gateway pill button */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-xs font-semibold text-gray-500">
             <p>
-              {lang === 'ar' ? 'جميع الحقوق محفوظة (Systro Rescue) سيسترو إنقاذ 2026 ©' : 'All rights reserved (Systro Rescue) Systro Rescue 2026 ©'}
+              {lang === 'ar' 
+                ? 'جميع الحقوق محفوظة (Systro Rescue) سيسترو إنقاذ 2026 ©' 
+                : lang === 'he'
+                ? 'כל הזכויות שמורות ל-Systro Rescue 2026 ©'
+                : 'All rights reserved (Systro Rescue) Systro Rescue 2026 ©'}
             </p>
 
             <div className="flex flex-wrap items-center gap-3">

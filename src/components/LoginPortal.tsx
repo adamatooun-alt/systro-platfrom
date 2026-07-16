@@ -107,6 +107,8 @@ export default function LoginPortal({
       triggerToast(
         lang === 'ar' 
           ? 'يرجى إدخال بريد إلكتروني صحيح لحساب Google!' 
+          : lang === 'he'
+          ? 'אנא הזן כתובת אימייל תקינה של Google!'
           : 'Please enter a valid Google email address!', 
         'warning'
       );
@@ -117,6 +119,8 @@ export default function LoginPortal({
       triggerToast(
         lang === 'ar' 
           ? 'يجب الموافقة على شروط الخدمة وسياسة الخصوصية للمتابعة! 📜' 
+          : lang === 'he'
+          ? 'עליך להסכים לתנאי השימוש ומדיניות הפרטיות כדי להמשיך! 📜'
           : 'You must agree to the Terms of Service & Privacy Policy to proceed! 📜', 
         'warning'
       );
@@ -141,15 +145,17 @@ export default function LoginPortal({
         triggerToast(
           lang === 'ar' 
             ? 'تم إرسال رمز التحقق لبريدك الإلكتروني الحقيقي بنجاح! ✉️' 
+            : lang === 'he'
+            ? 'קוד האימות נשלח לאימייל האמיתי שלך בהצלחה! ✉️'
             : 'Verification code sent to your real email inbox successfully! ✉️', 
           'success'
         );
       } else {
-        triggerToast(data.error || (lang === 'ar' ? 'فشل إرسال رمز التحقق!' : 'Failed to send verification code!'), 'error');
+        triggerToast(data.error || (lang === 'ar' ? 'فشل إرسال رمز التحقق!' : lang === 'he' ? 'שליחת קוד האימות נכשלה!' : 'Failed to send verification code!'), 'error');
       }
     } catch (err) {
       console.error("Error sending fallback OTP:", err);
-      triggerToast(lang === 'ar' ? 'خطأ في الاتصال بالخادم!' : 'Server connection error!', 'error');
+      triggerToast(lang === 'ar' ? 'خطأ في الاتصال بالخادم!' : lang === 'he' ? 'שגיאת חיבור לשרת!' : 'Server connection error!', 'error');
     } finally {
       setFallbackOtpSending(false);
     }
@@ -157,12 +163,12 @@ export default function LoginPortal({
 
   const handleVerifyFallbackOtp = async () => {
     const trimmedEmail = customEmail.trim();
-    const trimmedName = customName.trim() || (lang === 'ar' ? "مستخدم سيسترو" : "Systro User");
+    const trimmedName = customName.trim() || (lang === 'ar' ? "مستخدم سيسترو" : lang === 'he' ? "משתמש סיסטרו" : "Systro User");
     const enteredCode = fallbackOtpCode.trim();
 
     if (!enteredCode) {
       triggerToast(
-        lang === 'ar' ? 'يرجى إدخال رمز التحقق المستلم!' : 'Please enter the verification code!', 
+        lang === 'ar' ? 'يرجى إدخال رمز التحقق المستلم!' : lang === 'he' ? 'אנא הזן את קוד האימות שהתקבל!' : 'Please enter the verification code!', 
         'warning'
       );
       return;
@@ -186,15 +192,17 @@ export default function LoginPortal({
         triggerToast(
           lang === 'ar' 
             ? `تم التحقق من حسابك وتأكيده بنجاح! 🔐` 
+            : lang === 'he'
+            ? `חשבונך אומת והתחברת בהצלחה! 🔐`
             : `Account verified and logged in successfully! 🔐`, 
           'success'
         );
       } else {
-        triggerToast(data.error || (lang === 'ar' ? 'رمز التحقق غير صحيح!' : 'Incorrect verification code!'), 'error');
+        triggerToast(data.error || (lang === 'ar' ? 'رمز التحقق غير صحيح!' : lang === 'he' ? 'קוד האימות אינו תקין!' : 'Incorrect verification code!'), 'error');
       }
     } catch (err) {
       console.error("Error verifying fallback OTP:", err);
-      triggerToast(lang === 'ar' ? 'خطأ في الاتصال بالخادم!' : 'Server connection error!', 'error');
+      triggerToast(lang === 'ar' ? 'خطأ في الاتصال بالخادم!' : lang === 'he' ? 'שגיאת חיבור לשרת!' : 'Server connection error!', 'error');
     } finally {
       setFallbackOtpVerifying(false);
     }
@@ -348,6 +356,8 @@ export default function LoginPortal({
             <p className="text-xs sm:text-sm text-emerald-100/70 font-semibold max-w-sm leading-relaxed select-none filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
               {lang === 'ar' 
                 ? 'مرحباً بك في شبكة سيسترو لإنقاذ السيارات - بوابتك الآمنة متوفرة الآن بنقرة واحدة' 
+                : lang === 'he'
+                ? 'ברוכים הבאים לרשת החילוץ סיסטרו - הכניסה המאובטחת שלך זמינה כעת בלחיצה אחת'
                 : 'Welcome to Systro Rescue Network - Your secure entrance is now one click away'}
             </p>
           </div>
@@ -360,29 +370,31 @@ export default function LoginPortal({
           <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#FCAD62]/5 rounded-full blur-xl"></div>
           
           {/* Tooltip Badge on Top of the Sheet */}
-          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#2563EB] text-white text-[11px] sm:text-xs font-black px-5 py-2 rounded-full shadow-lg flex items-center gap-1 shrink-0 select-none animate-bounce">
-            <span>{lang === 'ar' ? 'عملية تسجيل الدخول السابقة' : lang === 'he' ? 'תהליך התחברות קודם' : 'Previous session active'}</span>
-            <div className="absolute bottom-[-3px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-[#2563EB] rotate-45"></div>
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#2563EB] text-white text-[11px] sm:text-xs font-black px-5 py-2 rounded-full shadow-lg z-10 whitespace-nowrap">
+            {lang === 'ar' ? '🔐 تسجيل دخول آمن' : lang === 'he' ? '🔐 כניסה מאובטחת' : '🔐 Secure Login'}
           </div>
 
-          <div className="pt-2">
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <h4 className="text-lg sm:text-xl font-black text-[#FDF6E2]">
+                {lang === 'ar' ? 'تسجيل دخول موحد وآمن' : lang === 'he' ? 'התחברות מאובטחת ומהירה' : 'Secure Instant Access'}
+              </h4>
+              <p className="text-xs text-emerald-300 font-extrabold leading-relaxed">
+                {lang === 'ar' 
+                  ? 'أدخل بريدك الإلكتروني (Gmail) لاستلام رمز الدخول المؤقت' 
+                  : lang === 'he'
+                  ? 'הזן את כתובת האימייל שלך (Gmail) לקבלת קוד אימות חד-פעמי'
+                  : 'Enter your Gmail to receive a secure, passwordless OTP'}
+              </p>
+            </div>
+
             {!fallbackOtpSent ? (
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <h4 className="text-lg sm:text-xl font-black text-[#FDF6E2]">
-                    {lang === 'ar' ? 'تسجيل دخول موحد وآمن' : 'Secure Instant Access'}
-                  </h4>
-                  <p className="text-xs text-emerald-300 font-extrabold leading-relaxed">
-                    {lang === 'ar' 
-                      ? 'أدخل بريدك الإلكتروني (Gmail) لاستلام رمز الدخول المؤقت' 
-                      : 'Enter your Gmail to receive a secure, passwordless OTP'}
-                  </p>
-                </div>
+              <div className="space-y-6">
 
                 {/* Email Input */}
                 <div className="space-y-1 text-right">
                   <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
-                    {lang === 'ar' ? 'البريد الإلكتروني لجوجل (Verified Gmail):' : 'Google Gmail Address:'}
+                    {lang === 'ar' ? 'البريد الإلكتروني لجوجل (Verified Gmail):' : lang === 'he' ? 'כתובת אימייל גוגל (Gmail):' : 'Google Gmail Address:'}
                   </label>
                   <input
                     type="email"
@@ -398,14 +410,14 @@ export default function LoginPortal({
                 {customEmail && customName && (
                   <div className="space-y-1 text-right animate-fade-in">
                     <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
-                      {lang === 'ar' ? 'الاسم بالكامل (سيتم عرضه في الملف الشخصي):' : 'Full Name (Will display on your profile):'}
+                      {lang === 'ar' ? 'الاسم بالكامل (سيتم عرضه في الملف الشخصي):' : lang === 'he' ? 'שם מלא (יוצג בפרופיל שלך):' : 'Full Name (Will display on your profile):'}
                     </label>
                     <input
                       type="text"
                       required
                       value={customName}
                       onChange={(e) => setCustomName(e.target.value)}
-                      placeholder={lang === 'ar' ? 'أدخل اسمك الكريم' : 'Enter your name'}
+                      placeholder={lang === 'ar' ? 'أدخل اسمك الكريم' : lang === 'he' ? 'הזן את שמך המלא' : 'Enter your name'}
                       className="w-full px-4 py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-bold text-xs focus:outline-none focus:border-amber-500 text-right"
                     />
                   </div>
@@ -425,6 +437,10 @@ export default function LoginPortal({
                       <>
                         أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">شروط الخدمة وسياسة الخصوصية</button> الخاصة بمنصة Systro لإنقاذ وسحب السيارات.
                       </>
+                    ) : lang === 'he' ? (
+                      <>
+                        אני מסכים ל-<button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">תנאי השירות ומדיניות הפרטיות</button> של רשת החילוץ סיסטרו.
+                      </>
                     ) : (
                       <>
                         I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">Terms of Service & Privacy Policy</button> of Systro Rescue Network.
@@ -440,11 +456,11 @@ export default function LoginPortal({
                   className="w-full py-4 bg-[#FCAD62] hover:bg-[#fcbc80] active:bg-[#e0924a] text-[#0B1513] font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-xl cursor-pointer disabled:opacity-50"
                 >
                   {fallbackOtpSending ? (
-                    <span>{lang === 'ar' ? 'جاري إرسال الرمز...' : 'Sending code...'}</span>
+                    <span>{lang === 'ar' ? 'جاري إرسال الرمز...' : lang === 'he' ? 'שולח קוד אימות...' : 'Sending code...'}</span>
                   ) : (
                     <>
                       <ShieldCheck className="w-5 h-5 shrink-0" />
-                      <span>{lang === 'ar' ? 'متابعة وإرسال رمز التحقق' : 'Continue & Send Verification Code'}</span>
+                      <span>{lang === 'ar' ? 'متابعة وإرسال رمز التحقق' : lang === 'he' ? 'המשך ושליחת קוד אימות' : 'Continue & Send Verification Code'}</span>
                     </>
                   )}
                 </button>
@@ -452,7 +468,7 @@ export default function LoginPortal({
                 {/* Fast popup login for other environments */}
                 <div className="relative flex py-2 items-center">
                   <div className="flex-grow border-t border-emerald-950/40"></div>
-                  <span className="flex-shrink mx-4 text-emerald-300/40 text-[10px] font-bold uppercase tracking-widest">{lang === 'ar' ? 'أو' : 'OR'}</span>
+                  <span className="flex-shrink mx-4 text-emerald-300/40 text-[10px] font-bold uppercase tracking-widest">{lang === 'ar' ? 'أو' : lang === 'he' ? 'או' : 'OR'}</span>
                   <div className="flex-grow border-t border-emerald-950/40"></div>
                 </div>
 
@@ -462,6 +478,8 @@ export default function LoginPortal({
                       triggerToast(
                         lang === 'ar' 
                           ? 'يرجى قراءة والموافقة على شروط الخدمة وسياسة الخصوصية للمتابعة! 📜' 
+                          : lang === 'he'
+                          ? 'אנא קרא והסכם לתנאי השימוש ומדיניות הפרטיות כדי להמשיך! 📜'
                           : 'Please read and agree to the Terms of Service & Privacy Policy to proceed! 📜', 
                         'warning'
                       );
@@ -477,7 +495,7 @@ export default function LoginPortal({
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
-                  <span>{lang === 'ar' ? 'تسجيل دخول سريع بواسطة Google' : 'Fast Log In with Google'}</span>
+                  <span>{lang === 'ar' ? 'تسجيل دخول سريع بواسطة Google' : lang === 'he' ? 'התחברות מהירה עם גוגל' : 'Fast Log In with Google'}</span>
                 </button>
               </div>
             ) : (
@@ -500,7 +518,7 @@ export default function LoginPortal({
                 {/* OTP Code input */}
                 <div className="space-y-1.5 text-center">
                   <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
-                    {lang === 'ar' ? 'رمز التحقق (6 أرقام)' : 'Verification Code (6-digits)'}
+                    {lang === 'ar' ? 'رمز التحقق (6 أرقام)' : lang === 'he' ? 'קוד אימות (6 ספרות)' : 'Verification Code (6-digits)'}
                   </label>
                   <input
                     type="text"
@@ -520,11 +538,11 @@ export default function LoginPortal({
                   className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 active:bg-[#047857] text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-xl cursor-pointer disabled:opacity-50"
                 >
                   {fallbackOtpVerifying ? (
-                    <span>{lang === 'ar' ? 'جاري التحقق...' : 'Verifying code...'}</span>
+                    <span>{lang === 'ar' ? 'جاري التحقق...' : lang === 'he' ? 'מבצע אימות...' : 'Verifying code...'}</span>
                   ) : (
                     <>
                       <ShieldCheck className="w-5 h-5 shrink-0" />
-                      <span>{lang === 'ar' ? 'التحقق وتسجيل الدخول' : 'Verify & Sign In'}</span>
+                      <span>{lang === 'ar' ? 'التحقق وتسجيل الدخول' : lang === 'he' ? 'אימות והתחברות' : 'Verify & Sign In'}</span>
                     </>
                   )}
                 </button>
@@ -536,7 +554,7 @@ export default function LoginPortal({
                     onClick={() => setFallbackOtpSent(false)}
                     className="text-[11px] text-emerald-400 hover:text-emerald-300 hover:underline font-bold transition-all cursor-pointer"
                   >
-                    {lang === 'ar' ? '← تغيير البريد الإلكتروني' : '← Change email address'}
+                    {lang === 'ar' ? '← تغيير البريد الإلكتروني' : lang === 'he' ? '← שנה כתובת אימייל' : '← Change email address'}
                   </button>
                 </div>
 
@@ -549,15 +567,17 @@ export default function LoginPortal({
                     className="text-[11px] text-amber-400 hover:text-amber-300 disabled:text-emerald-500/60 font-bold transition-all cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5 mx-auto"
                   >
                     {fallbackOtpSending ? (
-                      <span>{lang === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</span>
+                      <span>{lang === 'ar' ? 'جاري الإرسال...' : lang === 'he' ? 'שולח שנית...' : 'Sending...'}</span>
                     ) : resendCooldown > 0 ? (
                       <span>
                         {lang === 'ar' 
                           ? `إعادة إرسال الرمز بعد (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})` 
+                          : lang === 'he'
+                          ? `שלח קוד שנית בעוד (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})`
                           : `Resend code in (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})`}
                       </span>
                     ) : (
-                      <span>{lang === 'ar' ? '✉️ إعادة إرسال الرمز' : '✉️ Resend verification code'}</span>
+                      <span>{lang === 'ar' ? '✉️ إعادة إرسال الرمز' : lang === 'he' ? '✉️ שלח קוד אימות שנית' : '✉️ Resend verification code'}</span>
                     )}
                   </button>
                 </div>
@@ -567,7 +587,7 @@ export default function LoginPortal({
             {/* Security and Protection Note */}
             <div className="pt-4 mt-4 border-t border-emerald-950/40 flex items-center justify-center gap-1.5 text-xs text-emerald-300/80 font-bold select-none uppercase tracking-widest text-center">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{lang === 'ar' ? 'بوابة مشفرة بالكامل بواسطة Google OAuth 2.0' : 'Fully secure and encrypted by Google OAuth 2.0'}</span>
+              <span>{lang === 'ar' ? 'بوابة مشفرة بالكامل بواسطة Google OAuth 2.0' : lang === 'he' ? 'שער מוצפן לחלוטין באמצעות Google OAuth 2.0' : 'Fully secure and encrypted by Google OAuth 2.0'}</span>
             </div>
           </div>
         </div>
@@ -603,8 +623,8 @@ export default function LoginPortal({
               <div className="space-y-1 text-center">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight leading-tight select-none font-sans">
                   {fallbackOtpSent 
-                    ? (lang === 'ar' ? 'تأكيد الرمز لحماية حسابك' : 'Confirm Code for Security')
-                    : (lang === 'ar' ? 'تسجيل دخول آمن بدون كلمة سر' : 'Passwordless Secure Sign-In')}
+                    ? (lang === 'ar' ? 'تأكيد الرمز لحماية حسابك' : lang === 'he' ? 'אמת קוד לאבטחת חשבונך' : 'Confirm Code for Security')
+                    : (lang === 'ar' ? 'تسجيل دخول آمن بدون كلمة سر' : lang === 'he' ? 'התחברות מאובטחת ללא סיסמה' : 'Passwordless Secure Sign-In')}
                 </h2>
               </div>
             </div>
@@ -615,13 +635,15 @@ export default function LoginPortal({
                   <p className="text-xs text-slate-500 font-bold leading-relaxed px-1 text-center">
                     {lang === 'ar' 
                       ? 'يرجى كتابة بريدك الإلكتروني وسنرسل لك رمز تحقق سريعاً لتسجيل الدخول فوراً وبأمان كامل، دون الحاجة لكلمة مرور.' 
+                      : lang === 'he'
+                      ? 'אנא הזן את כתובת האימייל שלך ונשלח לך קוד אימות מהיר להתחברות מיידית ובטוחה לחלוטין, ללא צורך בסיסמה.'
                       : 'Please enter your email and we will send you a verification code to log in instantly and securely, with no passwords required.'}
                   </p>
 
                   {/* Dynamic Google Email Input */}
                   <div className="space-y-1">
                     <label className={`block text-[10px] font-extrabold text-slate-400 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
-                      {lang === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
+                      {lang === 'ar' ? 'البريد الإلكتروني' : lang === 'he' ? 'כתובת אימייל' : 'Email Address'}
                     </label>
                     <input
                       type="email"
@@ -638,14 +660,14 @@ export default function LoginPortal({
                     <div className="bg-sky-50 border border-sky-100/50 p-2.5 rounded-xl flex items-center justify-between text-xs animate-fade-in">
                       <div className={`flex flex-col gap-0.5 ${lang === 'ar' ? 'text-right w-full' : 'text-left w-full'}`}>
                         <span className="text-[10px] text-sky-600 font-black">
-                          {lang === 'ar' ? 'الاسم المستنتج تلقائياً (يمكنك تعديله):' : 'Auto-detected Name (you can edit):'}
+                          {lang === 'ar' ? 'الاسم المستنتج تلقائياً (يمكنك تعديله):' : lang === 'he' ? 'שם שזוהה אוטומטית (ניתן לעריכה):' : 'Auto-detected Name (you can edit):'}
                         </span>
                         <input
                           type="text"
                           value={customName}
                           onChange={(e) => setCustomName(e.target.value)}
                           className={`text-slate-700 font-extrabold focus:outline-none bg-transparent w-full ${lang === 'ar' ? 'text-right' : 'text-left'}`}
-                          placeholder={lang === 'ar' ? 'الاسم الكامل' : 'Full name'}
+                          placeholder={lang === 'ar' ? 'الاسم الكامل' : lang === 'he' ? 'שם מלא' : 'Full name'}
                         />
                       </div>
                     </div>
@@ -658,12 +680,16 @@ export default function LoginPortal({
                       id="fallback-terms-checkbox"
                       checked={acceptedTerms}
                       onChange={(e) => setAcceptedTerms(e.target.checked)}
-                      className="mt-1 w-4 h-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500 cursor-pointer"
+                      className="mt-1 w-4.5 h-4.5 text-sky-600 border-slate-300 rounded focus:ring-sky-500 cursor-pointer"
                     />
                     <label htmlFor="fallback-terms-checkbox" className="text-[11px] text-slate-600 font-bold select-none cursor-pointer leading-relaxed text-right w-full">
                       {lang === 'ar' ? (
                         <>
                           أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-sky-600 hover:underline inline font-black cursor-pointer">شروط الخدمة وسياسة الخصوصية</button> الخاصة بمنصة سيسترو.
+                        </>
+                      ) : lang === 'he' ? (
+                        <>
+                          אני מסכים ל-<button type="button" onClick={() => setShowTermsModal(true)} className="text-sky-600 hover:underline inline font-black cursor-pointer">תנאי השירות ומדיניות הפרטיות</button> של פלטפורמת סיסטרו.
                         </>
                       ) : (
                         <>
@@ -681,12 +707,12 @@ export default function LoginPortal({
                     className="w-full py-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-sky-600/20 hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {fallbackOtpSending ? (
-                      <span>{lang === 'ar' ? 'جاري إرسال الرمز...' : 'Sending code...'}</span>
+                      <span>{lang === 'ar' ? 'جاري إرسال الرمز...' : lang === 'he' ? 'שולח קוד אימות...' : 'Sending code...'}</span>
                     ) : (
                       <>
                         <ShieldCheck className="w-5 h-5 shrink-0" />
                         <span>
-                          {lang === 'ar' ? 'إرسال رمز تحقق آمن' : 'Send Secure Code'}
+                          {lang === 'ar' ? 'إرسال رمز تحقق آمن' : lang === 'he' ? 'שלח קוד אימות מאובטח' : 'Send Secure Code'}
                         </span>
                       </>
                     )}
@@ -710,7 +736,7 @@ export default function LoginPortal({
                   {/* Verification Code Input */}
                   <div className="space-y-1.5">
                     <label className={`block text-[10px] font-extrabold text-slate-400 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
-                      {lang === 'ar' ? 'رمز التحقق (6 أرقام)' : 'Verification Code (6-digits)'}
+                      {lang === 'ar' ? 'رمز التحقق (6 أرقام)' : lang === 'he' ? 'קוד אימות (6 ספרות)' : 'Verification Code (6-digits)'}
                     </label>
                     <input
                       type="text"
@@ -731,12 +757,12 @@ export default function LoginPortal({
                     className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-emerald-600/20 hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {fallbackOtpVerifying ? (
-                      <span>{lang === 'ar' ? 'جاري التحقق...' : 'Verifying code...'}</span>
+                      <span>{lang === 'ar' ? 'جاري التحقق...' : lang === 'he' ? 'מבצע אימות...' : 'Verifying code...'}</span>
                     ) : (
                       <>
                         <ShieldCheck className="w-5 h-5 shrink-0" />
                         <span>
-                          {lang === 'ar' ? 'التحقق وتسجيل الدخول' : 'Verify & Sign In'}
+                          {lang === 'ar' ? 'التحقق وتسجيل الدخول' : lang === 'he' ? 'אימות והתחברות' : 'Verify & Sign In'}
                         </span>
                       </>
                     )}
@@ -749,7 +775,7 @@ export default function LoginPortal({
                       onClick={() => setFallbackOtpSent(false)}
                       className="text-[11px] text-sky-600 hover:text-sky-700 hover:underline font-bold transition-all cursor-pointer"
                     >
-                      {lang === 'ar' ? '← تغيير البريد الإلكتروني' : '← Change email address'}
+                      {lang === 'ar' ? '← تغيير البريد الإلكتروني' : lang === 'he' ? '← שנה כתובת אימייל' : '← Change email address'}
                     </button>
                   </div>
 
@@ -762,15 +788,17 @@ export default function LoginPortal({
                       className="text-[11px] text-sky-600 hover:text-sky-700 disabled:text-slate-400 font-bold transition-all cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5 mx-auto"
                     >
                       {fallbackOtpSending ? (
-                        <span>{lang === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</span>
+                        <span>{lang === 'ar' ? 'جاري الإرسال...' : lang === 'he' ? 'שולח שנית...' : 'Sending...'}</span>
                       ) : resendCooldown > 0 ? (
                         <span>
                           {lang === 'ar' 
                             ? `إعادة إرسال الرمز بعد (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})` 
+                            : lang === 'he'
+                            ? `שלח קוד שנית בעוד (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})`
                             : `Resend code in (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})`}
                         </span>
                       ) : (
-                        <span>{lang === 'ar' ? '✉️ إعادة إرسال الرمز' : '✉️ Resend verification code'}</span>
+                        <span>{lang === 'ar' ? '✉️ إعادة إرسال الرمز' : lang === 'he' ? '✉️ שלח קוד אימות שנית' : '✉️ Resend verification code'}</span>
                       )}
                     </button>
                   </div>
@@ -801,7 +829,7 @@ export default function LoginPortal({
             <div className="flex items-center justify-between pb-4 border-b border-emerald-950 shrink-0">
               <h3 className="text-lg font-black text-[#FCAD62] flex items-center gap-2 font-sans">
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                {lang === 'ar' ? 'شروط الخدمة وسياسة الخصوصية' : 'Terms of Service & Privacy Policy'}
+                {lang === 'ar' ? 'شروط الخدمة وسياسة الخصوصية' : lang === 'he' ? 'תנאי השירות ומדיניות הפרטיות' : 'Terms of Service & Privacy Policy'}
               </h3>
               <button 
                 onClick={() => setShowTermsModal(false)}
@@ -812,7 +840,7 @@ export default function LoginPortal({
             </div>
 
             {/* Content (Scrollable) */}
-            <div className="overflow-y-auto space-y-4 pr-1 text-sm leading-relaxed text-emerald-100/80 text-right font-sans">
+            <div className="overflow-y-auto space-y-4 pr-1 text-sm leading-relaxed text-[#FDF6E2]/80 text-right font-sans">
               {lang === 'ar' ? (
                 <>
                   <p className="font-extrabold text-white text-base">مرحباً بك في منصة سيسترو (Systro) لإنقاذ وسحب السيارات.</p>
@@ -842,6 +870,38 @@ export default function LoginPortal({
                     <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
                       <h4 className="font-black text-emerald-400 mb-1">5. حماية وتشفير البيانات</h4>
                       <p className="text-xs">نحن نولي سرية بياناتك أقصى درجات الأهمية؛ يتم تشفير وحماية معلومات تسجيل دخولك بالكامل ولا يتم مشاركتها خارج نطاق إتمام طلبات المساعدة المعمدة.</p>
+                    </div>
+                  </div>
+                </>
+              ) : lang === 'he' ? (
+                <>
+                  <p className="font-extrabold text-white text-base">ברוכים הבאים לפלטפורמת סיסטרו (Systro) לחילוץ וגרירת רכבים.</p>
+                  <p>על ידי שימוש באתר שלנו ובשירותים הזמינים בו, אתה מאשר ומסכים באופן מלא לתנאים ולהתחייבויות הבאים כדי להבטיח חוויה בטוחה ויעילה:</p>
+                  
+                  <div className="space-y-3 pt-2 text-right">
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">1. שיתוף מיקום גיאוגרפי (GPS)</h4>
+                      <p className="text-xs">הפלטפורמה שלנו מסתמכת בעיקר על זיהוי המיקום הגיאוגרפי המדויק שלך כדי לשלוח אליך את טכנאי החילוץ או הגרירה הקרוב ביותר הזמין כדי לספק סיוע במהירות האפשרית.</p>
+                    </div>
+
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">2. דיוק ואמינות הנתונים</h4>
+                      <p className="text-xs">על כל המשתמשים (לקוחות וטכנאים) לספק לפלטפורמה נתונים אמיתיים הכוללים שם נכון, כתובת אימייל פעילה, מספר טלפון ומידע מדויק על התקלה כדי להבטיח מתן שירות חלק ולמנוע מכשולים.</p>
+                    </div>
+
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">3. התחייבות כספית ותמחור</h4>
+                      <p className="text-xs">הפלטפורמה מתחייבת לספק תמחור הוגן ושקוף לשירותים. הלקוח מאשר את התחייבותו המלאה לשלם את הסכומים שנקבעו והוסכמו עבור השירות הניתן על ידי טכנאי החילוץ מיד עם השלמת תהליך הגרירה או התיקון.</p>
+                    </div>
+
+                    <div className="bg-[#1C1105]/40 p-3 rounded-xl border border-amber-950/40">
+                      <h4 className="font-black text-amber-400 mb-1">4. מדיניות שימוש הוגן ואבטחה</h4>
+                      <p className="text-xs">חל איסור מוחלט להשתמש בפלטפורמה להגשת דיווחים או בקשות כוזבות במטרה להטעות את טכנאי החילוץ או לפגוע בפעילות. כל חשבון שיעשה שימוש לרעה או יפר את תנאי האבטחה הכלליים ייחסם באופן מיידי ולצמיתות.</p>
+                    </div>
+
+                    <div className="bg-emerald-950/20 p-3 rounded-xl border border-emerald-950/30">
+                      <h4 className="font-black text-emerald-400 mb-1">5. אבטחה והצפנת נתונים</h4>
+                      <p className="text-xs">אנו מייחסים חשיבות עליונה לסודיות הנתונים שלך; פרטי ההתחברות שלך מוצפנים ומאובטחים במלואם ואינם משתפים מחוץ לטווח השלמת בקשות השירות המאושרות.</p>
                     </div>
                   </div>
                 </>
@@ -882,19 +942,19 @@ export default function LoginPortal({
                   setAcceptedTerms(true);
                   setShowTermsModal(false);
                   triggerToast(
-                    lang === 'ar' ? 'تمت الموافقة على الشروط والأحكام بنجاح! 📜' : 'Terms & Conditions agreed successfully! 📜',
+                    lang === 'ar' ? 'تمت الموافقة على الشروط والأحكام بنجاح! 📜' : lang === 'he' ? 'התנאים וההתניות אושרו בהצלחה! 📜' : 'Terms & Conditions agreed successfully! 📜',
                     'success'
                   );
                 }}
                 className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black rounded-xl text-sm transition-all cursor-pointer text-center shadow-lg shadow-emerald-600/20"
               >
-                {lang === 'ar' ? 'أوافق على كافة الشروط' : 'I Agree to all terms'}
+                {lang === 'ar' ? 'أوافق على كافة الشروط' : lang === 'he' ? 'אני מסכים לכל התנאים' : 'I Agree to all terms'}
               </button>
               <button
                 onClick={() => setShowTermsModal(false)}
                 className="py-3.5 px-6 bg-emerald-950/50 hover:bg-emerald-950 text-emerald-300 font-bold rounded-xl text-sm transition-colors cursor-pointer text-center"
               >
-                {lang === 'ar' ? 'إغلاق' : 'Close'}
+                {lang === 'ar' ? 'إغلاق' : lang === 'he' ? 'סגור' : 'Close'}
               </button>
             </div>
 
