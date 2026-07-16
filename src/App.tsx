@@ -510,52 +510,37 @@ export default function App() {
     }
   };
 
-  // Derived Services configuration list loaded in real-time from Firestore database
+  // Derived Services configuration list loaded in real-time from Firestore database - fully bilingual
   const servicesList = dbServices.length > 0 
     ? dbServices.map(s => {
-        let finalDesc = lang === 'ar' 
-          ? (s.arDescription || s.description) 
-          : lang === 'he'
-          ? (s.heDescription || s.description || s.arDescription)
-          : (s.description || s.arDescription);
-        if (!finalDesc || finalDesc.length < 5) {
-          const nameLower = `${s.arName || ''} ${s.name || ''} ${s.heName || ''}`.toLowerCase();
-          if (nameLower.includes('نجار') || nameLower.includes('carpenter') || nameLower.includes('נגר')) {
-            finalDesc = lang === 'ar' 
-              ? 'خدمات نجارة طارئة وإصلاح الأبواب، النوافذ، الأثاث، والأقفال الخشبية في موقعك بكفاءة ودقة عالية.' 
-              : lang === 'he'
-              ? 'שירותי נגרות חירום: תיקון דלתות עץ, חלונות, רהיטים ומנעולים במיקומך בדיוק רב.'
-              : 'Emergency carpentry services: repair of wooden doors, windows, furniture, and locks at your location with high precision.';
-          } else if (nameLower.includes('تكسي') || nameLower.includes('taxi') || nameLower.includes('سائق') || nameLower.includes('מונית')) {
-            finalDesc = lang === 'ar' 
-              ? 'خدمة توصيل ونقل طارئة وسريعة عبر سيارات تاكسي مريحة وموثوقة لضمان وصولك الآمن لوجهتك.' 
-              : lang === 'he'
-              ? 'שירות מוניות מהיר וחירום. רכבים נקיים ואמינים עם נהגים מורשים להגעה בטוחה ליעדך.'
-              : 'Emergency rapid transit & taxi service. Clean, reliable cars with certified drivers to reach your destination safely.';
-          } else if (nameLower.includes('ميكانيك') || nameLower.includes('mechanic') || nameLower.includes('מכונאי')) {
-            finalDesc = lang === 'ar' 
-              ? 'ميكانيكي متنقل لفحص الأعطال الميكانيكية والكهربائية الطارئة للمركبة وإصلاحها فوراً على الطريق.' 
-              : lang === 'he'
-              ? 'שירות מכונאי נייד. אבחון מהיר, בדיקת מנוע ותיקונים קלים כדי שתוכל להמשיך לנסוע בבטחה.'
-              : 'On-the-go mechanical service. Quick diagnostics, engine checks, minor repairs to get you rolling safely.';
-          } else if (nameLower.includes('استفسار') || nameLower.includes('عام') || nameLower.includes('consult') || nameLower.includes('ייעוץ')) {
-            finalDesc = lang === 'ar' 
-              ? 'طلب استشارة أو دعم فني عام حول عطل غير معروف، لمساعدتك وتوجيه الفني المناسب لمعاينة حالتك.' 
-              : lang === 'he'
-              ? 'ייעוץ כללי או תמיכה טכנית לגבי תקלות רכב לא מזוהות כדי להתאים לך את איש המקצוע הנכון.'
-              : 'General inquiry or technical support regarding undefined vehicle faults to match you with the correct responder.';
-          } else {
-            finalDesc = lang === 'ar'
-              ? 'خدمة طارئة متخصصة يقدمها فنيون شركاء معتمدون ومجهزون بالكامل لإنقاذك في أسرع وقت.'
-              : lang === 'he'
-              ? 'שירות חירום מיוחד הניתן על ידי טכנאים שותפים מוסמכים ומצוידים במלואם לחילוץ מיידי.'
-              : 'Specialized emergency service delivered by certified, fully equipped partner technicians to rescue you immediately.';
-          }
+        const nameAr = s.arName || s.name;
+        const nameEn = s.name || s.arName;
+        
+        let arDesc = s.arDescription || s.description || '';
+        let enDesc = s.description || s.arDescription || '';
+        
+        const nameLower = `${s.arName || ''} ${s.name || ''}`.toLowerCase();
+        if (nameLower.includes('نجار') || nameLower.includes('carpenter')) {
+          arDesc = arDesc || 'خدمات نجارة طارئة وإصلاح الأبواب، النوافذ، الأثاث، والأقفال الخشبية في موقعك بكفاءة ودقة عالية.';
+          enDesc = enDesc || 'Emergency carpentry services: repair of wooden doors, windows, furniture, and locks at your location with high precision.';
+        } else if (nameLower.includes('تكسي') || nameLower.includes('taxi') || nameLower.includes('سائق')) {
+          arDesc = arDesc || 'خدمة توصيل ونقل طارئة وسريعة عبر سيارات تاكسي مريحة وموثوقة لضمان وصولك الآمن لوجهتك.';
+          enDesc = enDesc || 'Emergency rapid transit & taxi service. Clean, reliable cars with certified drivers to reach your destination safely.';
+        } else if (nameLower.includes('ميكانيك') || nameLower.includes('mechanic')) {
+          arDesc = arDesc || 'ميكانيكي متنقل لفحص الأعطال الميكانيكية والكهربائية الطارئة للمركبة وإصلاحها فوراً على الطريق.';
+          enDesc = enDesc || 'On-the-go mechanical service. Quick diagnostics, engine checks, minor repairs to get you rolling safely.';
+        } else if (nameLower.includes('استفسار') || nameLower.includes('عام') || nameLower.includes('consult')) {
+          arDesc = arDesc || 'طلب استشارة أو دعم فني عام حول عطل غير معروف، لمساعدتك وتوجيه الفني المناسب لمعاينة حالتك.';
+          enDesc = enDesc || 'General inquiry or technical support regarding undefined vehicle faults to match you with the correct responder.';
+        } else {
+          arDesc = arDesc || 'خدمة طارئة متخصصة يقدمها فنيون شركاء معتمدون ومجهزون بالكامل لإنقاذك في أسرع وقت.';
+          enDesc = enDesc || 'Specialized emergency service delivered by certified, fully equipped partner technicians to rescue you immediately.';
         }
+        
         return {
           id: s.id as ServiceType,
-          name: lang === 'ar' ? (s.arName || s.name) : lang === 'he' ? (s.heName || s.name || s.arName) : s.name,
-          desc: finalDesc,
+          name: `${nameAr} / ${nameEn}`,
+          desc: `${arDesc}\n—\n${enDesc}`,
           icon: getServiceIcon(s.icon, `${s.arName || ''} ${s.name || ''}`),
           color: getServiceColor(s.id),
           basePrice: s.basePrice || 120,
@@ -564,40 +549,40 @@ export default function App() {
     : [
         {
           id: 'fuel' as ServiceType,
-          name: t.fuelName,
-          desc: t.fuelDesc,
+          name: `${translations.ar.fuelName} / ${translations.en.fuelName}`,
+          desc: `${translations.ar.fuelDesc}\n—\n${translations.en.fuelDesc}`,
           icon: Fuel,
           color: 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/15',
           basePrice: 100,
         },
         {
           id: 'locksmith' as ServiceType,
-          name: t.locksmithName,
-          desc: t.locksmithDesc,
+          name: `${translations.ar.locksmithName} / ${translations.en.locksmithName}`,
+          desc: `${translations.ar.locksmithDesc}\n—\n${translations.en.locksmithDesc}`,
           icon: Key,
           color: 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/15',
           basePrice: 150,
         },
         {
           id: 'mechanic' as ServiceType,
-          name: t.mechanicName,
-          desc: t.mechanicDesc,
+          name: `${translations.ar.mechanicName} / ${translations.en.mechanicName}`,
+          desc: `${translations.ar.mechanicDesc}\n—\n${translations.en.mechanicDesc}`,
           icon: Wrench,
           color: 'bg-purple-500/10 text-purple-500 border-purple-500/20 hover:bg-purple-500/15',
           basePrice: 200,
         },
         {
           id: 'towing' as ServiceType,
-          name: t.towingName,
-          desc: t.towingDesc,
+          name: `${translations.ar.towingName} / ${translations.en.towingName}`,
+          desc: `${translations.ar.towingDesc}\n—\n${translations.en.towingDesc}`,
           icon: Truck,
           color: 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/15',
           basePrice: 150,
         },
         {
           id: 'battery' as ServiceType,
-          name: t.batteryName,
-          desc: t.batteryDesc,
+          name: `${translations.ar.batteryName} / ${translations.en.batteryName}`,
+          desc: `${translations.ar.batteryDesc}\n—\n${translations.en.batteryDesc}`,
           icon: Zap,
           color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/15',
           basePrice: 120,
@@ -3071,27 +3056,27 @@ export default function App() {
           
           {/* Logo Brand matching Images */}
           <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
-            <div className="w-11 h-11 relative rounded-xl overflow-hidden p-[1px] bg-gradient-to-tr from-sky-400 via-teal-300 to-emerald-400 shadow-sm flex items-center justify-center shrink-0">
-              <div className="absolute inset-0 bg-gradient-to-b from-[#0CC1C6] via-[#029FA5] to-[#01686C] rounded-xl overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-1/2 bg-white/20 rounded-t-xl filter blur-[0.5px]"></div>
+            <div className="w-11 h-11 relative rounded-full overflow-hidden p-[1px] bg-gradient-to-tr from-orange-400 via-amber-500 to-orange-600 shadow-md flex items-center justify-center shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-b from-orange-500 via-orange-600 to-amber-700 rounded-full overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-1/2 bg-white/20 rounded-t-full filter blur-[0.5px]"></div>
               </div>
               <svg className="w-7 h-7 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <filter id="shadow-nav" x="-10%" y="-10%" width="120%" height="120%">
-                    <feDropShadow dx="0" dy="2" stdDeviation="1.5" floodColor="#014A4D" floodOpacity="0.5" />
+                    <feDropShadow dx="0" dy="2" stdDeviation="1.5" floodColor="#7C2D12" floodOpacity="0.5" />
                   </filter>
                   <linearGradient id="sGrad-nav" x1="10%" y1="0%" x2="90%" y2="100%">
                     <stop offset="0%" stopColor="#FFFFFF" />
-                    <stop offset="50%" stopColor="#E0FAFC" />
-                    <stop offset="100%" stopColor="#A5F3FC" />
+                    <stop offset="50%" stopColor="#FFEDD5" />
+                    <stop offset="100%" stopColor="#FFD8A8" />
                   </linearGradient>
                 </defs>
                 <path d="M15 70 C 35 85, 70 65, 85 40" stroke="#FFFFFF" strokeWidth="1.5" strokeOpacity="0.25" strokeDasharray="3 3" />
-                <path d="M20 55 C 40 70, 75 55, 80 25" stroke="#00F5FF" strokeWidth="1.2" strokeOpacity="0.4" />
+                <path d="M20 55 C 40 70, 75 55, 80 25" stroke="#FFE8CC" strokeWidth="1.2" strokeOpacity="0.4" />
                 <circle cx="85" cy="40" r="3.5" fill="#FFFFFF" />
-                <circle cx="80" cy="25" r="2.5" fill="#00F5FF" />
-                <circle cx="20" cy="55" r="3" fill="#00F5FF" />
-                <circle cx="33" cy="67" r="4" fill="#E0FAFC" />
+                <circle cx="80" cy="25" r="2.5" fill="#FFE8CC" />
+                <circle cx="20" cy="55" r="3" fill="#FFE8CC" />
+                <circle cx="33" cy="67" r="4" fill="#FFEDD5" />
                 <circle cx="15" cy="70" r="2" fill="#FFFFFF" />
                 <circle cx="68" cy="35" r="4.5" fill="#FFFFFF" />
                 <path 
@@ -3121,15 +3106,15 @@ export default function App() {
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 drop-shadow-[0_1px_2px_rgba(6,182,212,0.1)]">
-                  {t.logoTitle} <span className="text-[#029FA5] font-black">{t.logoRescue}</span>
+                <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-orange-600 via-amber-500 to-orange-500 drop-shadow-[0_1px_2px_rgba(249,115,22,0.15)]">
+                  {t.logoTitle} <span className="text-orange-600 font-black">{t.logoRescue}</span>
                 </h1>
                 {/* Custom glowing supervisor badge for Adam Atoun */}
-                <span className="px-2 py-0.5 text-[9px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-md animate-pulse">
+                <span className="px-2 py-0.5 text-[9px] font-black text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-md animate-pulse">
                   {lang === 'ar' ? 'بإشراف آدم عطون' : lang === 'he' ? 'בפיקוח אדם עטון' : 'Adam Atoun'}
                 </span>
               </div>
-              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-gray-400 block uppercase">
+              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-orange-600/80 block uppercase">
                 {t.logoSub}
               </span>
             </div>
@@ -4418,7 +4403,7 @@ export default function App() {
                             {servicesList.map(s => {
                               const IconComponent = s.icon;
                               const isSel = selectedService === s.id;
-                              const displayName = lang === 'ar' ? s.name.split(' (')[0] : s.name.split(' (')[1]?.replace(')', '') || s.name;
+                              const displayName = s.name;
                               return (
                                 <div 
                                   key={s.id}
@@ -4437,7 +4422,7 @@ export default function App() {
 
                                   <div className={`w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-2xl mb-3 transition-all duration-300 ${
                                     isSel 
-                                      ? 'bg-amber-500/20 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)] animate-pulse' 
+                                      ? 'bg-amber-500/25 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)] animate-pulse' 
                                       : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 group-hover:scale-110 group-hover:bg-amber-500/5 group-hover:text-amber-500'
                                   }`}>
                                     <IconComponent className={`w-6.5 h-6.5 md:w-8 md:h-8 transition-transform duration-300 ${isSel ? 'scale-105' : ''}`} />
@@ -4450,7 +4435,7 @@ export default function App() {
                                       {displayName}
                                     </span>
 
-                                    <p className={`text-[10px] md:text-[11px] leading-relaxed text-center px-1 block font-medium transition-colors ${
+                                    <p className={`text-[10px] md:text-[11px] leading-relaxed text-center px-1 block font-medium transition-colors whitespace-pre-line ${
                                       isSel ? 'text-slate-700 dark:text-slate-300 font-bold' : 'text-slate-500 dark:text-slate-400'
                                     }`}>
                                       {s.desc}
@@ -5260,18 +5245,19 @@ export default function App() {
                 <div className="space-y-3">
                   {escrows.map(esc => (
                     <div key={esc.id} className="p-4 bg-[#0A0B10] border border-gray-900 rounded-xl flex items-center justify-between text-xs">
-                      <div className="space-y-1">
-                        <span className="font-bold text-white block">{esc.clientName} → {esc.techName}</span>
-                        <span className="text-[10px] text-gray-500 block uppercase font-mono">{esc.serviceType} / ID: {esc.id}</span>
+                      <div className="space-y-1 text-right">
+                        <div className="font-bold text-white">{esc.serviceType}</div>
+                        <div className="text-[10px] text-gray-400">
+                          {lang === 'ar' ? `العميل: ${esc.clientName} | الفني: ${esc.techName}` : `Client: ${esc.clientName} | Tech: ${esc.techName}`}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-black text-amber-500 font-mono">{esc.amount} ₪</span>
-                        <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                          esc.status === 'escrowed' 
-                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20' 
-                            : esc.status === 'released'
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-red-500/15 text-red-400 border border-red-500/20'
+                      <div className="text-left space-y-1">
+                        <div className="font-mono text-amber-500 font-extrabold">{esc.amount} ₪</div>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          esc.status === 'escrowed' ? 'bg-amber-500/10 text-amber-400' :
+                          esc.status === 'released' ? 'bg-emerald-500/10 text-emerald-400' :
+                          esc.status === 'refunded' ? 'bg-blue-500/10 text-blue-400' :
+                          'bg-red-500/10 text-red-400'
                         }`}>
                           {esc.status}
                         </span>
@@ -5282,189 +5268,40 @@ export default function App() {
               )}
             </div>
 
-            {/* Active disputes Arbitration control */}
+            {/* Registered Users Section */}
             <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4">
-              <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider border-b border-gray-850 pb-3 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse" />
-                <span>{t.adminActiveDisputes}</span>
-              </h3>
-
-              {disputesList.length === 0 ? (
-                <p className="text-xs text-gray-500 text-center py-10 font-semibold">
-                  {lang === 'ar' ? 'لا توجد بلاغات خلاف مالي مفتوحة حالياً في النظام.' : lang === 'he' ? 'אין כרגע מחלוקות כספיות פעילות במערכת.' : 'No active financial disputes currently open.'}
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {disputesList.map(disp => (
-                    <div key={disp.id} className="p-5 bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="text-sm font-black text-white">{disp.clientName} v {disp.techName}</h4>
-                          <span className="text-[9px] text-gray-500 block uppercase font-mono">Dispute ID: {disp.id} — Claiming: {disp.amount} ₪</span>
-                        </div>
-
-                        <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full uppercase ${
-                          disp.status === 'pending'
-                            ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                            : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        }`}>
-                          {disp.status}
-                        </span>
-                      </div>
-
-                      <div className="p-3 bg-[#111827] rounded-xl text-xs text-gray-400 leading-relaxed italic font-medium">
-                        "{disp.reason}"
-                      </div>
-
-                      {disp.status === 'pending' && (
-                        <div className="grid grid-cols-2 gap-3">
-                          <button 
-                            onClick={() => handleAdminRelease(disp.id, disp.requestId)}
-                            className="py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs rounded-xl transition-all"
-                          >
-                            {t.adminReleaseAction}
-                          </button>
-                          <button 
-                            onClick={() => handleAdminRefund(disp.id, disp.requestId)}
-                            className="py-2.5 bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs rounded-xl transition-all"
-                          >
-                            {t.adminRefundAction}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </div>
-
-          {/* New: Technician Records Management Panel for Admin / Pending Specialties */}
-          <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
-            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider border-b border-gray-850 pb-3 flex items-center gap-2 justify-start">
-              <Wrench className="w-5 h-5 text-amber-500" />
-              <span>{lang === 'ar' ? 'مقترحات الخدمات المخصصة المعلقة 🛠️' : lang === 'he' ? 'הצעות שירות מותאמות אישית ממתינות 🛠️' : 'Pending Custom Service Proposals 🛠️'}</span>
-            </h3>
-
-            {pendingServices.length === 0 ? (
-              <p className="text-xs text-gray-500 text-center py-10 font-semibold">
-                {lang === 'ar' ? 'لا توجد طلبات خدمات مخصصة معلقة حالياً.' : lang === 'he' ? 'אין כרגע הצעות שירות מותאמות אישית ממתינות.' : 'No pending custom service proposals currently.'}
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {pendingServices.map(service => {
-                  return (
-                    <div key={service.id} className="p-4 bg-[#0A0B10] border border-gray-900 rounded-xl space-y-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="text-xs font-black text-white">{lang === 'ar' ? service.arName : lang === 'he' ? (service.heName || service.name) : service.name}</h4>
-                          <span className="text-[9px] text-gray-500 block">By: {service.requestedByName || service.requestedBy}</span>
-                        </div>
-                        <span className="font-black text-amber-500 text-[10px]">{service.basePrice} ₪</span>
-                      </div>
-                      <p className="text-[10px] text-gray-400 leading-relaxed">
-                        {lang === 'ar' ? service.arDescription : lang === 'he' ? (service.heDescription || service.description) : service.description}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-900">
-                        <button 
-                          onClick={() => handleApprovePendingService(service)}
-                          className="py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          ✅ {lang === 'ar' ? 'قبول ونشر' : lang === 'he' ? 'אשר ופרסם' : 'Accept & Publish'}
-                        </button>
-                        <button 
-                          onClick={() => handleRejectPendingService(service.id)}
-                          className="py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          🗑️ {lang === 'ar' ? 'رفض وحذف' : lang === 'he' ? 'דחה ומחק' : 'Reject & Delete'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Registered Users List Panel for Admin */}
-          <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 text-right">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-850 pb-3">
-              <div className="text-right">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 justify-start">
-                  <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse shrink-0"></span>
-                  <span>{lang === 'ar' ? 'سجل المستخدمين المسجلين (العملاء والفنيين) 👥' : lang === 'he' ? 'פנקס משתמשים רשומים (לקוחות וטכנאים) 👥' : 'Registered Users Registry (Clients & Technicians) 👥'}</span>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-gray-850 pb-3">
+                <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <Users className="w-5 h-5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'المستخدمين المسجلين بالشبكة' : lang === 'he' ? 'משתמשים רשומים ברשת' : 'Registered Users Network'}</span>
                 </h3>
-                <p className="text-[10px] text-gray-400 font-semibold mt-1">
-                  {lang === 'ar' 
-                    ? 'قائمة بجميع العملاء والفنيين المسجلين في النظام مع بيانات البريد الإلكتروني والهاتف وأدوارهم.' 
-                    : lang === 'he'
-                    ? 'רשימה מקיפה של כל הלקוחות והטכנאים הרשומים במערכת עם אימייל, טלפון ותפקידי גישה.'
-                    : 'Comprehensive list of all registered clients & technicians with their email, phone, and access roles.'}
-                </p>
+                <span className="text-[10px] font-mono text-gray-500 bg-gray-950 px-2 py-0.5 rounded border border-gray-900">
+                  {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : lang === 'he' ? `סה״כ: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
+                </span>
               </div>
-              <span className="bg-amber-500/15 text-amber-500 border border-amber-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-                {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : lang === 'he' ? `סה״כ: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
-              </span>
-            </div>
 
-            {/* Filtering & Search Controls */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input 
-                type="text"
-                value={adminUserSearch}
-                onChange={(e) => setAdminUserSearch(e.target.value)}
-                placeholder={lang === 'ar' ? 'ابحث بالاسم، البريد الإلكتروني أو الجوال...' : lang === 'he' ? 'חפש לפי שם, אימייל או טלפון...' : 'Search by name, email or phone...'}
-                className="flex-1 px-4 py-2.5 bg-[#0A0B10] border border-gray-800 rounded-xl text-white text-xs font-bold focus:border-amber-500 outline-none transition-colors"
-              />
-              
-              <div className="flex bg-[#0A0B10] p-1 rounded-xl border border-gray-800 shrink-0">
-                <button
-                  onClick={() => setAdminUserRoleFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'all' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input 
+                  type="text"
+                  placeholder={lang === 'ar' ? 'بحث بالاسم، الإيميل أو الهاتف...' : lang === 'he' ? 'חפש לפי שם, אימייל או טלפון...' : 'Search by name, email or phone...'}
+                  value={adminUserSearch}
+                  onChange={(e) => setAdminUserSearch(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-[#0A0B10] border border-gray-900 rounded-xl outline-none focus:border-amber-500 text-xs text-white text-right rtl:text-right"
+                />
+                <select
+                  value={adminUserRoleFilter}
+                  onChange={(e) => setAdminUserRoleFilter(e.target.value as any)}
+                  className="px-3 py-2 bg-[#0A0B10] border border-gray-900 rounded-xl outline-none focus:border-amber-500 text-xs text-white text-right rtl:text-right"
                 >
-                  {lang === 'ar' ? 'الكل' : lang === 'he' ? 'הכל' : 'All'}
-                </button>
-                <button
-                  onClick={() => setAdminUserRoleFilter('client')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'client' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {lang === 'ar' ? 'العملاء' : lang === 'he' ? 'לקוחות' : 'Clients'}
-                </button>
-                <button
-                  onClick={() => setAdminUserRoleFilter('technician')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'technician' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {lang === 'ar' ? 'الفنيين' : lang === 'he' ? 'טכנאים' : 'Techs'}
-                </button>
-                <button
-                  onClick={() => setAdminUserRoleFilter('unassigned')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${adminUserRoleFilter === 'unassigned' ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {lang === 'ar' ? 'غير محدد' : lang === 'he' ? 'אורח' : 'Guest'}
-                </button>
+                  <option value="all">{lang === 'ar' ? 'جميع الأدوار' : 'All Roles'}</option>
+                  <option value="client">{lang === 'ar' ? 'العملاء' : 'Clients'}</option>
+                  <option value="technician">{lang === 'ar' ? 'الفنيين' : 'Technicians'}</option>
+                  <option value="unassigned">{lang === 'ar' ? 'غير معين' : 'Unassigned'}</option>
+                </select>
               </div>
-            </div>
 
-            {/* Users List Rendering */}
-            {registeredUsers.filter(u => {
-              const matchesSearch = 
-                u.name?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
-                u.email?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
-                (u.phone && u.phone.toLowerCase().includes(adminUserSearch.toLowerCase()));
-              
-              if (!matchesSearch) return false;
-              if (adminUserRoleFilter === 'all') return true;
-              if (adminUserRoleFilter === 'client') return u.role === 'client';
-              if (adminUserRoleFilter === 'technician') return u.role === 'technician';
-              if (adminUserRoleFilter === 'unassigned') return !u.role;
-              return true;
-            }).length === 0 ? (
-              <p className="text-xs text-gray-500 text-center py-10 font-semibold">
-                {lang === 'ar' ? 'لا يوجد أي مستخدمين يطابقون خيارات البحث حالياً!' : lang === 'he' ? 'אין משתמשים רשומים התואמים את קריטריוני החיפוש!' : 'No registered users match your search criteria!'}
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="max-h-[350px] overflow-y-auto space-y-3 pr-1">
                 {registeredUsers.filter(u => {
                   const matchesSearch = 
                     u.name?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
@@ -5477,102 +5314,91 @@ export default function App() {
                   if (adminUserRoleFilter === 'technician') return u.role === 'technician';
                   if (adminUserRoleFilter === 'unassigned') return !u.role;
                   return true;
-                }).map((u) => {
-                  return (
-                    <div key={u.id} className="p-5 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-4 text-right relative animate-fade-in">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between gap-2 border-b border-gray-900/40 pb-2">
-                          <div className="text-right">
-                            <h4 className="text-xs font-black text-white">{u.name || (lang === 'ar' ? 'مستخدم بدون اسم' : lang === 'he' ? 'משתמש ללא שם' : 'Unnamed User')}</h4>
-                            <span className="text-[9px] font-mono text-gray-500 block truncate max-w-[180px]">{u.email}</span>
+                }).length === 0 ? (
+                  <p className="text-xs text-gray-500 text-center py-10 font-semibold">
+                    {lang === 'ar' ? 'لا يوجد أي مستخدمين يطابقون خيارات البحث حالياً!' : lang === 'he' ? 'אין משתמשים רשומים התואמים את החיפוש!' : 'No registered users match search!'}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {registeredUsers.filter(u => {
+                      const matchesSearch = 
+                        u.name?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                        u.email?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                        (u.phone && u.phone.toLowerCase().includes(adminUserSearch.toLowerCase()));
+                      
+                      if (!matchesSearch) return false;
+                      if (adminUserRoleFilter === 'all') return true;
+                      if (adminUserRoleFilter === 'client') return u.role === 'client';
+                      if (adminUserRoleFilter === 'technician') return u.role === 'technician';
+                      if (adminUserRoleFilter === 'unassigned') return !u.role;
+                      return true;
+                    }).map(u => (
+                      <div key={u.id} className="p-4 bg-[#0A0B10]/60 border border-gray-900 rounded-2xl flex flex-col justify-between gap-3 text-right">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                              u.role === 'client' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/10' :
+                              u.role === 'technician' ? 'bg-amber-500/15 text-amber-500 border border-amber-500/10' :
+                              'bg-gray-500/15 text-gray-400 border border-gray-500/10'
+                            }`}>
+                              {u.role === 'client' ? (lang === 'ar' ? 'عميل' : lang === 'he' ? 'לקוח' : 'Client') :
+                               u.role === 'technician' ? (lang === 'ar' ? 'فني فزعة' : lang === 'he' ? 'טכנאי' : 'Technician') :
+                               (lang === 'ar' ? 'ضيف' : lang === 'he' ? 'אורח' : 'Guest')}
+                            </span>
+                            <h4 className="text-xs font-black text-white">{u.name || 'Anonymous'}</h4>
                           </div>
-
-                          {/* Role Badge */}
-                          {u.role === 'technician' ? (
-                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-black px-2 py-0.5 rounded-full select-none shrink-0">
-                              🛠️ {lang === 'ar' ? 'فني إنقاذ' : lang === 'he' ? 'טכנאי חילוץ' : 'Rescue Tech'}
-                            </span>
-                          ) : u.role === 'client' ? (
-                            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-black px-2 py-0.5 rounded-full select-none shrink-0">
-                              👤 {lang === 'ar' ? 'عميل مقطوع' : lang === 'he' ? 'לקוח תקוע' : 'Stranded Client'}
-                            </span>
-                          ) : (
-                            <span className="bg-slate-500/10 text-slate-400 border border-slate-500/20 text-[9px] font-black px-2 py-0.5 rounded-full select-none shrink-0">
-                              🧭 {lang === 'ar' ? 'زائر غير محدد' : lang === 'he' ? 'אורח/חדש' : 'Guest/New'}
-                            </span>
+                          <p className="text-[10px] font-mono text-gray-500 truncate">{u.email}</p>
+                          {u.phone && (
+                            <p className="text-[10px] text-gray-400 font-bold">{u.phone}</p>
                           )}
                         </div>
-
-                        <div className="text-[10px] space-y-1 text-gray-400 font-semibold">
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">{lang === 'ar' ? 'الجوال:' : lang === 'he' ? 'טלפון נייד:' : 'Phone:'}</span>
-                            <span className="text-white font-bold">{u.phone || (lang === 'ar' ? 'غير متوفر' : lang === 'he' ? 'לא זמין' : 'N/A')}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">{lang === 'ar' ? 'تاريخ التسجيل:' : lang === 'he' ? 'תאריך הרשמה:' : 'Registered On:'}</span>
-                            <span className="text-white font-mono">
-                              {u.createdAt ? (
-                                typeof u.createdAt === 'string' ? u.createdAt.split('T')[0] : 
-                                u.createdAt.seconds ? new Date(u.createdAt.seconds * 1000).toLocaleDateString() : 
-                                lang === 'ar' ? 'تاريخ صحيح' : lang === 'he' ? 'תאריך תקין' : 'Valid date'
-                              ) : (
-                                lang === 'ar' ? 'غير محدد' : lang === 'he' ? 'לא מוגדר' : 'Not Pinned'
-                              )}
-                            </span>
-                          </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={async () => {
+                              await setDoc(doc(db, "users", u.id), { role: u.role === 'client' ? null : 'client' }, { merge: true });
+                              triggerToast(
+                                lang === 'ar' ? 'تم تحديث دور المستخدم!' : lang === 'he' ? 'תפקיד משתמש עודכן!' : 'User role updated!',
+                                'success'
+                              );
+                            }}
+                            className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[9px] transition-colors border cursor-pointer ${
+                              u.role === 'client' 
+                                ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border-blue-500/20' 
+                                : 'bg-gray-950 hover:bg-gray-900 text-gray-400 border-gray-850'
+                            }`}
+                          >
+                            {u.role === 'client' ? (lang === 'ar' ? 'إلغاء العميل' : lang === 'he' ? 'בטל לקוח' : 'Revoke Client') : (lang === 'ar' ? 'تعيين كعميل' : lang === 'he' ? 'קבע כלקוח' : 'Set Client')}
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              await setDoc(doc(db, "users", u.id), { role: u.role === 'technician' ? null : 'technician' }, { merge: true });
+                              triggerToast(
+                                lang === 'ar' ? 'تم تحديث دور المستخدم!' : lang === 'he' ? 'תפקיד משתמש עודכן!' : 'User role updated!',
+                                'success'
+                              );
+                            }}
+                            className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[9px] transition-colors border cursor-pointer ${
+                              u.role === 'technician' 
+                                ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20' 
+                                : 'bg-gray-950 hover:bg-gray-900 text-gray-400 border-gray-850'
+                            }`}
+                          >
+                            {u.role === 'technician' ? (lang === 'ar' ? 'إلغاء الفني' : lang === 'he' ? 'בטל טכנאי' : 'Revoke Tech') : (lang === 'ar' ? 'تعيين كفني' : lang === 'he' ? 'קבע כטכנאי' : 'Set Tech')}
+                          </button>
                         </div>
                       </div>
-
-                      {/* Direct actions */}
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-900/40">
-                        {u.phone ? (
-                          <a 
-                            href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}`}
-                            target="_blank"
-                            referrerPolicy="no-referrer"
-                            className="py-1.5 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 hover:text-emerald-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            💬 {lang === 'ar' ? 'واتساب' : lang === 'he' ? 'וואטסאפ' : 'WhatsApp'}
-                          </a>
-                        ) : (
-                          <button
-                            disabled
-                            className="py-1.5 bg-gray-900 text-gray-600 rounded-lg text-[10px] font-black text-center cursor-not-allowed opacity-50"
-                          >
-                            💬 {lang === 'ar' ? 'لا يوجد هاتف' : lang === 'he' ? 'אין טלפון' : 'No Phone'}
-                          </button>
-                        )}
-                        <button 
-                          onClick={async () => {
-                            if (confirm(lang === 'ar' ? `هل أنت متأكد من رغبتك في إزالة حساب المستخدم: ${u.name || u.email} نهائياً؟` : lang === 'he' ? `האם אתה בטוח שברצונך למחוק לצמיתות את המשתמש: ${u.name || u.email}?` : `Are you sure you want to permanently delete user: ${u.name || u.email}?`)) {
-                              try {
-                                await deleteDoc(doc(db, "users", u.id));
-                                triggerToast(lang === 'ar' ? 'تم حذف حساب المستخدم بنجاح!' : lang === 'he' ? 'חשבון המשתמש נמחק בהצלחה!' : 'User account deleted successfully!', 'success');
-                              } catch (err) {
-                                console.error("Error deleting user:", err);
-                                triggerToast(lang === 'ar' ? 'فشل في حذف حساب المستخدم.' : lang === 'he' ? 'מחיקת חשבון המשתמש נכשלה.' : 'Failed to delete user account.', 'error');
-                              }
-                            }
-                          }}
-                          className="py-1.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 rounded-lg text-[10px] font-black text-center transition-all flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          🗑️ {lang === 'ar' ? 'حذف الحساب' : lang === 'he' ? 'מחק חשבון' : 'Delete'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
-
         </div>
-        )
-      )}
+      ))}
 
-      {/* Add Custom Service Modal */}
+      {/* Suggest Custom Service Modal */}
       {showCustomServiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fade-in select-none">
           <div className="w-full max-w-md bg-[#0F1424] border border-gray-800 p-6 rounded-3xl space-y-6 relative text-right rtl:text-right ltr:text-left">
             <button 
               onClick={() => setShowCustomServiceModal(false)}
@@ -5582,14 +5408,10 @@ export default function App() {
             </button>
             <div className="space-y-2 text-center">
               <h3 className="text-lg font-black text-white">
-                {lang === 'ar' ? 'إضافة خدمة مخصصة جديدة' : lang === 'he' ? 'הוסף שירות מותאם אישית חדש' : 'Add New Custom Service'}
+                {lang === 'ar' ? 'اقتراح خدمة مخصصة جديدة' : lang === 'he' ? 'הצע שירות מותאם אישית חדש' : 'Propose New Custom Service'}
               </h3>
               <p className="text-xs text-gray-400 font-medium">
-                {lang === 'ar' 
-                  ? 'قم بوصف الخدمة لإضافتها مباشرة في قاعدة البيانات ولتظهر لجميع الفنيين والعملاء.' 
-                  : lang === 'he'
-                  ? 'תאר את השירות כדי להוסיף אותו ישירות למסד הנתונים ויופיע לכל הטכנאים והלקוחות.'
-                  : 'Specify service details to add it dynamically to the live Firestore collection.'}
+                {lang === 'ar' ? 'اقترح خدمة مخصصة لتتم مراجعتها ونشرها بالشبكة قريباً!' : lang === 'he' ? 'הצע שירות מותאם אישית שיאושר ויפורסם בקרוב!' : 'Propose a custom service for review and release!'}
               </p>
             </div>
 
@@ -5601,7 +5423,7 @@ export default function App() {
                 <input 
                   type="text" 
                   required
-                  placeholder="مثال: ميكانيكي هيدروليك ونظام فرامل"
+                  placeholder="مثال: أخصائي فرامل هيدروليك"
                   value={customServiceNameAr}
                   onChange={(e) => setCustomServiceNameAr(e.target.value)}
                   className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
@@ -5629,7 +5451,7 @@ export default function App() {
                 <textarea 
                   required
                   rows={2}
-                  placeholder="شرح موجز للخدمة وكيفية مساعدة السيارات المتعلطة..."
+                  placeholder="شرح موجز للخدمة..."
                   value={customServiceDescAr}
                   onChange={(e) => setCustomServiceDescAr(e.target.value)}
                   className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors resize-none"
@@ -5720,7 +5542,7 @@ export default function App() {
 
       {/* Add Record Modal */}
       {showAddRecordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fade-in select-none">
           <div className="w-full max-w-md bg-[#0F1424] border border-gray-800 p-6 rounded-3xl space-y-6 relative text-right rtl:text-right ltr:text-left">
             <button 
               onClick={() => setShowAddRecordModal(false)}

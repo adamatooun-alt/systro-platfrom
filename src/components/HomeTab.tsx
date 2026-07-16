@@ -378,7 +378,7 @@ export default function HomeTab({
                   </h4>
 
                   {/* Desc */}
-                  <p className="text-xs md:text-sm text-gray-400 leading-relaxed font-medium">
+                  <p className="text-xs md:text-sm text-gray-400 leading-relaxed font-medium whitespace-pre-line">
                     {service.desc}
                   </p>
                 </div>

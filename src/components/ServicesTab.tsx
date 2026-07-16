@@ -87,7 +87,7 @@ export default function ServicesTab({
               {/* Details */}
               <div className="md:col-span-7 space-y-2 text-center md:text-right rtl:md:text-right ltr:md:text-left">
                 <h3 className="text-lg font-black text-white">{service.name}</h3>
-                <p className="text-xs md:text-sm text-gray-400 leading-relaxed font-semibold">{service.desc}</p>
+                <p className="text-xs md:text-sm text-gray-400 leading-relaxed font-semibold whitespace-pre-line">{service.desc}</p>
               </div>
 
               {/* Pricing / Demo buttons */}
