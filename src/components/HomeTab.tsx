@@ -15,7 +15,8 @@ import {
   MessageSquare,
   Phone,
   Send,
-  HeartHandshake
+  HeartHandshake,
+  Globe
 } from 'lucide-react';
 import { ServiceType, SystemStats } from '../types';
 
@@ -75,6 +76,8 @@ export default function HomeTab({
   const [reporterPhone, setReporterPhone] = useState('');
   const [reporterIssue, setReporterIssue] = useState('');
   const [isSubmittingIssue, setIsSubmittingIssue] = useState(false);
+  const [isTranslateLoaded, setIsTranslateLoaded] = useState(false);
+  const [showTranslateWidget, setShowTranslateWidget] = useState(false);
 
   const handleSubmitIssue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,6 +261,95 @@ export default function HomeTab({
               </button>
             </div>
           )}
+
+          {/* Google Global Translator Card */}
+          <div className="mt-6 mx-auto max-w-lg p-5 bg-gradient-to-br from-[#111827]/80 to-[#0F1424]/90 border border-amber-500/10 rounded-2xl flex flex-col items-center justify-center gap-4 shadow-xl backdrop-blur-md text-center">
+            <div className="flex items-center gap-3 w-full justify-start text-right rtl:text-right ltr:text-left">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0">
+                <Globe className="w-5.5 h-5.5 animate-spin-slow" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-xs md:text-sm font-black text-white">
+                  {lang === 'ar' ? 'مترجم جوجل الفوري العالمي 🌐' : lang === 'he' ? 'תרגום גוגל אוניברסלי 🌐' : 'Google Universal Translator 🌐'}
+                </h4>
+                <p className="text-[10px] md:text-[11px] text-gray-400 font-bold leading-normal mt-0.5">
+                  {lang === 'ar' 
+                    ? 'ترجمة الموقع بالكامل فوراً إلى أي لغة في العالم عبر مترجم قوقل التلقائي.' 
+                    : lang === 'he'
+                    ? 'תרגם את כל האתר באופן מיידי לכל שפה בעולם באמצעות גוגל טרנסלייט.'
+                    : 'Translate the entire website instantly to any language in the world via Google.'}
+                </p>
+              </div>
+            </div>
+
+            {!showTranslateWidget ? (
+              <button
+                onClick={() => {
+                  setShowTranslateWidget(true);
+                  if (!isTranslateLoaded) {
+                    if (!(window as any).googleTranslateElementInit) {
+                      (window as any).googleTranslateElementInit = () => {
+                        new (window as any).google.translate.TranslateElement({
+                          pageLanguage: 'auto',
+                          layout: (window as any).google.translate.TranslateElement.InlineLayout.SIMPLE,
+                          autoDisplay: true
+                        }, 'google_translate_element');
+                      };
+                    }
+                    
+                    const id = 'google-translate-script';
+                    if (!document.getElementById(id)) {
+                      const script = document.createElement('script');
+                      script.id = id;
+                      script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+                      script.async = true;
+                      document.body.appendChild(script);
+                    }
+                    setIsTranslateLoaded(true);
+                  }
+                  triggerToast(
+                    lang === 'ar' 
+                      ? '🔄 جاري تحميل أداة مترجم Google... اختر لغتك من القائمة المنسدلة.' 
+                      : lang === 'he'
+                      ? '🔄 טוען את כלי התרגום של גוגל... בחר את השפה שלך מהרשימה.'
+                      : '🔄 Loading Google Translate... Select your language from the dropdown.',
+                    'success'
+                  );
+                }}
+                className="w-full py-2.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 hover:from-orange-500/20 hover:to-amber-500/20 border border-orange-500/30 text-amber-500 hover:text-amber-400 font-black rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-orange-500/5 hover:scale-[1.02]"
+              >
+                <span>🌍 {lang === 'ar' ? 'تفعيل الترجمة الفورية لجميع اللغات' : lang === 'he' ? 'הפעל תרגום מיידי' : 'Activate Instant Translation'}</span>
+              </button>
+            ) : (
+              <div className="w-full p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl flex flex-col items-center gap-2">
+                <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider animate-pulse">
+                  {lang === 'ar' ? 'اختر لغتك المفضلة من القائمة بالأسفل:' : lang === 'he' ? 'בחר את השפה המועדפת עליך למטה:' : 'Select your language from the dropdown below:'}
+                </span>
+                
+                {/* Mount target for Google Translate Element */}
+                <div id="google_translate_element" className="min-h-[42px] flex items-center justify-center py-1"></div>
+                
+                <button
+                  onClick={() => {
+                    try {
+                      const iframe = document.querySelector('.goog-te-banner-frame') as HTMLIFrameElement;
+                      if (iframe) {
+                        const restoreButton = iframe.contentWindow?.document.querySelector('.goog-te-button button') as HTMLButtonElement;
+                        if (restoreButton) restoreButton.click();
+                      } else {
+                        window.location.reload();
+                      }
+                    } catch (e) {
+                      window.location.reload();
+                    }
+                  }}
+                  className="text-[9px] text-gray-500 hover:text-red-400 font-bold transition-colors mt-1 underline cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إعادة الموقع للغة الأصلية (إعادة تحميل)' : lang === 'he' ? 'אפס לשפה המקורית (רענן)' : 'Restore Original Language (Reload)'}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Tag Checklist */}
           <div className="pt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs font-bold text-gray-400 select-none">

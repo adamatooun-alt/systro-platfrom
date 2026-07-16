@@ -214,3 +214,74 @@ h1, h2, h3, h4,
   color: #CBD5E1 !important;
 }
 
+/* =========================================================
+   GOOGLE TRANSLATE PREMIUM CLEAN CUSTOM STYLE OVERRIDES
+   ========================================================= */
+
+/* Hide Google Translate top frame header and banners to prevent layout shifting */
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame,
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+}
+
+body {
+  top: 0px !important;
+}
+
+/* Beautiful custom container design for the Google Translate Simple layout dropdown selection element */
+.goog-te-gadget-simple {
+  background-color: #FFFFFF !important;
+  border: 1px solid #FED7AA !important; /* orange-200 */
+  padding: 8px 12px !important;
+  border-radius: 12px !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  color: #431407 !important;
+  box-shadow: 0 4px 12px -2px rgba(234, 88, 12, 0.08) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.goog-te-gadget-simple:hover {
+  border-color: #F97316 !important; /* orange-500 hover state */
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px -1px rgba(234, 88, 12, 0.12) !important;
+}
+
+.goog-te-gadget-simple img {
+  display: none !important; /* hide default Google Translate logo since we have a modern Globe icon */
+}
+
+.goog-te-gadget-simple span {
+  color: #431407 !important;
+  font-weight: 700 !important;
+}
+
+.goog-te-menu-value {
+  display: flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+}
+
+.goog-te-menu-value span {
+  color: #431407 !important;
+  text-decoration: none !important;
+}
+
+.goog-te-menu-value img {
+  display: none !important; /* remove native triangle icon */
+}
+
+/* Make google translate frame elements clean and beautiful */
+iframe.goog-te-menu-frame {
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1) !important;
+  border: 1px solid #FFD8A8 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
