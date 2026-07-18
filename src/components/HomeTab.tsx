@@ -268,7 +268,7 @@ export default function HomeTab({
                   'success'
                 );
               }}
-              className="w-full md:flex-1 h-16 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-2xl shadow-xl shadow-amber-500/15 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
+              className="w-full md:flex-1 h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black rounded-2xl shadow-xl shadow-orange-500/15 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
             >
               <span className="text-xl">🚗</span>
               <span className="font-black text-base">{lang === 'ar' ? 'عميل مقطوع' : lang === 'he' ? 'לקוח תקוע' : 'Stranded Client'}</span>
@@ -297,11 +297,11 @@ export default function HomeTab({
                   'success'
                 );
               }}
-              className="w-full md:flex-1 h-16 bg-[#111827]/90 hover:bg-[#1E293B]/90 text-white font-black rounded-2xl border border-gray-800 shadow-xl hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
+              className="w-full md:flex-1 h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black rounded-2xl shadow-xl shadow-orange-500/15 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
             >
               <span className="text-xl">🛠️</span>
               <span className="font-black text-base">{lang === 'ar' ? 'مقدم خدمة صناعي' : lang === 'he' ? 'ספק שירות תעשייתי' : 'Industrial Service Provider'}</span>
-              <ChevronRight className="w-5 h-5 shrink-0 text-gray-400" />
+              <ChevronRight className="w-5 h-5 shrink-0" />
             </button>
           </div>
 
@@ -320,7 +320,7 @@ export default function HomeTab({
                     {lang === 'ar' 
                       ? 'تفعيل زر عائم أحمر بأسفل الشاشة للاتصال بالشرطة وطواقم الإسعاف فوراً.' 
                       : lang === 'he'
-                      ? 'הצג לחצן אדום צף בתחתית המסך לחיוג מהיר למשטרה וצוותי רפואה.'
+                      ? 'הצג לחצן אדום צף בתחתית המסך לחיוג מהיר למשטره וצוותי רפואה.'
                       : 'Display a floating emergency action button for rapid dials.'}
                   </p>
                 </div>
@@ -338,6 +338,27 @@ export default function HomeTab({
                   );
                 }}
                 className={`px-4 py-2 rounded-xl text-[11px] font-black tracking-wide border transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                  showSosButton 
+                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 border-orange-600 shadow-lg shadow-orange-500/20 hover:scale-105' 
+                    : 'bg-gray-900 text-gray-500 border-gray-800 hover:bg-gray-800'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${showSosButton ? 'bg-slate-950 animate-pulse' : 'bg-gray-700'}`}></span>
+                <span>{lang === 'ar' ? (showSosButton ? 'زر SOS نشط' : 'إظهار زر SOS') : lang === 'he' ? (showSosButton ? 'פעיל' : 'הצג לחצן') : (showSosButton ? 'SOS Enabled' : 'Show SOS')}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowSosButton(!showSosButton);
+                  triggerToast(
+                    lang === 'ar' 
+                      ? (!showSosButton ? '✅ تم إظهار زر SOS العائم بأسفل الشاشة!' : '❌ تم إخفاء زر SOS العائم') 
+                      : lang === 'he'
+                      ? (!showSosButton ? '✅ לחצן SOS הופעל בהצלחה!' : '❌ לחצן SOS הוסתר')
+                      : (!showSosButton ? '✅ SOS floating button is now visible!' : '❌ SOS floating button hidden'), 
+                    'info'
+                  );
+                }}
+                className={`hidden px-4 py-2 rounded-xl text-[11px] font-black tracking-wide border transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
                   showSosButton 
                     ? 'bg-red-500/10 text-red-400 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]' 
                     : 'bg-gray-900 text-gray-500 border-gray-800'
@@ -403,7 +424,7 @@ export default function HomeTab({
                     'success'
                   );
                 }}
-                className="w-full py-2.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 hover:from-orange-500/20 hover:to-amber-500/20 border border-orange-500/30 text-amber-500 hover:text-amber-400 font-black rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-orange-500/5 hover:scale-[1.02]"
+                className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-orange-500/20 hover:scale-[1.02] border border-orange-600"
               >
                 <span>🌍 {lang === 'ar' ? 'تفعيل الترجمة الفورية لجميع اللغات' : lang === 'he' ? 'הפעל תרגום מיידי' : 'Activate Instant Translation'}</span>
               </button>

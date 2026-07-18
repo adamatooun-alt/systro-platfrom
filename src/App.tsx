@@ -71,7 +71,8 @@ import {
   Droplets,
   Wind,
   ShieldAlert,
-  Trash2
+  Trash2,
+  Search
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -80,6 +81,7 @@ import WhatsAppConfigPanel from './components/WhatsAppConfigPanel';
 import LoginPortal from './components/LoginPortal';
 import HomeTab from './components/HomeTab';
 import ServicesTab from './components/ServicesTab';
+import { AdminPanel } from './components/AdminPanel';
 
 enum OperationType {
   CREATE = 'create',
@@ -662,6 +664,7 @@ export default function App() {
   const [registeredUsers, setRegisteredUsers] = useState<{ id: string; email: string; name: string; role: 'client' | 'technician' | null; phone?: string; createdAt?: any }[]>([]);
   const [adminUserSearch, setAdminUserSearch] = useState('');
   const [adminUserRoleFilter, setAdminUserRoleFilter] = useState<'all' | 'client' | 'technician' | 'unassigned'>('all');
+  const [adminServiceSearch, setAdminServiceSearch] = useState('');
 
   // Current simulation rating state
   const [simRating, setSimRating] = useState<number>(5);
@@ -1273,8 +1276,16 @@ export default function App() {
         list.push({ id: docSnap.id, ...docSnap.data() });
       });
       list.sort((a, b) => {
-        const tA = a.createdAt?.seconds || 0;
-        const tB = b.createdAt?.seconds || 0;
+        const getVal = (x: any) => {
+          if (!x) return 0;
+          if (typeof x === 'number') return x;
+          if (x.seconds) return x.seconds * 1000;
+          if (x.toMillis) return x.toMillis();
+          if (x instanceof Date) return x.getTime();
+          return 0;
+        };
+        const tA = getVal(a.createdAt);
+        const tB = getVal(b.createdAt);
         return tB - tA;
       });
       setWebsiteIssues(list);
@@ -1302,8 +1313,16 @@ export default function App() {
         list.push({ id: docSnap.id, ...docSnap.data() });
       });
       list.sort((a, b) => {
-        const tA = a.createdAt?.seconds || a.createdAt || 0;
-        const tB = b.createdAt?.seconds || b.createdAt || 0;
+        const getVal = (x: any) => {
+          if (!x) return 0;
+          if (typeof x === 'number') return x;
+          if (x.seconds) return x.seconds * 1000;
+          if (x.toMillis) return x.toMillis();
+          if (x instanceof Date) return x.getTime();
+          return 0;
+        };
+        const tA = getVal(a.createdAt);
+        const tB = getVal(b.createdAt);
         return tB - tA;
       });
       setPendingServices(list);
@@ -1372,6 +1391,16 @@ export default function App() {
     } catch (err: any) {
       console.error("Error rejecting custom specialty:", err);
       triggerToast(lang === 'ar' ? 'فشل رفض وحذف طلب التخصص.' : 'Failed to reject and delete request.', 'error');
+    }
+  };
+
+  const handleDeleteActiveService = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "services", id));
+      triggerToast(lang === 'ar' ? 'تم حذف التخصص والخدمة من الشبكة بنجاح! 🗑️' : 'Service/specialty successfully deleted from network! 🗑️', 'success');
+    } catch (err: any) {
+      console.error("Error deleting active service:", err);
+      triggerToast(lang === 'ar' ? 'فشل حذف التخصص من الشبكة.' : 'Failed to delete service/specialty.', 'error');
     }
   };
 
@@ -5118,196 +5147,20 @@ export default function App() {
                             );
                           })}
                         </div>
-
-                        {/* Chat entry form */}
-                        <form onSubmit={handleChatSend} className="pt-3 border-t border-gray-900 flex items-center gap-2">
-                          <input 
-                            type="text" 
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            placeholder={lang === 'ar' ? 'أرسل رسالة فورية للفني...' : 'Send messages to partner technician...'}
-                            className="flex-1 px-3 py-2 bg-[#111827] border border-gray-850 rounded-lg outline-none text-xs text-white"
-                          />
-                          <button 
-                            type="submit"
-                            className="p-2 bg-amber-500 hover:bg-amber-400 text-black rounded-lg transition-colors"
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
-                        </form>
                       </div>
-
-                      {/* Action buttons (Release Escrow or open dispute panel) */}
-                      {simStatus !== 'disputed' ? (
-                        <div className="flex gap-4">
-                          <button 
-                            onClick={handleReleaseEscrow}
-                            className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5"
-                          >
-                            <Unlock className="w-4.5 h-4.5" />
-                            <span>{t.simReleaseFundsBtn}</span>
-                          </button>
-
-                          <button 
-                            onClick={() => { setSimStatus('disputed'); setShowDisputeForm(true); }}
-                            className="px-5 py-3.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
-                          >
-                            <AlertTriangle className="w-4.5 h-4.5" />
-                            <span>{t.simDisputeBtn}</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="p-4 bg-red-950/20 border border-red-900/30 text-center text-red-400 rounded-2xl text-xs font-semibold leading-relaxed">
-                          {lang === 'ar' 
-                            ? '⏳ تم إرسال شكواك للإدارة. أموال الضمان مجمدة حالياً، ويجري التحقق من تفاصيل البلاغ والدردشة لاتخاذ القرار العادل.' 
-                            : '⏳ Your dispute has been submitted to administration. Escrow is frozen, and our team is actively reviewing the request logs.'}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Wizard Status: Disputed Simulation Panel */}
-                  {(simStatus === 'disputed' && showDisputeForm) && (
-                    <div className="space-y-6 animate-fade-in">
-                      <div className="p-4 bg-red-500/10 border border-red-500/25 rounded-2xl flex items-center gap-3 text-red-400">
-                        <AlertTriangle className="w-8 h-8 animate-bounce shrink-0" />
-                        <div>
-                          <h4 className="text-sm font-black text-white">{lang === 'ar' ? 'فتح بلاغ نزاع مالي (Dispute)' : 'Open Escrow Dispute'}</h4>
-                          <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">{t.simDisputeOpened}</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase block">{lang === 'ar' ? 'يرجى تقديم تفاصيل وبنود الخلاف للإدارة:' : 'Provide dispute terms to administration:'}</label>
-                        <textarea 
-                          value={disputeReason}
-                          onChange={(e) => setDisputeReason(e.target.value)}
-                          placeholder={t.simDisputeReasonPlaceholder}
-                          rows={4}
-                          className="w-full p-4 bg-[#0A0B10] border border-gray-900 focus:border-red-500 outline-none text-xs text-white font-semibold rounded-xl"
-                        />
-                      </div>
-
-                      <div className="flex gap-4">
-                        <button 
-                          onClick={() => { setSimStatus('in_progress'); setShowDisputeForm(false); }}
-                          className="flex-1 py-3 bg-[#111827] border border-gray-850 hover:bg-gray-800 text-gray-300 font-bold text-xs rounded-xl transition-all"
-                        >
-                          {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                        </button>
-                        <button 
-                          onClick={handleFileDispute}
-                          className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-red-600/10 transition-all"
-                        >
-                          {t.simSubmitDispute}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Wizard Status: Completed / Release success invoice & Rating */}
-                  {simStatus === 'completed' && (
-                    <div className="space-y-6 animate-fade-in text-center py-6">
-                      <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-                        <CheckCircle2 className="w-9 h-9" />
-                      </div>
-
-                      <h3 className="text-xl font-black text-white">
-                        {lang === 'ar' ? 'تمت عملية الإنقاذ والتحويل المالي بنجاح!' : 'Roadside Rescue Completed & Escrow Released!'}
-                      </h3>
-
-                      <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed font-semibold">
-                        {lang === 'ar' 
-                          ? 'تم تحويل مبلغ 120 ₪ لـ رائد مسعود وحسم عمولة سيسترو 30 ₪ بنجاح. شكراً لثقتك بنظام الضمان والأمان المالي الموقوف.' 
-                          : '120 ₪ successfully transferred to Raed Masoud, with 30 ₪ Systro fee collected. Thank you for utilizing our secure Escrow platform.'}
-                      </p>
-
-                      <div className="max-w-xs mx-auto space-y-3 bg-[#0F1424] p-4 rounded-2xl border border-gray-850">
-                        <h4 className="text-xs font-bold text-gray-400 text-center uppercase border-b border-gray-850 pb-2">{t.simRatingTitle}</h4>
-                        
-                        {/* Stars select */}
-                        <div className="flex justify-center gap-2 pt-1 text-amber-500">
-                          {[1, 2, 3, 4, 5].map(star => (
-                            <Star 
-                              key={star} 
-                              onClick={() => setSimRating(star)}
-                              className={`w-7 h-7 cursor-pointer transition-transform hover:scale-110 ${star <= simRating ? 'fill-current' : 'text-gray-600'}`} 
-                            />
-                          ))}
-                        </div>
-                      </div>
-
-                      <button 
-                        onClick={handleRatingSubmit}
-                        className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl shadow-lg transition-all"
-                      >
-                        {t.simSubmitRating}
-                      </button>
                     </div>
                   )}
                 </>
               )}
-
-              {/* Wizard footer info */}
-              <div className="border-t border-gray-900 pt-4 flex items-center justify-between text-[10px] text-gray-500 font-mono tracking-wider">
-                <span>SYSTEM ID: AIS-SR-2.1</span>
-                <span>SECURED AES-256</span>
-              </div>
-
             </div>
-
           </div>
         </div>
       )}
 
-      {/* CORE ADMIN OVERSIGHT CONTROL PANEL (Image 1 gateway access) */}
-      {activeTab === 'admin' && (
-        !isAdminUnlocked ? (
-          <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 animate-fade-in">
-            <div className="max-w-md mx-auto p-8 bg-white border border-slate-200 rounded-3xl shadow-xl space-y-6 text-center">
-              <div className="mx-auto w-16 h-16 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-center text-amber-600">
-                <Lock className="w-8 h-8 animate-bounce" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-xl font-black text-slate-900">
-                  {lang === 'ar' ? 'لوحة الإدارة مغلقة ومحمية 🔒' : 'Admin Panel Locked 🔒'}
-                </h2>
-                <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                  {lang === 'ar' 
-                    ? 'هذه المنطقة مخصصة لمسؤولي سيسترو فقط. يرجى إدخال كود المرور الخاص بك للمتابعة:' 
-                    : 'This area is restricted to Systro administrators only. Please enter your secret code to proceed:'}
-                </p>
-              </div>
-
-              <div className="space-y-4 pt-2">
-                <div className="relative">
-                  <input 
-                    type="password" 
-                    value={adminPasswordInput}
-                    onChange={(e) => setAdminPasswordInput(e.target.value)}
-                    placeholder={lang === 'ar' ? 'أدخل كود المرور الخاص بك...' : 'Enter your secret passcode...'}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleVerifyAdminCode();
-                      }
-                    }}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-center font-mono text-sm font-bold tracking-widest text-slate-800"
-                  />
-                </div>
-
-                <button 
-                  onClick={handleVerifyAdminCode}
-                  className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-105 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/15 transition-all cursor-pointer"
-                >
-                  {lang === 'ar' ? 'تحقق وافتح لوحة التحكم 🔓' : 'Verify & Unlock Panel 🔓'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 animate-fade-in space-y-8">
+                  {isAdminUnlocked && (
+                    <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 animate-fade-in space-y-8 bg-slate-50 text-slate-900 rounded-3xl border border-slate-200 shadow-2xl my-6">
             
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 border-b border-slate-200 pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 border-b border-slate-200 pb-6 text-slate-900">
               <div className="space-y-2 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
                 <div className="flex flex-col sm:flex-row items-center gap-3 justify-center sm:justify-start">
                   <h2 className="text-2xl font-black text-slate-900">{t.adminTitle}</h2>
@@ -5333,13 +5186,13 @@ export default function App() {
             </div>
 
           {/* Quick Database & Simulator Reset Panel */}
-          <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-5 max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-red-50 border border-red-200 rounded-3xl p-5 max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-800">
             <div className="space-y-1 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
-              <h4 className="text-sm font-black text-white flex items-center gap-2 justify-center sm:justify-start">
-                <AlertCircle className="w-4 h-4 text-red-400" />
+              <h4 className="text-sm font-black text-red-900 flex items-center gap-2 justify-center sm:justify-start">
+                <AlertCircle className="w-4 h-4 text-red-500" />
                 <span>{lang === 'ar' ? 'أداة تنظيف وضبط قاعدة البيانات (Firebase)' : 'Firebase Database Cleanup Tool'}</span>
               </h4>
-              <p className="text-xs text-gray-400 font-semibold">
+              <p className="text-xs text-slate-600 font-semibold">
                 {lang === 'ar' 
                   ? 'يقوم هذا الخيار بمسح كافة سجلات الطلبات النشطة، العروض والمحادثات من Firestore لإعادة تشغيل النظام من الصفر.' 
                   : 'This option clears all active requests, technician bids, and chat transcripts from Firestore to allow clean testing.'}
@@ -5347,7 +5200,7 @@ export default function App() {
             </div>
             <button 
               onClick={resetSimulation}
-              className="px-5 py-3 bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-red-600/10 transition-all shrink-0"
+              className="px-5 py-3 bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-red-600/10 transition-all shrink-0 cursor-pointer"
             >
               {lang === 'ar' ? 'تفريغ Firestore وضبط النظام 🗑️' : 'Clear Firestore & Reset 🗑️'}
             </button>
@@ -5380,33 +5233,34 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* Active Escrow Holdings list */}
-            <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4">
-              <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider border-b border-gray-850 pb-3 flex items-center gap-2">
+            <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-4">
+              <h3 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-3 flex items-center gap-2">
                 <Coins className="w-5 h-5 text-amber-500" />
                 <span>{t.adminActiveEscrows}</span>
               </h3>
 
               {escrows.length === 0 ? (
-                <p className="text-xs text-gray-500 text-center py-10 font-semibold">
+                <p className="text-xs text-slate-400 text-center py-10 font-semibold">
                   {t.adminNoEscrows}
                 </p>
               ) : (
                 <div className="space-y-3">
                   {escrows.map(esc => (
-                    <div key={esc.id} className="p-4 bg-[#0A0B10] border border-gray-900 rounded-xl flex items-center justify-between text-xs">
+                    <div key={esc.id} className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between text-xs">
                       <div className="space-y-1 text-right">
-                        <div className="font-bold text-white">{esc.serviceType}</div>
-                        <div className="text-[10px] text-gray-400">
+                        <div className="font-bold text-slate-800">{esc.serviceType}</div>
+                        <div className="text-[10px] text-slate-500 font-medium">
                           {lang === 'ar' ? `العميل: ${esc.clientName} | الفني: ${esc.techName}` : `Client: ${esc.clientName} | Tech: ${esc.techName}`}
                         </div>
+                        <div className="text-slate-500 font-mono text-[9px]">ID: {esc.id}</div>
                       </div>
                       <div className="text-left space-y-1">
-                        <div className="font-mono text-amber-500 font-extrabold">{esc.amount} ₪</div>
+                        <div className="font-mono text-amber-600 font-extrabold">{esc.amount} ₪</div>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                          esc.status === 'escrowed' ? 'bg-amber-500/10 text-amber-400' :
-                          esc.status === 'released' ? 'bg-emerald-500/10 text-emerald-400' :
-                          esc.status === 'refunded' ? 'bg-blue-500/10 text-blue-400' :
-                          'bg-red-500/10 text-red-400'
+                          esc.status === 'escrowed' ? 'bg-amber-100 text-amber-700' :
+                          esc.status === 'released' ? 'bg-emerald-100 text-emerald-700' :
+                          esc.status === 'refunded' ? 'bg-blue-100 text-blue-700' :
+                          'bg-red-100 text-red-700'
                         }`}>
                           {esc.status}
                         </span>
@@ -5418,14 +5272,14 @@ export default function App() {
             </div>
 
             {/* Registered Users Section */}
-            <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-gray-850 pb-3">
-                <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+            <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                <h3 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <Users className="w-5 h-5 text-amber-500" />
                   <span>{lang === 'ar' ? 'المستخدمين المسجلين بالشبكة' : lang === 'he' ? 'משתמשים רשומים ברשת' : 'Registered Users Network'}</span>
                 </h3>
-                <span className="text-[10px] font-mono text-gray-500 bg-gray-950 px-2 py-0.5 rounded border border-gray-900">
-                  {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : lang === 'he' ? `סה״כ: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
+                <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-bold">
+                  {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : lang === 'he' ? `סה"כ: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
                 </span>
               </div>
 
@@ -5433,15 +5287,15 @@ export default function App() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <input 
                   type="text"
-                  placeholder={lang === 'ar' ? 'بحث بالاسم، الإيميل أو الهاتف...' : lang === 'he' ? 'חפש לפי שם, אימייל או טלפון...' : 'Search by name, email or phone...'}
+                  placeholder={lang === 'ar' ? 'بحث بالاسم، الإيميل أو الهاتف...' : lang === 'he' ? 'חפش לפי שם, אימייל או טלפון...' : 'Search by name, email or phone...'}
                   value={adminUserSearch}
                   onChange={(e) => setAdminUserSearch(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-[#0A0B10] border border-gray-900 rounded-xl outline-none focus:border-amber-500 text-xs text-white text-right rtl:text-right"
+                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-xs text-slate-800 text-right"
                 />
                 <select
                   value={adminUserRoleFilter}
                   onChange={(e) => setAdminUserRoleFilter(e.target.value as any)}
-                  className="px-3 py-2 bg-[#0A0B10] border border-gray-900 rounded-xl outline-none focus:border-amber-500 text-xs text-white text-right rtl:text-right"
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-xs text-slate-800 text-right"
                 >
                   <option value="all">{lang === 'ar' ? 'جميع الأدوار' : 'All Roles'}</option>
                   <option value="client">{lang === 'ar' ? 'العملاء' : 'Clients'}</option>
@@ -5464,7 +5318,7 @@ export default function App() {
                   if (adminUserRoleFilter === 'unassigned') return !u.role;
                   return true;
                 }).length === 0 ? (
-                  <p className="text-xs text-gray-500 text-center py-10 font-semibold">
+                  <p className="text-xs text-slate-400 text-center py-10 font-semibold">
                     {lang === 'ar' ? 'لا يوجد أي مستخدمين يطابقون خيارات البحث حالياً!' : lang === 'he' ? 'אין משתמשים רשומים התואמים את החיפוש!' : 'No registered users match search!'}
                   </p>
                 ) : (
@@ -5482,23 +5336,23 @@ export default function App() {
                       if (adminUserRoleFilter === 'unassigned') return !u.role;
                       return true;
                     }).map(u => (
-                      <div key={u.id} className="p-4 bg-[#0A0B10]/60 border border-gray-900 rounded-2xl flex flex-col justify-between gap-3 text-right">
-                        <div className="space-y-1">
+                      <div key={u.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between gap-3 text-right">
+                        <div className="space-y-1 text-right">
                           <div className="flex items-center justify-between gap-2">
                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                              u.role === 'client' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/10' :
-                              u.role === 'technician' ? 'bg-amber-500/15 text-amber-500 border border-amber-500/10' :
-                              'bg-gray-500/15 text-gray-400 border border-gray-500/10'
+                              u.role === 'client' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                              u.role === 'technician' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                              'bg-slate-200 text-slate-600'
                             }`}>
                               {u.role === 'client' ? (lang === 'ar' ? 'عميل' : lang === 'he' ? 'לקוח' : 'Client') :
                                u.role === 'technician' ? (lang === 'ar' ? 'فني فزعة' : lang === 'he' ? 'טכנאי' : 'Technician') :
                                (lang === 'ar' ? 'ضيف' : lang === 'he' ? 'אורח' : 'Guest')}
                             </span>
-                            <h4 className="text-xs font-black text-white">{u.name || 'Anonymous'}</h4>
+                            <h4 className="text-xs font-black text-slate-800">{u.name || 'Anonymous'}</h4>
                           </div>
-                          <p className="text-[10px] font-mono text-gray-500 truncate">{u.email}</p>
+                          <p className="text-[10px] font-mono text-slate-500 truncate">{u.email}</p>
                           {u.phone && (
-                            <p className="text-[10px] text-gray-400 font-bold">{u.phone}</p>
+                            <p className="text-[10px] text-slate-600 font-bold">{u.phone}</p>
                           )}
                         </div>
                         <div className="flex gap-2">
@@ -5512,8 +5366,8 @@ export default function App() {
                             }}
                             className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[9px] transition-colors border cursor-pointer ${
                               u.role === 'client' 
-                                ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border-blue-500/20' 
-                                : 'bg-gray-950 hover:bg-gray-900 text-gray-400 border-gray-850'
+                                ? 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300' 
+                                : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'
                             }`}
                           >
                             {u.role === 'client' ? (lang === 'ar' ? 'إلغاء العميل' : lang === 'he' ? 'בטל לקוח' : 'Revoke Client') : (lang === 'ar' ? 'تعيين كعميل' : lang === 'he' ? 'קבע כלקוח' : 'Set Client')}
@@ -5528,8 +5382,8 @@ export default function App() {
                             }}
                             className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[9px] transition-colors border cursor-pointer ${
                               u.role === 'technician' 
-                                ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20' 
-                                : 'bg-gray-950 hover:bg-gray-900 text-gray-400 border-gray-850'
+                                ? 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300' 
+                                : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'
                             }`}
                           >
                             {u.role === 'technician' ? (lang === 'ar' ? 'إلغاء الفني' : lang === 'he' ? 'בטל טכנאי' : 'Revoke Tech') : (lang === 'ar' ? 'تعيين كفني' : lang === 'he' ? 'קבע כטכנאי' : 'Set Tech')}
@@ -5679,7 +5533,7 @@ export default function App() {
             </div>
           </div>
         </div>
-      ))}
+      )}
 
       {/* Suggest Custom Service Modal */}
       {showCustomServiceModal && (
