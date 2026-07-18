@@ -55,6 +55,7 @@ import {
   X,
   CreditCard,
   Mail,
+  Phone,
   MessageCircle,
   Volume2,
   Ban,
@@ -5679,6 +5680,81 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Universal Support & Contact Footer - Adam Atoun Contact Details */}
+      <footer className="w-full border-t border-gray-800/40 bg-[#07080D]/50 backdrop-blur-md mt-12 py-10 px-4 pb-28 md:pb-12 text-right rtl:text-right ltr:text-left">
+        <div className="max-w-5xl mx-auto flex flex-col items-center justify-center text-center space-y-6">
+          
+          {/* Header Indicator */}
+          <div className="space-y-2 select-none flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-500 text-[10px] font-black tracking-wide uppercase">
+              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+              <span>
+                {lang === 'ar' ? 'بوابة التواصل والدعم الفني المباشر' : lang === 'he' ? 'שער תמיכה וקשר ישיר' : 'Direct Support & Management'}
+              </span>
+            </div>
+            <h4 className="text-sm font-black text-white/90 max-w-lg leading-relaxed">
+              {lang === 'ar' 
+                ? 'لمزيد من الاستفسارات، الشكاوى أو طلب المساعدة التقنية، يمكنك التواصل مباشرة مع الإدارة العامة:' 
+                : lang === 'he' 
+                ? 'לשאלות נוספות, תלונות או תמיכה טכנית, ניתן לפנות ישירות להנהלה הכללית:' 
+                : 'For further inquiries, feedback or technical assistance, contact the General Management directly:'}
+            </h4>
+          </div>
+
+          {/* Contact Badges Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
+            
+            {/* Phone Card */}
+            <a 
+              href="tel:+972538316779"
+              className="group p-4 bg-[#0F111A]/80 border border-gray-800/80 hover:border-amber-500/30 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/5 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
+            >
+              <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
+                <Phone className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider">
+                  {lang === 'ar' ? 'الاتصال المباشر بـ آدم' : lang === 'he' ? 'חיוג ישיר לאדם' : 'Direct Call Adam'}
+                </span>
+                <span className="text-sm font-black text-white group-hover:text-amber-400 transition-colors font-mono tracking-tight block mt-0.5" dir="ltr">
+                  +972 53-831-6779
+                </span>
+              </div>
+            </a>
+
+            {/* Email Card */}
+            <a 
+              href="mailto:adam.atooun@gmail.com"
+              className="group p-4 bg-[#0F111A]/80 border border-gray-800/80 hover:border-amber-500/30 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/5 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
+            >
+              <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
+                <Mail className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider">
+                  {lang === 'ar' ? 'البريد الإلكتروني للإدارة' : lang === 'he' ? 'אימייל ההנהלה' : 'Management Email'}
+                </span>
+                <span className="text-sm font-black text-white group-hover:text-amber-400 transition-colors font-mono truncate block mt-0.5">
+                  adam.atooun@gmail.com
+                </span>
+              </div>
+            </a>
+
+          </div>
+
+          {/* Copyright Section */}
+          <div className="pt-4 border-t border-gray-800/40 w-full text-center space-y-1 select-none">
+            <span className="text-[9px] font-mono tracking-widest text-gray-500 block uppercase">
+              {lang === 'ar' ? '© ٢٠٢٦ سيسترو للإنقاذ والضمان المالي 🛡️ جميع الحقوق محفوظة.' : lang === 'he' ? '© 2026 סיסטרו חילוץ והסדר מאובטח 🛡️ כל הזכויות שמורות.' : '© 2026 Systro Rescue & Escrow Secure 🛡️ All Rights Reserved.'}
+            </span>
+            <span className="text-[10px] text-gray-500 font-bold block">
+              {lang === 'ar' ? 'تطوير ودعم تقني تحت إشراف آدم عطون' : lang === 'he' ? 'פיתוח ותמיכה טכנולוגית בפיקוח אדם עטון' : 'Technology support supervised by Adam Atoun'}
+            </span>
+          </div>
+
+        </div>
+      </footer>
 
       {/* Mobile Bottom Navigation Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0A0B10]/95 backdrop-blur-md border-t border-gray-800/80 flex items-center justify-around py-3 pb-safe md:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.8)] select-none">

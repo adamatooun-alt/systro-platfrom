@@ -1,5 +1,4 @@
 import React from 'react';
-import { Users } from 'lucide-react';
 import { ServiceType, Technician } from '../types';
 
 interface ServicesTabProps {
@@ -109,66 +108,6 @@ export default function ServicesTab({
                 >
                   {lang === 'ar' ? 'اطلب الخدمة الرسمية الآن' : 'Request Official Service Now'}
                 </button>
-              </div>
-
-              {/* Registered Service Providers List */}
-              <div className="md:col-span-12 border-t border-gray-800/60 pt-4 mt-2">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-                  <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-amber-500" />
-                    <span>
-                      {lang === 'ar' ? 'فنيو ومزودو الخدمة المسجلون:' : lang === 'he' ? 'ספקי שירות רשומים:' : 'Registered Service Providers:'}
-                    </span>
-                  </h4>
-                </div>
-
-                {/* Filter technicians */}
-                {(() => {
-                  const serviceTechs = dbTechnicians.filter(t => t.serviceId === service.id || t.specialties?.includes(service.id));
-                  if (serviceTechs.length === 0) {
-                    return (
-                      <div className="p-4 bg-[#0A0B10]/40 border border-gray-900 rounded-xl text-center">
-                        <span className="text-[11px] text-gray-500 font-bold block">
-                          {lang === 'ar' 
-                            ? 'لا يوجد فنيون مسجلون حالياً في هذا القسم. كن أول من يسجل سجلاً هنا!' 
-                            : lang === 'he'
-                            ? 'אין טכנאים רשומים כעת בקטגוריה זו. היה הראשון להירשם כאן!'
-                            : 'No certified technicians currently registered in this category. Be the first to add your record!'}
-                        </span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {serviceTechs.map(tech => (
-                        <div key={tech.id} className="p-3 bg-[#0A0B10] border border-gray-900 rounded-xl flex items-center gap-3 relative overflow-hidden">
-                          <img 
-                            src={tech.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120'} 
-                            alt={tech.name} 
-                            className="w-10 h-10 rounded-full border border-gray-800 object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="min-w-0 flex-1 text-right rtl:text-right ltr:text-left">
-                            <h5 className="text-xs font-extrabold text-white truncate">
-                              {lang === 'ar' ? (tech.arName || tech.name) : tech.name}
-                            </h5>
-                            <p className="text-[10px] text-gray-400 font-bold truncate">
-                              {lang === 'ar' ? (tech.arCarModel || tech.carModel) : tech.carModel}
-                            </p>
-                            <p className="text-[9px] text-amber-500 font-bold font-mono mt-0.5">
-                              {tech.phone}
-                            </p>
-                          </div>
-                          {/* Rating badge */}
-                          <div className="absolute top-2 left-2 flex items-center gap-0.5 bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded text-[8px] font-black">
-                            <span>★</span>
-                            <span className="font-mono">{tech.rating?.toFixed(1) || '5.0'}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
               </div>
 
             </div>
