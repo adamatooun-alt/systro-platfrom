@@ -52,6 +52,8 @@ import {
   Home,
   LogOut,
   ExternalLink,
+  Edit,
+  Settings,
   X,
   CreditCard,
   Mail,
@@ -751,6 +753,9 @@ export default function App() {
   const [customSpecialtyPrice, setCustomSpecialtyPrice] = useState(150);
   const [providerVehicle, setProviderVehicle] = useState('');
   const [providerPlate, setProviderPlate] = useState('');
+  const [providerName, setProviderName] = useState('');
+  const [providerAvatar, setProviderAvatar] = useState('');
+  const [isEditingTechProfile, setIsEditingTechProfile] = useState(false);
   const [activeTechDoc, setActiveTechDoc] = useState<any>(null);
   const [selectedBidRequest, setSelectedBidRequest] = useState<any>(null);
   const [customBidPrice, setCustomBidPrice] = useState<string>('150');
@@ -798,6 +803,8 @@ export default function App() {
         setActiveTechDoc(data);
         if (data.carModel && !providerVehicle) setProviderVehicle(data.carModel);
         if (data.plateNumber && !providerPlate) setProviderPlate(data.plateNumber);
+        if (data.name && !providerName) setProviderName(data.name);
+        if (data.avatar && !providerAvatar) setProviderAvatar(data.avatar);
       } else {
         setActiveTechDoc(null);
       }
@@ -805,7 +812,7 @@ export default function App() {
       handleFirestoreError(error, OperationType.GET, `technicians/${loggedInUserEmail}`);
     });
     return () => unsub();
-  }, [isLoggedIn, loggedInUserEmail, userRole]);
+  }, [isLoggedIn, loggedInUserEmail, userRole, providerVehicle, providerPlate, providerName, providerAvatar]);
 
   // Sync notification preferences when activeTechDoc is updated from Firestore
   useEffect(() => {
@@ -3407,7 +3414,8 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             {/* Left Column: Interactive Map (12 cols grid map) */}
-            <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
+            {userRole !== 'technician' && (
+              <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
                 <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider">
                   {t.simMapTitle}
@@ -3418,17 +3426,15 @@ export default function App() {
               </div>
 
               {/* Precise Auto-GPS locator button - Hidden for technicians, active for clients */}
-              {userRole !== 'technician' && (
-                <button
-                  onClick={() => detectCurrentLocation(false)}
-                  className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-[11px] md:text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-blue-500/30 group active:scale-[0.98]"
-                >
-                  <MapPin className="w-4 h-4 text-amber-400 animate-bounce group-hover:scale-110 transition-transform" />
-                  <span>
-                    {lang === 'ar' ? 'تحديد موقعي الحالي بدقة تلقائياً (GPS) 📍' : 'Auto-Detect My Current Location (GPS) 📍'}
-                  </span>
-                </button>
-              )}
+              <button
+                onClick={() => detectCurrentLocation(false)}
+                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-[11px] md:text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-blue-500/30 group active:scale-[0.98]"
+              >
+                <MapPin className="w-4 h-4 text-amber-400 animate-bounce group-hover:scale-110 transition-transform" />
+                <span>
+                  {lang === 'ar' ? 'تحديد موقعي الحالي بدقة تلقائياً (GPS) 📍' : 'Auto-Detect My Current Location (GPS) 📍'}
+                </span>
+              </button>
 
               {/* Map Rendering Container */}
               <div className="relative aspect-square w-full bg-[#050814] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">
@@ -3537,7 +3543,6 @@ export default function App() {
                       defaultZoom={pinnedLocation ? 13 : 11}
                       mapId="DEMO_MAP_ID"
                       onClick={(e: any) => {
-                        if (userRole === 'technician') return;
                         if (!e.detail.latLng) return;
                         const { lat, lng } = e.detail.latLng;
                         const { lat: latPct, lng: lngPct } = latLngToMapPct(lat, lng);
@@ -3583,14 +3588,6 @@ export default function App() {
                         </AdvancedMarker>
                       )}
 
-                      {userRole === 'technician' && providerLat !== null && providerLng !== null && (
-                        <AdvancedMarker 
-                          position={mapPctToLatLng(providerLat, providerLng)} 
-                          title={lang === 'ar' ? 'موقع مركبتي 🛠️' : 'My Vehicle Location 🛠️'}
-                        >
-                          <Pin background="#10B981" borderColor="#047857" glyphColor="#FFFFFF" />
-                        </AdvancedMarker>
-                      )}
                     </Map>
                   </APIProvider>
                 )}
@@ -3599,32 +3596,21 @@ export default function App() {
               {/* Status details bottom pin details */}
               <div className="bg-[#0A0B10] p-4 rounded-xl border border-gray-900/60 flex items-center justify-between text-xs font-semibold select-none">
                 <span className="text-gray-500">
-                  {userRole === 'technician' 
-                    ? (lang === 'ar' ? 'موقع مركبتي الفعلي:' : 'My Vehicle GPS:') 
-                    : (lang === 'ar' ? 'إحداثيات موقعي الفعلي:' : 'My GPS Coordinates:')}
+                  {lang === 'ar' ? 'إحداثيات موقعي الفعلي:' : 'My GPS Coordinates:'}
                 </span>
-                {userRole === 'technician' ? (
-                  providerLat !== null ? (
-                    <span className="text-amber-400 font-mono font-bold">
-                      Lat: {mapPctToLatLng(providerLat, providerLng || 0).lat.toFixed(5)}°N , Lng: {mapPctToLatLng(providerLat, providerLng || 0).lng.toFixed(5)}°E
-                    </span>
-                  ) : (
-                    <span className="text-red-400 font-bold">{lang === 'ar' ? 'لم يتم تحديد الموقع بعد 📍' : 'Not Pinned Yet 📍'}</span>
-                  )
+                {pinnedLocation ? (
+                  <span className="text-[#10B981] font-mono font-bold">
+                    Lat: {mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lat.toFixed(5)}°N , Lng: {mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lng.toFixed(5)}°E
+                  </span>
                 ) : (
-                  pinnedLocation ? (
-                    <span className="text-[#10B981] font-mono font-bold">
-                      Lat: {mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lat.toFixed(5)}°N , Lng: {mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lng.toFixed(5)}°E
-                    </span>
-                  ) : (
-                    <span className="text-red-400 font-bold">{lang === 'ar' ? 'غير محدد 📌' : 'Unspecified 📌'}</span>
-                  )
+                  <span className="text-red-400 font-bold">{lang === 'ar' ? 'غير محدد 📌' : 'Unspecified 📌'}</span>
                 )}
               </div>
             </div>
+          )}
 
             {/* Right Column: Workflow Wizard or Partner Dashboard (Dynamic Role Layout) */}
-            <div className="lg:col-span-7 bg-[#111827]/60 border border-gray-800 p-6 rounded-3xl space-y-6 flex flex-col justify-between">
+            <div className={`${userRole === 'technician' ? 'lg:col-span-12' : 'lg:col-span-7'} bg-[#111827]/60 border border-gray-800 p-6 rounded-3xl space-y-6 flex flex-col justify-between`}>
               
               {userRole === 'technician' ? (
                 /* SERVICE PROVIDER DASHBOARD (Palestine Rescue Live Hub) */
@@ -3639,24 +3625,55 @@ export default function App() {
                         </h3>
                         <p className="text-xs text-gray-400 font-semibold">
                           {lang === 'ar' 
-                            ? 'أنت مسجل كفني/مقدم خدمة. يرجى إدخال تفاصيل مركبتك للبدء في استقبال طلبات الإنقاذ والظهور على الخريطة المباشرة.' 
-                            : 'Complete your profile to start receiving emergency alerts and appear active on the network.'}
+                            ? 'أنت مسجل كفني/مقدم خدمة. يرجى إدخال تفاصيل ملفك والسيارة للبدء.' 
+                            : 'Complete your profile to start receiving emergency alerts.'}
                         </p>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="space-y-4 text-right">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'اسم الفني / الشركة المعتمد:' : 'Certified Display Name:'}</label>
                           <input 
                             type="text" 
-                            disabled
-                            value={loggedInUserName} 
-                            className="w-full px-4 py-3 bg-[#0A0B10]/85 border border-gray-900 rounded-xl text-gray-500 font-bold text-xs outline-none cursor-not-allowed"
+                            value={providerName || loggedInUserName} 
+                            onChange={(e) => setProviderName(e.target.value)}
+                            placeholder={lang === 'ar' ? 'مثال: آدم عطون' : 'e.g. Adam Atoun'}
+                            className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
                           />
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'نوع مركبة الصيانة والإنقاذ (Car Model / Truck Type):' : 'Rescue Vehicle/Truck Description:'}</label>
+                          <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'الصورة الشخصية (اختر صورة أو الصق رابطاً):' : 'Profile Picture (Select or paste link):'}</label>
+                          <div className="flex items-center gap-2 overflow-x-auto py-2 no-scrollbar">
+                            {[
+                              "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120",
+                              "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=120",
+                              "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120",
+                              "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+                              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
+                              "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120"
+                            ].map((presetUrl, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setProviderAvatar(presetUrl)}
+                                className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all flex-shrink-0 ${providerAvatar === presetUrl || (!providerAvatar && idx === 0) ? 'border-amber-500 scale-105 shadow-md shadow-amber-500/20' : 'border-gray-800 opacity-60 hover:opacity-100'}`}
+                              >
+                                <img src={presetUrl} alt="" className="w-full h-full object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                          <input 
+                            type="text" 
+                            value={providerAvatar} 
+                            onChange={(e) => setProviderAvatar(e.target.value)}
+                            placeholder={lang === 'ar' ? 'أو الصق رابط الصورة المباشر هنا...' : 'Or paste a direct image URL here...'} 
+                            className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'نوع مركبة الصيانة والإنقاذ (مثال: BMW 2024):' : 'Rescue Vehicle/Truck Description:'}</label>
                           <input 
                             type="text" 
                             required
@@ -3674,13 +3691,15 @@ export default function App() {
                             required
                             value={providerPlate}
                             onChange={(e) => setProviderPlate(e.target.value)}
-                            placeholder={lang === 'ar' ? 'مثال: 6-1122-99' : 'e.g. 7-1122-99'} 
+                            placeholder={lang === 'ar' ? 'مثال: 5982614' : 'e.g. 5982614'} 
                             className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
                           />
                         </div>
 
                         <button 
                           onClick={async () => {
+                            const vName = providerName.trim() || loggedInUserName;
+                            const vAvatar = providerAvatar.trim() || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120";
                             if (!providerVehicle.trim() || !providerPlate.trim()) {
                               triggerToast(lang === 'ar' ? 'الرجاء تعبئة مواصفات المركبة ورقم اللوحة!' : 'Please fill in the vehicle specs and license plate!', 'warning');
                               return;
@@ -3688,15 +3707,15 @@ export default function App() {
                             try {
                               const newTech = {
                                 id: loggedInUserEmail,
-                                name: loggedInUserName,
-                                arName: loggedInUserName,
+                                name: vName,
+                                arName: vName,
                                 phone: '+972 59-999-9999',
                                 rating: 5.0,
                                 reviewsCount: 1,
                                 isOnline: true,
                                 lat: 40,
                                 lng: 40,
-                                avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120',
+                                avatar: vAvatar,
                                 carModel: providerVehicle,
                                 arCarModel: providerVehicle,
                                 plateNumber: providerPlate,
@@ -3728,14 +3747,14 @@ export default function App() {
                       <div className="p-4 bg-[#0A0B10]/95 border border-gray-900 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 select-none">
                         <div className="flex items-center gap-3">
                           <img 
-                            src="https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120" 
+                            src={activeTechDoc.avatar || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120"} 
                             alt="Technician" 
-                            className="w-10 h-10 rounded-full border border-amber-500/35 object-cover" 
+                            className="w-12 h-12 rounded-full border border-amber-500/35 object-cover" 
                             referrerPolicy="no-referrer"
                           />
                           <div className="text-right">
                             <h4 className="text-xs font-black text-white flex items-center gap-1.5">
-                              <span>{loggedInUserName}</span>
+                              <span>{activeTechDoc.name || loggedInUserName}</span>
                               <span className="bg-emerald-500/15 text-emerald-400 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
                                 <Star className="w-2.5 h-2.5 fill-current" />
                                 <span>{activeTechDoc.rating || '5.0'}</span>
@@ -3745,14 +3764,142 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Location pin alert badge */}
-                        <div className="text-center sm:text-right rtl:sm:text-right ltr:sm:text-left bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl">
-                          <span className="text-[9px] text-blue-400 font-bold block uppercase">{lang === 'ar' ? 'تموضع المركبة المباشر:' : 'Live Vehicle GPS:'}</span>
-                          <span className="text-[10px] text-white font-extrabold font-mono block">
-                            {providerLat ? `Lat: ${providerLat.toFixed(2)}, Lng: ${providerLng?.toFixed(2)}` : (lang === 'ar' ? 'متصل بالـ GPS 📡' : 'Connected to GPS 📡')}
-                          </span>
+                        <div className="flex items-center gap-3">
+                          {/* Edit Details Action Button */}
+                          <button
+                            onClick={() => {
+                              setProviderName(activeTechDoc.name || '');
+                              setProviderAvatar(activeTechDoc.avatar || '');
+                              setProviderVehicle(activeTechDoc.carModel || '');
+                              setProviderPlate(activeTechDoc.plateNumber || '');
+                              setIsEditingTechProfile(!isEditingTechProfile);
+                            }}
+                            className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-black border border-amber-500/20 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            <span>{lang === 'ar' ? 'تعديل التفاصيل' : 'Edit Details'}</span>
+                          </button>
+
+                          {/* Location pin alert badge */}
+                          <div className="text-center sm:text-right rtl:sm:text-right ltr:sm:text-left bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl">
+                            <span className="text-[9px] text-blue-400 font-bold block uppercase">{lang === 'ar' ? 'تموضع المركبة المباشر:' : 'Live Vehicle GPS:'}</span>
+                            <span className="text-[10px] text-white font-extrabold font-mono block">
+                              {providerLat ? `Lat: ${providerLat.toFixed(2)}, Lng: ${providerLng?.toFixed(2)}` : (lang === 'ar' ? 'متصل بالـ GPS 📡' : 'Connected to GPS 📡')}
+                            </span>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Collapsible Edit Profile Form */}
+                      {isEditingTechProfile && (
+                        <div className="p-5 bg-gradient-to-br from-[#0F1424] to-[#0A0B10] border border-amber-500/25 rounded-3xl space-y-4 shadow-xl text-right animate-fadeIn">
+                          <div className="flex items-center justify-between border-b border-gray-950 pb-3">
+                            <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
+                              <Settings className="w-4 h-4 animate-spin-slow" />
+                              <span>{lang === 'ar' ? 'تعديل بيانات الفني والسيارة' : 'Modify Technician & Vehicle Details'}</span>
+                            </span>
+                            <button onClick={() => setIsEditingTechProfile(false)} className="text-gray-500 hover:text-white transition-colors cursor-pointer">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'الاسم الشخصي / اسم العرض:' : 'Certified Display Name:'}</label>
+                              <input 
+                                type="text" 
+                                value={providerName} 
+                                onChange={(e) => setProviderName(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-[#050609] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
+                              />
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'رابط الصورة الشخصية أو اختر من المعرض:' : 'Profile Picture:'}</label>
+                              <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar">
+                                {[
+                                  "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120",
+                                  "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=120",
+                                  "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120",
+                                  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+                                  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
+                                  "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120"
+                                ].map((presetUrl, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setProviderAvatar(presetUrl)}
+                                    className={`relative w-10 h-10 rounded-full overflow-hidden border-2 transition-all flex-shrink-0 ${providerAvatar === presetUrl ? 'border-amber-500 scale-105' : 'border-gray-900 opacity-60'}`}
+                                  >
+                                    <img src={presetUrl} alt="" className="w-full h-full object-cover" />
+                                  </button>
+                                ))}
+                              </div>
+                              <input 
+                                type="text" 
+                                value={providerAvatar} 
+                                onChange={(e) => setProviderAvatar(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-[#050609] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
+                              />
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'مواصفات / نوع السيارة:' : 'Rescue Vehicle/Truck Description:'}</label>
+                              <input 
+                                type="text" 
+                                value={providerVehicle} 
+                                onChange={(e) => setProviderVehicle(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-[#050609] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
+                              />
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'رقم لوحة السيارة:' : 'License Plate Number:'}</label>
+                              <input 
+                                type="text" 
+                                value={providerPlate} 
+                                onChange={(e) => setProviderPlate(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-[#050609] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-2">
+                              <button
+                                onClick={async () => {
+                                  if (!providerName.trim() || !providerVehicle.trim() || !providerPlate.trim()) {
+                                    triggerToast(lang === 'ar' ? 'الرجاء ملء جميع الحقول المذكورة!' : 'Please fill in all details!', 'warning');
+                                    return;
+                                  }
+                                  try {
+                                    await updateDoc(doc(db, "technicians", loggedInUserEmail), {
+                                      name: providerName,
+                                      arName: providerName,
+                                      avatar: providerAvatar || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120",
+                                      carModel: providerVehicle,
+                                      arCarModel: providerVehicle,
+                                      plateNumber: providerPlate
+                                    });
+                                    setIsEditingTechProfile(false);
+                                    triggerToast(lang === 'ar' ? 'تم تحديث تفاصيل ملفك بنجاح!' : 'Profile updated successfully!', 'success');
+                                  } catch (err) {
+                                    console.error(err);
+                                    triggerToast(lang === 'ar' ? 'حدث خطأ أثناء تحديث البيانات!' : 'Error updating profile!', 'error');
+                                  }
+                                }}
+                                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-colors cursor-pointer"
+                              >
+                                {lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes'}
+                              </button>
+                              <button
+                                onClick={() => setIsEditingTechProfile(false)}
+                                className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* NEW: Technician Notification Preference Panel */}
                       <div className="p-5 bg-gradient-to-br from-[#0F1424] to-[#0A0B10] border border-amber-500/15 rounded-3xl space-y-4 shadow-xl text-right">
