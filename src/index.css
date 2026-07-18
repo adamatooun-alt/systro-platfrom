@@ -61,7 +61,9 @@
 body, 
 .min-h-screen,
 .bg-\[\#050505\],
-.bg-\[\#050505\]\/95 {
+.bg-\[\#050505\]\/95,
+#support-contact-section,
+.bg-\[\#0D0F1A\] {
   background: radial-gradient(circle at 50% 0%, #FFF5E6 0%, #FFF7ED 50%, #FFEDD5 100%) !important;
   background-color: #FFF7ED !important;
   color: #431407 !important; /* deep warm brown for maximum readability */
@@ -70,6 +72,8 @@ body,
 /* Crisp white cards, components, sections, and modals with warm orange borders & shadows */
 .bg-\[\#0A0B10\],
 .bg-\[\#0A0B10\]\/95,
+.bg-\[\#0A0B10\]\/90,
+.bg-\[\#0A0B10\]\/75,
 .bg-\[\#0E0F17\],
 .bg-slate-900,
 .bg-gray-900,
@@ -205,14 +209,7 @@ h1, h2, h3, h4,
   color: #0F172A !important;
 }
 
-/* Specific overrides for the dark support contact section to guarantee high readability */
-#support-contact-section h3 {
-  color: #FFFFFF !important;
-}
-
-#support-contact-section div.space-y-3 > p {
-  color: #CBD5E1 !important;
-}
+/* Support section elements automatically inherit beautiful high-contrast text color on light backgrounds */
 
 /* =========================================================
    GOOGLE TRANSLATE PREMIUM CLEAN CUSTOM STYLE OVERRIDES

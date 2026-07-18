@@ -70,7 +70,8 @@ import {
   HelpCircle,
   Droplets,
   Wind,
-  ShieldAlert
+  ShieldAlert,
+  Trash2
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -5539,6 +5540,142 @@ export default function App() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Proposed Custom Services Review Section */}
+            <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-gray-850 pb-3">
+                <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <Wrench className="w-5 h-5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'الخدمات والتخصصات المقترحة' : 'Proposed Custom Services'}</span>
+                </h3>
+                <span className="text-[10px] font-mono text-gray-500 bg-gray-950 px-2 py-0.5 rounded border border-gray-900">
+                  {lang === 'ar' ? `بانتظار المراجعة: ${pendingServices.length}` : `Pending: ${pendingServices.length}`}
+                </span>
+              </div>
+
+              {pendingServices.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 flex flex-col items-center justify-center gap-2">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500/45 animate-pulse" />
+                  <p className="text-xs font-semibold">
+                    {lang === 'ar' ? 'لا توجد تخصصات أو خدمات مقترحة جديدة حالياً! 👍' : 'No new custom service proposals at this time! 👍'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+                  {pendingServices.map(srv => (
+                    <div key={srv.id} className="p-4 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-3 text-right">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between border-b border-gray-950 pb-2">
+                          <span className="text-[10px] font-extrabold text-amber-500 font-mono bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg">
+                            {srv.basePrice} ₪
+                          </span>
+                          <h4 className="text-xs font-black text-white">
+                            {srv.arName || srv.name}
+                          </h4>
+                        </div>
+                        
+                        <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                          {srv.arDescription || srv.description}
+                        </p>
+                        
+                        {srv.name && srv.name !== srv.arName && (
+                          <div className="text-[9px] text-gray-500 font-semibold font-mono">
+                            EN: {srv.name}
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-1.5 text-[9px] text-gray-400 font-bold bg-[#0F1424] px-2.5 py-1 rounded-lg border border-gray-950">
+                          <span className="text-amber-500 shrink-0">👤</span>
+                          <span className="truncate">
+                            {lang === 'ar' ? `مقدم الطلب: ${srv.requestedByName || srv.requestedBy}` : `Requested By: ${srv.requestedByName || srv.requestedBy}`}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleApprovePendingService(srv)}
+                          className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[10px] rounded-xl shadow-lg shadow-emerald-500/10 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{lang === 'ar' ? 'موافقة ونشر بالشبكة' : 'Approve & Publish'}</span>
+                        </button>
+                        <button
+                          onClick={() => handleRejectPendingService(srv.id)}
+                          className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 border border-red-500/20 font-bold text-[10px] rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>{lang === 'ar' ? 'رفض' : 'Reject'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Website Support Tickets & Complaints Section */}
+            <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-gray-850 pb-3">
+                <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'بلاغات الأعطال والشكاوى' : 'Support Tickets & Complaints'}</span>
+                </h3>
+                <span className="text-[10px] font-mono text-gray-500 bg-gray-950 px-2 py-0.5 rounded border border-gray-900">
+                  {lang === 'ar' ? `العدد: ${websiteIssues.length}` : `Count: ${websiteIssues.length}`}
+                </span>
+              </div>
+
+              {websiteIssues.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 flex flex-col items-center justify-center gap-2">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500/45 animate-pulse" />
+                  <p className="text-xs font-semibold">
+                    {lang === 'ar' ? 'كل شيء يعمل بامتياز! لا توجد شكاوى مسجلة حالياً 🎉' : 'Everything is perfect! No active complaints recorded. 🎉'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+                  {websiteIssues.map(issue => (
+                    <div key={issue.id} className="p-4 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-3 text-right">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between border-b border-gray-950 pb-2">
+                          <span className="text-[9px] text-gray-500 font-semibold font-mono">
+                            {issue.createdAt?.seconds 
+                              ? new Date(issue.createdAt.seconds * 1000).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour12: true, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+                              : (lang === 'ar' ? 'الآن' : 'Now')}
+                          </span>
+                          <h4 className="text-xs font-black text-white flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping shrink-0"></span>
+                            <span>{issue.name || 'Anonymous'}</span>
+                          </h4>
+                        </div>
+                        
+                        <p className="text-xs text-white font-bold leading-relaxed whitespace-pre-wrap">
+                          {issue.issue}
+                        </p>
+
+                        {(issue.phone && issue.phone !== 'Not Provided') && (
+                          <div className="flex items-center justify-end gap-1 text-[10px] text-amber-400 font-extrabold font-mono" dir="ltr">
+                            <span>{issue.phone}</span>
+                            <Phone className="w-3 h-3 shrink-0" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end pt-1">
+                        <button
+                          onClick={() => handleDeleteWebsiteIssue(issue.id)}
+                          className="py-1.5 px-3 bg-red-500/10 hover:bg-red-500 hover:text-white border border-red-500/20 text-red-400 text-[10px] font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{lang === 'ar' ? 'حل المشكلة وحذف البلاغ' : 'Resolve & Delete Report'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
