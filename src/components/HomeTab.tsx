@@ -174,30 +174,29 @@ export default function HomeTab({
           ? 'الرجاء كتابة تفاصيل المشكلة أولاً!' 
           : lang === 'he'
           ? 'אנא הזן את פרטי הבעיה תחילה!'
-          : 'Please enter the details of the issue first!', 
+          : 'Please write issue details first!',
         'warning'
       );
       return;
     }
-
+    
     setIsSubmittingIssue(true);
     try {
       await addDoc(collection(db, "website_issues"), {
-        name: reporterName.trim() || 'Anonymous',
-        phone: reporterPhone.trim() || 'Not Provided',
-        issue: reporterIssue.trim(),
-        createdAt: serverTimestamp()
+        name: reporterName,
+        phone: reporterPhone,
+        issue: reporterIssue,
+        createdAt: serverTimestamp(),
+        lang
       });
-
       triggerToast(
         lang === 'ar' 
-          ? '✅ تم إرسال البلاغ بنجاح! شكراً لمساعدتنا في تحسين شبكة سيسترو.' 
+          ? '✅ تم إرسال بلاغك بنجاح! شكراً لمساعدتنا في تحسين الخدمة.' 
           : lang === 'he'
-          ? '✅ הדיווח נשלח בהצלחה! תודה שסייעת לנו לשפר את סיסטרו.'
-          : '✅ Issue submitted successfully! Thank you for helping us improve Systro.', 
+          ? '✅ הדיווח נשלח בהצלחה! תודה على עזרתך.'
+          : '✅ Issue submitted successfully! Thanks for helping us improve.', 
         'success'
       );
-
       // Reset form
       setReporterName('');
       setReporterPhone('');
@@ -228,24 +227,8 @@ export default function HomeTab({
 
         <div className="text-center space-y-6 max-w-4xl mx-auto">
           {/* Pre-heading Gold Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] md:text-xs font-bold text-amber-500 leading-none select-none tracking-wide">
-            <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse-ring"></span>
-            <span>{t.heroPre}</span>
-          </div>
-
-          {/* Bold Typography matching Image 7 */}
-          <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-white leading-tight tracking-tight">
-            {t.heroTitle1} <br className="md:hidden" />
-            <span className="text-amber-500 underline decoration-amber-500/20 decoration-wavy">{t.heroTitleHighlighted}</span> {t.heroTitle2}
-          </h2>
-
-          {/* Paragraph details */}
-          <p className="text-sm md:text-base text-gray-400 leading-relaxed max-w-3xl mx-auto font-medium">
-            {t.heroDesc}
-          </p>
-
-          {/* Main Requested Dual-Action Service Buttons (عميل مقطوع vs مقدم خدمة صناعي) */}
-          <div className="pt-6 flex flex-col md:flex-row items-center justify-center gap-5 max-w-2xl mx-auto">
+                  {/* Main Requested Dual-Action Service Buttons (عميل مقطوع vs طلب تكسي) */}
+          <div className="pt-6 flex flex-col md:flex-row items-center justify-center gap-5 max-w-4xl mx-auto">
             {/* Action 1: عميل مقطوع */}
             <button 
               onClick={async () => {
@@ -275,33 +258,25 @@ export default function HomeTab({
               <ChevronRight className="w-5 h-5 shrink-0" />
             </button>
 
-            {/* Action 2: مقدم خدمة صناعي */}
+            {/* Action 2: طلب تكسي خاص / VIP */}
             <button 
-              onClick={async () => {
-                setUserRole('technician');
-                sessionStorage.setItem('systro_user_role', 'technician');
-                if (loggedInUserEmail) {
-                  try {
-                    await setDoc(doc(db, "users", loggedInUserEmail), { role: 'technician' }, { merge: true });
-                  } catch (err) {
-                    console.error("Failed to save tech role on HomeTab click:", err);
-                  }
-                }
-                setActiveTab('simulator');
+              onClick={() => {
+                setActiveTab('taxi');
                 triggerToast(
                   lang === 'ar' 
-                    ? 'أهلاً بك! تم التوجيه كمقدم خدمة صناعي - يمكنك الآن تصفح طلبات العملاء وتقديم الأسعار.' 
+                    ? 'بوابة حجز تكسي وخدمات VIP نشطة الآن! اختر وجهتك لبدء الرحلة بضمان سيسترو المالي.' 
                     : lang === 'he'
-                    ? 'ברוך הבא! מצב ספק שירות הופעל - כעת תוכל להגיש הצעות מחיר ללקוחות.'
-                    : 'Welcome! Industrial Provider mode is active - you can now view requests and submit bids.', 
-                  'success'
+                    ? 'בחר יעד והזמן נסיעה במונית פרימיום כעת עם הגנת סיסטרו.'
+                    : 'Taxi and VIP Booking Portal is active! Pick your destination with Systro protection.', 
+                  'info'
                 );
               }}
-              className="w-full md:flex-1 h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black rounded-2xl shadow-xl shadow-orange-500/15 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
+              className="w-full md:flex-1 h-16 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-450 hover:to-amber-500 text-black font-black rounded-2xl shadow-xl shadow-amber-500/10 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
             >
-              <span className="text-xl">🛠️</span>
-              <span className="font-black text-base">{lang === 'ar' ? 'مقدم خدمة صناعي' : lang === 'he' ? 'ספק שירות תעשייתי' : 'Industrial Service Provider'}</span>
-              <ChevronRight className="w-5 h-5 shrink-0" />
+
+              <span className="text-xl">🚕</span>
+              <span className="font-black text-base">{lang === 'ar' ? 'حجز تكسي خاص / VIP' : lang === 'he' ? 'הזמנת מונית / VIP' : 'Book VIP Taxi'}</span>
+              <ChevronRight className="w-5 h-5 shrink-0 text-black" />
             </button>
           </div>
 
@@ -1111,10 +1086,10 @@ export default function HomeTab({
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-xs font-semibold text-gray-500">
             <p>
               {lang === 'ar' 
-                ? 'جميع الحقوق محفوظة (Systro Rescue) سيسترو إنقاذ 2026 ©' 
+                ? 'جميع الحقوق محفوظة سيسترو 2026 ©' 
                 : lang === 'he'
-                ? 'כל הזכויות שמורות ל-Systro Rescue 2026 ©'
-                : 'All rights reserved (Systro Rescue) Systro Rescue 2026 ©'}
+                ? 'כל הזכויות שמורות ל-Systro 2026 ©'
+                : 'All rights reserved Systro 2026 ©'}
             </p>
 
             <div className="flex flex-wrap items-center gap-3">

@@ -1,4 +1,4 @@
-export type ServiceType = 'fuel' | 'locksmith' | 'mechanic' | 'towing' | 'battery';
+export type ServiceType = 'fuel' | 'locksmith' | 'mechanic' | 'towing' | 'battery' | 'taxi';
 
 export interface ServiceDetails {
   id: ServiceType;
@@ -43,6 +43,8 @@ export interface RescueRequest {
   approximatePrice?: number;
   selectedTechnicianId: string | null;
   timestamp: string;
+  pickupLocation?: string;
+  dropoffLocation?: string;
 }
 
 export interface Technician {

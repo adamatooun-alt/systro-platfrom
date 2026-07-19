@@ -125,8 +125,8 @@ export interface Dictionary {
 export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
   ar: {
     logoTitle: "سيسترو",
-    logoRescue: "إنقاذ",
-    logoSub: "SYSTRO RESCUE",
+    logoRescue: "",
+    logoSub: "SYSTRO",
     home: "الرئيسية",
     services: "خدماتنا",
     simulator: "بوابة طلبات الطوارئ",
@@ -156,7 +156,7 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     // Services
     servicesHeader: "الخدمات والمميزات المتوفرة",
     servicesTitle: "حلول إنقاذ متكاملة بلمسة زر",
-    servicesSub: "تغطي شبكة الفنيين المسجلين في سيسترو إنقاذ كافة أعطال الطرق والخدمات الطارئة على مدار الساعة وبمستويات أمان واحترافية فائقة.",
+    servicesSub: "تغطي شبكة الفنيين المسجلين في سيسترو كافة أعطال الطرق والخدمات الطارئة على مدار الساعة وبمستويات أمان واحترافية فائقة.",
     fuelName: "توصيل وتعبئة الوقود (Fuel Delivery)",
     fuelDesc: "نفذ منك البنزين أو الديزل على الطريق؟ سنرسل إليك أقرب فني مع كمية الوقود الكافية لإنقاذ رحلتك.",
     locksmithName: "فتح الأقفال الطارئ (Emergency Locksmith)",
@@ -233,7 +233,7 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     simSubmitDispute: "تقديم الشكوى للإدارة",
     simCancelTask: "إلغاء طلب الإنقاذ والعودة للرئيسية ❌",
     locationPromptTitle: "📍 تحديد موقعك التلقائي لتسريع الإنقاذ",
-    locationPromptDesc: "هل تسمح لسيسترو إنقاذ بمعرفة موقعك الحالي لتسريع استجابة الفنيين القريبين وعرض الخريطة بدقة؟",
+    locationPromptDesc: "هل تسمح لسيسترو بمعرفة موقعك الحالي لتسريع استجابة الفنيين القريبين وعرض الخريطة بدقة؟",
     locationPromptAllow: "نعم، اسمح وحدد موقعي تلقائياً 👍📍",
     locationPromptDecline: "لا، سأحدد يدوياً على الخريطة ❌",
 
@@ -247,8 +247,8 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
   },
   en: {
     logoTitle: "SYSTRO",
-    logoRescue: "Rescue",
-    logoSub: "SYSTRO RESCUE",
+    logoRescue: "",
+    logoSub: "SYSTRO",
     home: "Home",
     services: "Our Services",
     simulator: "Emergency Rescue Portal",
@@ -355,7 +355,7 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     simSubmitDispute: "File Dispute with Administration",
     simCancelTask: "Cancel Rescue Request & Return ❌",
     locationPromptTitle: "📍 Auto-Detect Location for Faster Rescue",
-    locationPromptDesc: "Allow Systro Rescue to access your current GPS location to speed up nearby technicians' response and show your coordinates?",
+    locationPromptDesc: "Allow Systro to access your current GPS location to speed up nearby technicians' response and show your coordinates?",
     locationPromptAllow: "Yes, Auto-Detect Location 👍📍",
     locationPromptDecline: "No, I will select manually ❌",
 
@@ -369,8 +369,8 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
   },
   he: {
     logoTitle: "סיסטרו",
-    logoRescue: "הצלה",
-    logoSub: "SYSTRO RESCUE",
+    logoRescue: "",
+    logoSub: "SYSTRO",
     home: "ראשי",
     services: "השירותים שלנו",
     simulator: "פורטל קריאות חירום",

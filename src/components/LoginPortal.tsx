@@ -277,35 +277,35 @@ export default function LoginPortal({
           
           {/* Interactive 3D/Glassmorphic Systro Icon */}
           <div className="flex flex-col items-center gap-3 select-none mb-2 animate-fade-in">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 relative rounded-[28px] sm:rounded-[32px] overflow-hidden p-[2px] bg-gradient-to-tr from-sky-400 via-teal-300 to-emerald-400 shadow-[0_15px_35px_rgba(6,182,212,0.25)] flex items-center justify-center">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 relative rounded-[28px] sm:rounded-[32px] overflow-hidden p-[2px] bg-gradient-to-tr from-blue-400 via-cyan-300 to-teal-400 shadow-[0_15px_35px_rgba(37,99,235,0.35)] flex items-center justify-center">
               {/* High-quality internal background gradient with glass overlay */}
-              <div className="absolute inset-0 bg-gradient-to-b from-[#0CC1C6] via-[#029FA5] to-[#01686C] rounded-[26px] sm:rounded-[30px] overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-tr from-[#1E3A8A] via-[#2563EB] to-[#06B6D4] rounded-[26px] sm:rounded-[30px] overflow-hidden">
                 {/* Glossy overlay */}
-                <div className="absolute top-0 inset-x-0 h-1/2 bg-white/20 rounded-t-[26px] sm:rounded-[30px] filter blur-[0.5px]"></div>
+                <div className="absolute top-0 inset-x-0 h-1/2 bg-white/10 rounded-t-[26px] sm:rounded-[30px] filter blur-[0.5px]"></div>
               </div>
               
               {/* Styled fluid "S" SVG with glowing nodes matching the uploaded screenshot */}
               <svg className="w-16 h-16 sm:w-20 sm:h-20 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-                    <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#014A4D" floodOpacity="0.5" />
+                    <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#1E3A8A" floodOpacity="0.5" />
                   </filter>
                   <linearGradient id="sGrad" x1="10%" y1="0%" x2="90%" y2="100%">
                     <stop offset="0%" stopColor="#FFFFFF" />
-                    <stop offset="50%" stopColor="#E0FAFC" />
-                    <stop offset="100%" stopColor="#A5F3FC" />
+                    <stop offset="50%" stopColor="#E0F2FE" />
+                    <stop offset="100%" stopColor="#38BDF8" />
                   </linearGradient>
                 </defs>
                 
                 {/* Fluid glowing particles/lines trails in background */}
-                <path d="M15 70 C 35 85, 70 65, 85 40" stroke="#FFFFFF" strokeWidth="1.5" strokeOpacity="0.25" strokeDasharray="3 3" />
-                <path d="M20 55 C 40 70, 75 55, 80 25" stroke="#00F5FF" strokeWidth="1.2" strokeOpacity="0.4" />
+                <path d="M15 70 C 35 85, 70 65, 85 40" stroke="#FFFFFF" strokeWidth="1.5" strokeOpacity="0.2" strokeDasharray="3 3" />
+                <path d="M20 55 C 40 70, 75 55, 80 25" stroke="#38BDF8" strokeWidth="1.2" strokeOpacity="0.35" />
                 
                 {/* Floating glowing nodes (glowing circles matching screenshot) */}
                 <circle cx="85" cy="40" r="3.5" fill="#FFFFFF" />
-                <circle cx="80" cy="25" r="2.5" fill="#00F5FF" />
-                <circle cx="20" cy="55" r="3" fill="#00F5FF" />
-                <circle cx="33" cy="67" r="4" fill="#E0FAFC" />
+                <circle cx="80" cy="25" r="2.5" fill="#38BDF8" />
+                <circle cx="20" cy="55" r="3" fill="#38BDF8" />
+                <circle cx="33" cy="67" r="4" fill="#E0F2FE" />
                 <circle cx="15" cy="70" r="2" fill="#FFFFFF" />
                 <circle cx="68" cy="35" r="4.5" fill="#FFFFFF" />
 
@@ -333,13 +333,13 @@ export default function LoginPortal({
                   stroke="#FFFFFF" 
                   strokeWidth="3" 
                   strokeLinecap="round"
-                  strokeOpacity="0.8"
+                  strokeOpacity="0.85"
                 />
               </svg>
             </div>
             
             {/* Brand Name text below the logo - bold, beautiful turquoise matching the image */}
-            <span className="text-3xl sm:text-4xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#38BDF8] via-[#06B6D4] to-[#2DD4BF] select-none font-sans filter drop-shadow-[0_2px_10px_rgba(6,182,212,0.2)]">
+            <span className="text-3xl sm:text-4xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#38BDF8] via-[#0ea5e9] to-[#2563eb] select-none font-sans filter drop-shadow-[0_2px_10px_rgba(6,182,212,0.2)]">
               Systro
             </span>
           </div>
@@ -355,10 +355,10 @@ export default function LoginPortal({
             </div>
             <p className="text-xs sm:text-sm text-emerald-100/70 font-semibold max-w-sm leading-relaxed select-none filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
               {lang === 'ar' 
-                ? 'مرحباً بك في شبكة سيسترو لإنقاذ السيارات - بوابتك الآمنة متوفرة الآن بنقرة واحدة' 
+                ? 'مرحباً بك في شبكة سيسترو - بوابتك الآمنة متوفرة الآن بنقرة واحدة' 
                 : lang === 'he'
-                ? 'ברוכים הבאים לרשת החילוץ סיסטרו - הכניסה המאובטחת שלך זמינה כעת בלחיצה אחת'
-                : 'Welcome to Systro Rescue Network - Your secure entrance is now one click away'}
+                ? 'ברוכים הבאים לרשת סיסטרו - הכניסה המאובטחת שלך זמינה כעת בלחיצה אחת'
+                : 'Welcome to Systro Network - Your secure entrance is now one click away'}
             </p>
           </div>
         </div>
