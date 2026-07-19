@@ -3256,16 +3256,16 @@ export default function App() {
           )}
 
           {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 bg-[#111827]/60 p-1 rounded-xl border border-[#1E293B]/50 shrink-0">
+          <nav className="hidden md:flex items-center gap-1 bg-gradient-to-r from-orange-600 to-amber-600 p-1 rounded-xl border border-orange-500/25 shrink-0 shadow-lg shadow-orange-500/10">
             <button 
               onClick={() => setActiveTab('home')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'home' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'home' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
             >
               {t.home}
             </button>
             <button 
               onClick={() => setActiveTab('services')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'services' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'services' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
             >
               {t.services}
             </button>
@@ -3273,7 +3273,7 @@ export default function App() {
               onClick={() => {
                 setActiveTab('simulator');
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'simulator' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
             >
               {t.simulator}
             </button>
@@ -3281,7 +3281,7 @@ export default function App() {
               onClick={() => {
                 setActiveTab('taxi');
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'taxi' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'taxi' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
             >
               {lang === 'ar' ? 'تكسي 🚕' : lang === 'he' ? 'מונית 🚕' : 'Taxi 🚕'}
             </button>
@@ -6292,10 +6292,10 @@ export default function App() {
       </footer>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0A0B10]/95 backdrop-blur-md border-t border-gray-800/80 flex items-center justify-around py-3 pb-safe md:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.8)] select-none">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-orange-600 to-amber-600 border-t border-orange-500/30 flex items-center justify-around py-3 pb-safe md:hidden shadow-[0_-10px_30px_rgba(234,88,12,0.3)] select-none">
         <button 
           onClick={() => setActiveTab('home')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'home' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'home' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
         >
           <Home className="w-5 h-5 shrink-0" />
           <span>{lang === 'ar' ? 'الرئيسية' : lang === 'he' ? 'דף הבית' : 'Home'}</span>
@@ -6303,7 +6303,7 @@ export default function App() {
         
         <button 
           onClick={() => setActiveTab('services')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'services' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'services' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
         >
           <Wrench className="w-5 h-5 shrink-0" />
           <span>{lang === 'ar' ? 'الخدمات' : lang === 'he' ? 'שירותים' : 'Services'}</span>
@@ -6313,7 +6313,7 @@ export default function App() {
           onClick={() => {
             setActiveTab('simulator');
           }}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
         >
           <Activity className="w-5 h-5 animate-pulse shrink-0" />
           <span>{lang === 'ar' ? 'الخدمة' : lang === 'he' ? 'סימולטור' : 'Simulator'}</span>
@@ -6321,7 +6321,7 @@ export default function App() {
 
         <button 
           onClick={() => setActiveTab('taxi')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'taxi' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'taxi' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
         >
           <Car className="w-5 h-5 shrink-0" />
           <span>{lang === 'ar' ? 'تكسي' : lang === 'he' ? 'מונית' : 'Taxi'}</span>
@@ -6329,10 +6329,10 @@ export default function App() {
 
         <button 
           onClick={() => setActiveTab('admin')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'admin' ? 'text-amber-500' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'admin' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
         >
           <Lock className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'الإدارة' : lang === 'he' ? 'ניהול' : 'Admin'}</span>
+          <span>{lang === 'ar' ? 'الإدارة' : lang === 'he' ? 'ניהول' : 'Admin'}</span>
         </button>
       </div>
 
