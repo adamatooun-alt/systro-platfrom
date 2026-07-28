@@ -213,7 +213,7 @@ async function startServer() {
     const from = dynamicSmsConfig.fromPhone || process.env.TWILIO_PHONE_NUMBER;
 
     if (!sid || !token || !from) {
-      res.status(400).json({ error: 'إعدادات Twilio SMS غير مكتملة. يرجى إدخال Account SID و Auth Token ورقم المرسل.' });
+      res.status(400).json({ error: 'إعدادات Twilio SMS غير مكتملة. يرجى إدخال Account SID و Auth Token ورقم المرسل في النماذج أعلاه، ثم النقر على زر (حفظ مفاتيح Twilio SMS) أولاً.' });
       return;
     }
 

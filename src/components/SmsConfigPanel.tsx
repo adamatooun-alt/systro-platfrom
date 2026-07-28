@@ -39,8 +39,15 @@ export default function SmsConfigPanel({
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const handleSaveConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Sync status if available
+  React.useEffect(() => {
+    if (status?.fromPhone && !fromPhone) {
+      setFromPhone(status.fromPhone);
+    }
+  }, [status]);
+
+  const handleSaveConfig = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!accountSid.trim() || !authToken.trim() || !fromPhone.trim()) {
       triggerToast(
         lang === 'ar' 
@@ -48,7 +55,7 @@ export default function SmsConfigPanel({
           : 'Please enter all Twilio parameters!', 
         'warning'
       );
-      return;
+      return false;
     }
 
     setIsSaving(true);
@@ -65,11 +72,14 @@ export default function SmsConfigPanel({
           'success'
         );
         await onRefresh();
+        return true;
       } else {
         triggerToast(data.error || 'Failed to save SMS config', 'error');
+        return false;
       }
     } catch (err: any) {
       triggerToast(lang === 'ar' ? 'خطأ في حفظ الإعدادات!' : 'Failed to save config!', 'error');
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -85,6 +95,12 @@ export default function SmsConfigPanel({
         'warning'
       );
       return;
+    }
+
+    // Auto-save typed credentials if not saved yet
+    if (!status?.configured && accountSid.trim() && authToken.trim() && fromPhone.trim()) {
+      const saved = await handleSaveConfig();
+      if (!saved) return;
     }
 
     setIsTesting(true);
@@ -263,11 +279,22 @@ export default function SmsConfigPanel({
       </div>
 
       {/* Test Real SMS Form */}
-      <div className="pt-4 border-t border-slate-100">
-        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide mb-3 flex items-center gap-2">
+      <div className="pt-4 border-t border-slate-100 space-y-3">
+        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
           <Send className="w-4 h-4 text-emerald-600" />
           <span>{lang === 'ar' ? 'إجراء اختبار إرسال رسالة SMS فعلية للهاتف' : 'Run Live SMS Test to Phone'}</span>
         </h4>
+
+        {!status?.configured && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2.5 text-xs text-amber-800 font-bold">
+            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p>
+              {lang === 'ar' 
+                ? '💡 قبل إجراء الإرسال التجريبي: يرجى أدخال بيانات Account SID و Auth Token ورقم المرسل في النموذج أعلاه والضغط على (حفظ مفاتيح Twilio SMS).' 
+                : '💡 Note: Please enter Account SID, Auth Token and Sender Phone above and click (Save Twilio SMS Config) before testing.'}
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleTestSms} className="flex flex-col sm:flex-row gap-2">
           <input
