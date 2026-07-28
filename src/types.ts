@@ -32,6 +32,7 @@ export interface RescueRequest {
   clientName: string;
   clientPhone: string;
   requestedBy?: string;
+  sessionId?: string;
   locationLat: number; // 0 to 100 for canvas coordinate mapping
   locationLng: number;
   locationName: string;

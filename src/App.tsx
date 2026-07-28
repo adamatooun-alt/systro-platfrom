@@ -161,7 +161,22 @@ const cleanInput = (val: string): string => {
   return converted.replace(/[^0-9]/g, '');
 };
 
+const getOrCreateSessionId = (): string => {
+  try {
+    let sid = sessionStorage.getItem('systro_session_id');
+    if (!sid) {
+      sid = 'sess_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+      sessionStorage.setItem('systro_session_id', sid);
+    }
+    return sid;
+  } catch (e) {
+    return 'sess_' + Date.now();
+  }
+};
+
 export default function App() {
+  const [currentSessionId] = useState<string>(() => getOrCreateSessionId());
+
   // Global Language State: 'ar' (Arabic is default as shown in screenshots) or 'en' or 'he'
   const [lang, setLang] = useState<'ar' | 'en' | 'he'>(() => {
     const saved = localStorage.getItem('systro_rescue_lang');
@@ -645,7 +660,18 @@ export default function App() {
 
   // New List-driven State
   const [allRequests, setAllRequests] = useState<RescueRequest[]>([]);
-  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(() => {
+    return sessionStorage.getItem('systro_active_request_id') || null;
+  });
+
+  // Sync activeRequestId with sessionStorage
+  useEffect(() => {
+    if (activeRequestId) {
+      sessionStorage.setItem('systro_active_request_id', activeRequestId);
+    } else {
+      sessionStorage.removeItem('systro_active_request_id');
+    }
+  }, [activeRequestId]);
 
   // New Technician Bid state inputs
   const [techBidPrice, setTechBidPrice] = useState<number>(150);
@@ -956,26 +982,49 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Automatically restore active request for logged in client if there is one in progress
+  // Automatically restore active request for logged in or guest client ONLY for their own session/email
   useEffect(() => {
-    if (isLoggedIn && loggedInUserEmail && userRole === 'client' && !activeRequestId && allRequests.length > 0) {
-      const activeUserRequest = allRequests.find(r => 
-        r.requestedBy === loggedInUserEmail && 
-        r.status !== 'completed'
-      );
+    if ((userRole === 'client' || userRole === null) && allRequests.length > 0) {
+      if (activeRequestId) {
+        const existing = allRequests.find(r => r.id === activeRequestId);
+        if (!existing || existing.status === 'completed') {
+          setActiveRequestId(null);
+        }
+        return;
+      }
+
+      const activeUserRequest = allRequests.find(r => {
+        if (r.status === 'completed') return false;
+        
+        if (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '') {
+          return r.requestedBy === loggedInUserEmail;
+        }
+        
+        return r.sessionId === currentSessionId;
+      });
+
       if (activeUserRequest) {
         setActiveRequestId(activeUserRequest.id);
       }
     }
-  }, [isLoggedIn, loggedInUserEmail, userRole, activeRequestId, allRequests]);
+  }, [isLoggedIn, loggedInUserEmail, userRole, activeRequestId, allRequests, currentSessionId]);
 
   // Automatically restore active request for logged in technician if there is one in progress
   useEffect(() => {
-    if (isLoggedIn && loggedInUserEmail && userRole === 'technician' && !activeRequestId && allRequests.length > 0) {
+    if (isLoggedIn && loggedInUserEmail && userRole === 'technician' && allRequests.length > 0) {
+      if (activeRequestId) {
+        const existing = allRequests.find(r => r.id === activeRequestId);
+        if (!existing || existing.status === 'completed') {
+          setActiveRequestId(null);
+        }
+        return;
+      }
+
       const activeTechRequest = allRequests.find(r => 
         r.selectedTechnicianId === loggedInUserEmail && 
         (r.status === 'awaiting_deposit' || r.status === 'en_route' || r.status === 'arrived' || r.status === 'in_progress')
       );
+
       if (activeTechRequest) {
         setActiveRequestId(activeTechRequest.id);
         // Also fetch the bid details for this request and technician
@@ -1728,13 +1777,14 @@ export default function App() {
     }
 
     try {
-      const reqId = `req-${Date.now()}`;
+      const reqId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
       // Initialize/Update the request document in the live collection
       await setDoc(doc(db, "requests", reqId), {
         id: reqId,
         clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : (loggedInUserName || 'Adam Atooun'),
         clientPhone: phoneNumber || "+972 59-123-4567",
         requestedBy: loggedInUserEmail || '',
+        sessionId: currentSessionId,
         locationLat: pinnedLocation.lat,
         locationLng: pinnedLocation.lng,
         locationName: "Al-Quds St",
@@ -2717,11 +2767,22 @@ export default function App() {
     setLoggedInUserEmail('');
     setLoggedInUserName('');
     setPhoneNumber('');
+    setActiveRequestId(null);
+    setSimStatus('idle');
+    setPinnedLocation(null);
+    setSelectedBid(null);
+    setIncomingBids([]);
+    setTechCoordinates(null);
+    setProblemDescription('');
+    setChatMessages([]);
     sessionStorage.removeItem('systro_is_logged_in');
     sessionStorage.removeItem('systro_user_email');
     sessionStorage.removeItem('systro_user_name');
     sessionStorage.removeItem('systro_user_role');
     sessionStorage.removeItem('systro_phone_number');
+    sessionStorage.removeItem('systro_active_request_id');
+    const newSid = 'sess_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+    sessionStorage.setItem('systro_session_id', newSid);
     triggerToast(lang === 'ar' ? 'تم تسجيل الخروج بنجاح!' : 'Logged out successfully!', 'info');
   };
 

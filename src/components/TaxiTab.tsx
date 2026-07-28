@@ -268,18 +268,21 @@ export default function TaxiTab({
 
   // Sync state from Firestore active request
   useEffect(() => {
-    if (!isLoggedIn || !loggedInUserEmail) {
-      setActiveRequest(null);
-      setBids([]);
-      setSelectedBid(null);
-      return;
+    const currentSessionId = sessionStorage.getItem('systro_session_id') || 'sess_taxi_' + Date.now();
+    let q;
+    if (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '') {
+      q = query(
+        collection(db, "requests"),
+        where("requestedBy", "==", loggedInUserEmail),
+        where("serviceType", "==", "taxi")
+      );
+    } else {
+      q = query(
+        collection(db, "requests"),
+        where("sessionId", "==", currentSessionId),
+        where("serviceType", "==", "taxi")
+      );
     }
-
-    const q = query(
-      collection(db, "requests"),
-      where("requestedBy", "==", loggedInUserEmail),
-      where("serviceType", "==", "taxi")
-    );
 
     const unsub = onSnapshot(q, (snapshot) => {
       const list: any[] = [];
@@ -480,7 +483,8 @@ export default function TaxiTab({
         id: reqId,
         clientName,
         clientPhone: "+972 59-999-9999",
-        requestedBy: loggedInUserEmail,
+        requestedBy: loggedInUserEmail || '',
+        sessionId: sessionStorage.getItem('systro_session_id') || 'sess_taxi_' + Date.now(),
         locationLat: 45.0, // Default coordinates for simulation mapping
         locationLng: 45.0,
         locationName: pickupInput,
