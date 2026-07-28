@@ -80,6 +80,7 @@ import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, Sy
 import TrustPortal from './components/TrustPortal';
 import SmtpConfigPanel from './components/SmtpConfigPanel';
 import WhatsAppConfigPanel from './components/WhatsAppConfigPanel';
+import SmsConfigPanel from './components/SmsConfigPanel';
 import LoginPortal from './components/LoginPortal';
 import HomeTab from './components/HomeTab';
 import ServicesTab from './components/ServicesTab';
@@ -404,6 +405,12 @@ export default function App() {
     apiUrl: string;
   } | null>(null);
 
+  const [smsStatus, setSmsStatus] = useState<{
+    configured: boolean;
+    accountSid: string;
+    fromPhone: string;
+  } | null>(null);
+
   const fetchWhatsAppStatus = async () => {
     try {
       const response = await fetch('/api/whatsapp-status');
@@ -416,11 +423,24 @@ export default function App() {
     }
   };
 
-  // Fetch SMTP and WhatsApp status on tab selection
+  const fetchSmsStatus = async () => {
+    try {
+      const response = await fetch('/api/sms-status');
+      if (response.ok) {
+        const data = await response.json();
+        setSmsStatus(data);
+      }
+    } catch (err) {
+      console.error("Error fetching SMS status:", err);
+    }
+  };
+
+  // Fetch SMTP, WhatsApp, and SMS status on tab selection
   useEffect(() => {
     if (activeTab === 'admin') {
       fetchSmtpStatus();
       fetchWhatsAppStatus();
+      fetchSmsStatus();
     }
   }, [activeTab]);
 
@@ -5346,6 +5366,14 @@ export default function App() {
             lang={lang}
             status={whatsAppStatus}
             onRefresh={fetchWhatsAppStatus}
+            triggerToast={triggerToast}
+          />
+
+          {/* Real-time Twilio SMS Gateway Connection & Diagnostics Panel */}
+          <SmsConfigPanel 
+            lang={lang}
+            status={smsStatus}
+            onRefresh={fetchSmsStatus}
             triggerToast={triggerToast}
           />
 

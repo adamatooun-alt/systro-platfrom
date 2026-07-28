@@ -181,6 +181,208 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // Dynamic Twilio SMS configuration store
+  let dynamicSmsConfig = {
+    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    authToken: process.env.TWILIO_AUTH_TOKEN || '',
+    fromPhone: process.env.TWILIO_PHONE_NUMBER || ''
+  };
+
+  // POST endpoint to save SMS Gateway configuration
+  app.post('/api/save-sms-config', (req, res) => {
+    const { accountSid, authToken, fromPhone } = req.body;
+    dynamicSmsConfig = {
+      accountSid: (accountSid || '').trim(),
+      authToken: (authToken || '').trim(),
+      fromPhone: (fromPhone || '').trim()
+    };
+    console.log('[SMS GATEWAY] Updated dynamic SMS config');
+    res.json({ success: true, message: 'SMS Gateway configuration updated' });
+  });
+
+  // POST endpoint to test real SMS dispatch
+  app.post('/api/test-sms', async (req, res) => {
+    const { testPhone } = req.body;
+    if (!testPhone) {
+      res.status(400).json({ error: 'Please enter a test phone number' });
+      return;
+    }
+
+    const sid = dynamicSmsConfig.accountSid || process.env.TWILIO_ACCOUNT_SID;
+    const token = dynamicSmsConfig.authToken || process.env.TWILIO_AUTH_TOKEN;
+    const from = dynamicSmsConfig.fromPhone || process.env.TWILIO_PHONE_NUMBER;
+
+    if (!sid || !token || !from) {
+      res.status(400).json({ error: 'إعدادات Twilio SMS غير مكتملة. يرجى إدخال Account SID و Auth Token ورقم المرسل.' });
+      return;
+    }
+
+    try {
+      const cleanNum = testPhone.trim().startsWith('+') ? testPhone.trim() : `+${testPhone.trim().replace(/\D/g, '')}`;
+      const authHeader = Buffer.from(`${sid}:${token}`).toString('base64');
+      const bodyParams = new URLSearchParams({
+        To: cleanNum,
+        From: from,
+        Body: 'اختبار بوابة رسائل SMS لمنصة سيسترو 📱 - تم إرسال هذه الرسالة بنجاح كاختبار مباشر!'
+      });
+
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${authHeader}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: bodyParams
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        res.json({ success: true, message: `تم إرسال SMS بنجاح إلى الرقم ${cleanNum}! (معرف الرسالة: ${data.sid})` });
+      } else {
+        res.status(400).json({ error: data.message || data.detail || 'خطأ في استجابة Twilio API' });
+      }
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'فشل الاتصال ببوابة Twilio SMS' });
+    }
+  });
+
+  // POST endpoint to send SMS OTP
+  app.post('/api/send-sms-otp', async (req, res) => {
+    const { phone } = req.body;
+    if (!phone || phone.trim().length < 6) {
+      res.status(400).json({ error: 'Please provide a valid phone number' });
+      return;
+    }
+
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').trim();
+    const formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : `+${cleanPhone}`;
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+
+    // Save in memory store
+    const storeKey = `sms:${cleanPhone}`;
+    otpStore.set(storeKey, {
+      code,
+      expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes expiry
+    });
+
+    const accountSid = dynamicSmsConfig.accountSid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = dynamicSmsConfig.authToken || process.env.TWILIO_AUTH_TOKEN;
+    const fromPhone = dynamicSmsConfig.fromPhone || process.env.TWILIO_PHONE_NUMBER;
+
+    let realSmsSent = false;
+    let smsError = '';
+
+    if (accountSid && authToken && fromPhone) {
+      try {
+        const bodyParams = new URLSearchParams({
+          To: formattedPhone,
+          From: fromPhone,
+          Body: `رمز التحقق الخاص بك لشبكة سيسترو هو: ${code}. يرجى إدخاله في التطبيق لتأكيد الدخول.`
+        });
+
+        const authHeader = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+        const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${authHeader}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: bodyParams
+        });
+
+        const twilioData = await twilioRes.json();
+        if (twilioRes.ok) {
+          realSmsSent = true;
+          console.log(`[SMS GATEWAY] Real SMS sent to ${formattedPhone}, SID: ${twilioData.sid}`);
+        } else {
+          smsError = twilioData.message || 'Twilio error';
+          console.warn(`[SMS GATEWAY] Twilio error:`, twilioData);
+        }
+      } catch (err: any) {
+        smsError = err.message || 'Twilio connection failed';
+        console.error(`[SMS GATEWAY] Error sending SMS via Twilio:`, err);
+      }
+    }
+
+    // Also check if WhatsApp is available as additional SMS/chat fallback
+    const whatsappInstanceId = process.env.WHATSAPP_INSTANCE_ID;
+    const whatsappToken = process.env.WHATSAPP_TOKEN;
+    const whatsappApiUrl = process.env.WHATSAPP_API_URL || 'https://api.ultramsg.com';
+
+    if (whatsappInstanceId && whatsappToken) {
+      try {
+        const numOnly = cleanPhone.replace(/\+/g, '');
+        fetch(`${whatsappApiUrl}/${whatsappInstanceId}/messages/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            token: whatsappToken,
+            to: numOnly,
+            body: `📲 *رمز التحقق عبر SMS - شبكة سيسترو*\n\nرمز الدخول المؤقت الخاص بك هو: *${code}*\n\nصالح لمدة 10 دقائق.`,
+            priority: '10'
+          })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
+    console.log(`[SMS REAL VERIFICATION] Verification code for ${formattedPhone} is: ${code}`);
+
+    res.json({
+      success: true,
+      realSmsSent,
+      smsError: smsError ? smsError : undefined,
+      message: realSmsSent 
+        ? 'تم إرسال رمز التحقق عبر SMS إلى هاتفك المحمول بنجاح!' 
+        : (accountSid ? 'جاري إرسال رمز التحقق إلى رقم هاتفك المحمول.' : 'تم إصدار طلب رمز التحقق عبر SMS.')
+    });
+  });
+
+  // POST endpoint to verify SMS OTP
+  app.post('/api/verify-sms-otp', (req, res) => {
+    const { phone, code } = req.body;
+    if (!phone || !code) {
+      res.status(400).json({ error: 'Phone number and verification code are required' });
+      return;
+    }
+
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').trim();
+    const enteredCode = code.trim();
+    const storeKey = `sms:${cleanPhone}`;
+
+    const saved = otpStore.get(storeKey);
+
+    if (!saved) {
+      res.status(400).json({ error: 'لم يتم العثور على طلب تحقق نشط لهذا الرقم أو أن الرمز قد انتهت صلاحيته' });
+      return;
+    }
+
+    if (Date.now() > saved.expiresAt) {
+      otpStore.delete(storeKey);
+      res.status(400).json({ error: 'انتهت صلاحية رمز التحقق. يرجى طلب رمز جديد.' });
+      return;
+    }
+
+    if (saved.code !== enteredCode) {
+      res.status(400).json({ error: 'رمز التحقق غير صحيح. يرجى التأكد من الرقم والمحاولة مجدداً.' });
+      return;
+    }
+
+    // Success! Clear OTP code
+    otpStore.delete(storeKey);
+    res.json({ success: true });
+  });
+
+  // GET endpoint to check SMS Gateway Status
+  app.get('/api/sms-status', (req, res) => {
+    const sid = dynamicSmsConfig.accountSid || process.env.TWILIO_ACCOUNT_SID || '';
+    const fromPhone = dynamicSmsConfig.fromPhone || process.env.TWILIO_PHONE_NUMBER || '';
+    res.json({
+      configured: !!(sid && (dynamicSmsConfig.authToken || process.env.TWILIO_AUTH_TOKEN) && fromPhone),
+      accountSid: sid ? '****' + sid.slice(-4) : '',
+      fromPhone: fromPhone
+    });
+  });
+
   // GET endpoint to check current Google Maps Platform API key
   app.get('/api/maps-key', (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');

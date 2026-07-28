@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, AlertTriangle, AlertCircle, Activity, X } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, AlertCircle, Activity, X, Smartphone, Mail, MessageSquare } from 'lucide-react';
 
 interface LoginPortalProps {
   lang: 'ar' | 'en' | 'he';
@@ -37,6 +37,20 @@ export default function LoginPortal({
   const [showManualForm, setShowManualForm] = React.useState(false);
   const [acceptedTerms, setAcceptedTerms] = React.useState(false);
   const [showTermsModal, setShowTermsModal] = React.useState(false);
+
+  // Verification method state ('sms' or 'email')
+  const [authMethod, setAuthMethod] = React.useState<'sms' | 'email'>('sms');
+
+  // SMS Verification state
+  const [phoneCountryCode, setPhoneCountryCode] = React.useState('+966');
+  const [phoneNumber, setPhoneNumber] = React.useState('');
+  const [smsOtpSent, setSmsOtpSent] = React.useState(false);
+  const [smsOtpCode, setSmsOtpCode] = React.useState('');
+  const [smsOtpSending, setSmsOtpSending] = React.useState(false);
+  const [smsOtpVerifying, setSmsOtpVerifying] = React.useState(false);
+  const [smsSimulatedCode, setSmsSimulatedCode] = React.useState('');
+
+  // Email Verification state
   const [fallbackOtpSent, setFallbackOtpSent] = React.useState(false);
   const [fallbackOtpCode, setFallbackOtpCode] = React.useState('');
   const [fallbackOtpSending, setFallbackOtpSending] = React.useState(false);
@@ -100,6 +114,114 @@ export default function LoginPortal({
       setResendCooldown(0);
     }
   }, [fallbackOtpSent]);
+
+  const handleSendSmsOtp = async () => {
+    const cleanNum = phoneNumber.replace(/\D/g, '');
+    if (!cleanNum || cleanNum.length < 7) {
+      triggerToast(
+        lang === 'ar' 
+          ? 'يرجى إدخال رقم هاتف صحيح!' 
+          : lang === 'he'
+          ? 'אנא הזן מספר טלפון תקין!'
+          : 'Please enter a valid phone number!', 
+        'warning'
+      );
+      return;
+    }
+
+    if (!acceptedTerms) {
+      triggerToast(
+        lang === 'ar' 
+          ? 'يجب الموافقة على شروط الخدمة وسياسة الخصوصية للمتابعة! 📜' 
+          : lang === 'he'
+          ? 'עליך להסכים לתנאי השימוש ומדיניות הפרטיות כדי להמשיך! 📜'
+          : 'You must agree to the Terms of Service & Privacy Policy to proceed! 📜', 
+        'warning'
+      );
+      return;
+    }
+
+    const fullPhone = `${phoneCountryCode}${cleanNum}`;
+    setSmsOtpSending(true);
+    try {
+      const response = await fetch('/api/send-sms-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setSmsOtpSent(true);
+        setResendCooldown(60); // 60 seconds
+        setSmsOtpCode('');
+        triggerToast(
+          lang === 'ar' 
+            ? 'تم إرسال رمز التحقق عبر SMS إلى هاتفك المحمول بنجاح! 📲' 
+            : lang === 'he'
+            ? 'קוד אימות SMS נשלח לטלפון שלך בהצלחה! 📲'
+            : 'SMS verification code sent to your phone! 📲', 
+          'success'
+        );
+      } else {
+        triggerToast(data.error || (lang === 'ar' ? 'فشل إرسال رمز التحقق عبر SMS!' : 'Failed to send SMS OTP!'), 'error');
+      }
+    } catch (err: any) {
+      console.error("Error sending SMS OTP:", err);
+      triggerToast(lang === 'ar' ? 'خطأ في الاتصال بالخادم!' : 'Server connection error!', 'error');
+    } finally {
+      setSmsOtpSending(false);
+    }
+  };
+
+  const handleVerifySmsOtp = async () => {
+    const cleanNum = phoneNumber.replace(/\D/g, '');
+    const fullPhone = `${phoneCountryCode}${cleanNum}`;
+    const enteredCode = smsOtpCode.trim();
+    const displayName = customName.trim() || (lang === 'ar' ? `مستخدم ${cleanNum.slice(-4)}` : `User ${cleanNum.slice(-4)}`);
+
+    if (!enteredCode || enteredCode.length < 6) {
+      triggerToast(
+        lang === 'ar' ? 'يرجى إدخال رمز التحقق المكون من 6 أرقام!' : 'Please enter the 6-digit verification code!', 
+        'warning'
+      );
+      return;
+    }
+
+    setSmsOtpVerifying(true);
+    try {
+      const response = await fetch('/api/verify-sms-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone, code: enteredCode })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        const userEmail = `${fullPhone.replace(/\+/g, '')}@sms.systro.live`;
+        sessionStorage.setItem('systro_saved_google_email', userEmail);
+        sessionStorage.setItem('systro_saved_google_name', displayName);
+
+        setShowGoogleFallbackModal(false);
+        await handleGoogleSignIn(userEmail, displayName);
+        triggerToast(
+          lang === 'ar' 
+            ? `تم التحقق عبر SMS وتسجيل الدخول بنجاح! 📱✨` 
+            : lang === 'he'
+            ? `אומת בהצלחה באמצעות SMS! 📱✨`
+            : `Verified via SMS and logged in successfully! 📱✨`, 
+          'success'
+        );
+      } else {
+        triggerToast(data.error || (lang === 'ar' ? 'رمز التحقق عبر SMS غير صحيح!' : 'Incorrect SMS code!'), 'error');
+      }
+    } catch (err: any) {
+      console.error("Error verifying SMS OTP:", err);
+      triggerToast(lang === 'ar' ? 'خطأ في الاتصال بالخادم!' : 'Server connection error!', 'error');
+    } finally {
+      setSmsOtpVerifying(false);
+    }
+  };
 
   const handleSendFallbackOtp = async () => {
     const trimmedEmail = customEmail.trim();
@@ -381,14 +503,221 @@ export default function LoginPortal({
               </h4>
               <p className="text-xs text-emerald-300 font-extrabold leading-relaxed">
                 {lang === 'ar' 
-                  ? 'أدخل بريدك الإلكتروني (Gmail) لاستلام رمز الدخول المؤقت' 
+                  ? 'اختر طريقة التحقق المفضلة لاستلام رمز الدخول الفوري' 
                   : lang === 'he'
-                  ? 'הזן את כתובת האימייל שלך (Gmail) לקבלת קוד אימות חד-פעמי'
-                  : 'Enter your Gmail to receive a secure, passwordless OTP'}
+                  ? 'בחר את שיטת האימות לקבלת קוד חד-פעמי'
+                  : 'Choose your preferred verification method to receive an instant OTP'}
               </p>
             </div>
 
-            {!fallbackOtpSent ? (
+            {/* Verification Method Tabs Switcher */}
+            <div className="grid grid-cols-2 gap-2 bg-[#031A17] p-1.5 rounded-2xl border border-emerald-900 shadow-inner">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMethod('sms');
+                  setSmsOtpSent(false);
+                }}
+                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  authMethod === 'sms' 
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-950' 
+                    : 'text-emerald-300/60 hover:text-white hover:bg-emerald-950/40'
+                }`}
+              >
+                <Smartphone className="w-4 h-4 shrink-0 text-amber-300" />
+                <span>{lang === 'ar' ? 'رسالة نصية SMS' : lang === 'he' ? 'הודעת SMS' : 'SMS Code'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMethod('email');
+                  setFallbackOtpSent(false);
+                }}
+                className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  authMethod === 'email' 
+                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-950' 
+                    : 'text-emerald-300/60 hover:text-white hover:bg-emerald-950/40'
+                }`}
+              >
+                <Mail className="w-4 h-4 shrink-0 text-amber-300" />
+                <span>{lang === 'ar' ? 'بريد إلكتروني' : lang === 'he' ? 'דואר אלקטרוני' : 'Email OTP'}</span>
+              </button>
+            </div>
+
+            {authMethod === 'sms' ? (
+              /* SMS Verification Flow */
+              !smsOtpSent ? (
+                <div className="space-y-6 animate-fade-in">
+                  {/* Phone Input with Country Code */}
+                  <div className="space-y-1 text-right">
+                    <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
+                      {lang === 'ar' ? 'رقم الهاتف لاستلام رمز SMS:' : lang === 'he' ? 'מספר טלפון לאימות SMS:' : 'Phone Number for SMS:'}
+                    </label>
+                    <div className="flex gap-2" dir="ltr">
+                      <select
+                        value={phoneCountryCode}
+                        onChange={(e) => setPhoneCountryCode(e.target.value)}
+                        className="px-3 py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                      >
+                        <option value="+966">🇸🇦 +966</option>
+                        <option value="+972">🇵🇸/🇮🇱 +972</option>
+                        <option value="+962">🇯🇴 +962</option>
+                        <option value="+20">🇪🇬 +20</option>
+                        <option value="+971">🇦🇪 +971</option>
+                        <option value="+965">🇰🇼 +965</option>
+                        <option value="+974">🇶🇦 +974</option>
+                        <option value="+973">🇧🇭 +973</option>
+                        <option value="+968">🇴🇲 +968</option>
+                        <option value="+964">🇮🇶 +964</option>
+                        <option value="+90">🇹🇷 +90</option>
+                        <option value="+1">🇺🇸 +1</option>
+                      </select>
+                      <input
+                        type="tel"
+                        required
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                        placeholder="50 123 4567"
+                        className="flex-1 px-4 py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Name input */}
+                  <div className="space-y-1 text-right">
+                    <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
+                      {lang === 'ar' ? 'الاسم بالكامل (سيتم عرضه في الملف الشخصي):' : lang === 'he' ? 'שם מלא (יוצג בפרופיל שלך):' : 'Full Name:'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder={lang === 'ar' ? 'أدخل اسمك الكريم' : lang === 'he' ? 'הזן את שמך המלא' : 'Enter your full name'}
+                      className="w-full px-4 py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-bold text-xs focus:outline-none focus:border-amber-500 text-right"
+                    />
+                  </div>
+
+                  {/* Terms checkbox */}
+                  <div className="flex items-start gap-3 text-right bg-emerald-950/20 p-3.5 rounded-2xl border border-emerald-950/40">
+                    <input
+                      type="checkbox"
+                      id="sms-terms-checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="mt-1 w-4.5 h-4.5 text-emerald-500 border-emerald-950 bg-emerald-950/50 rounded focus:ring-emerald-500 cursor-pointer accent-emerald-500"
+                    />
+                    <label htmlFor="sms-terms-checkbox" className="text-[11px] sm:text-xs text-emerald-100/80 font-bold select-none cursor-pointer leading-relaxed">
+                      {lang === 'ar' ? (
+                        <>
+                          أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">شروط الخدمة وسياسة الخصوصية</button> الخاصة بمنصة Systro.
+                        </>
+                      ) : lang === 'he' ? (
+                        <>
+                          אני מסכים ל-<button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">תנאי השירות ומדיניות הפרטיות</button> של רשת סיסטרו.
+                        </>
+                      ) : (
+                        <>
+                          I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">Terms of Service & Privacy Policy</button> of Systro Network.
+                        </>
+                      )}
+                    </label>
+                  </div>
+
+                  {/* Send SMS Code Button */}
+                  <button
+                    onClick={handleSendSmsOtp}
+                    disabled={smsOtpSending}
+                    className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-xl cursor-pointer disabled:opacity-50"
+                  >
+                    {smsOtpSending ? (
+                      <span>{lang === 'ar' ? 'جاري إرسال SMS...' : lang === 'he' ? 'שולח הודעת SMS...' : 'Sending SMS...'}</span>
+                    ) : (
+                      <>
+                        <Smartphone className="w-5 h-5 shrink-0" />
+                        <span>{lang === 'ar' ? 'إرسال رمز التحقق عبر SMS' : lang === 'he' ? 'שלח קוד אימות ב-SMS' : 'Send SMS Verification Code'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                /* Enter SMS Code Step */
+                <div className="space-y-6 animate-fade-in">
+                  <div className="text-center space-y-2 bg-emerald-950/40 border border-emerald-900/50 p-4 rounded-2xl">
+                    <p className="text-xs text-emerald-300 font-extrabold leading-relaxed flex items-center justify-center gap-1.5">
+                      <MessageSquare className="w-4 h-4 text-emerald-400" />
+                      <span>{lang === 'ar' ? 'أرسلنا رمز تحقق مكون من 6 أرقام عبر SMS إلى:' : 'SMS 6-digit code sent to:'}</span>
+                    </p>
+                    <p className="font-mono text-sm text-amber-400 font-black tracking-wider bg-emerald-950/60 py-1.5 px-4 rounded-lg inline-block border border-emerald-900/30">
+                      {phoneCountryCode} {phoneNumber}
+                    </p>
+                  </div>
+
+                  {/* OTP Code input */}
+                  <div className="space-y-1.5 text-center">
+                    <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
+                      {lang === 'ar' ? 'رمز التحقق (6 أرقام)' : lang === 'he' ? 'קוד אימות (6 ספרות)' : 'Verification Code (6-digits)'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      value={smsOtpCode}
+                      onChange={(e) => setSmsOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="123456"
+                      className="w-full px-4 py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-mono text-center text-xl font-bold tracking-widest focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  {/* Submit Verification Button */}
+                  <button
+                    onClick={handleVerifySmsOtp}
+                    disabled={smsOtpVerifying}
+                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-xl cursor-pointer disabled:opacity-50"
+                  >
+                    {smsOtpVerifying ? (
+                      <span>{lang === 'ar' ? 'جاري التحقق...' : 'Verifying...'}</span>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-5 h-5 shrink-0" />
+                        <span>{lang === 'ar' ? 'التحقق وتأكيد الدخول 📱' : 'Verify & Sign In 📱'}</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Change Phone Number & Resend */}
+                  <div className="flex flex-col items-center gap-2 pt-2 border-t border-emerald-950/40">
+                    <button
+                      type="button"
+                      onClick={() => setSmsOtpSent(false)}
+                      className="text-[11px] text-emerald-400 hover:text-emerald-300 hover:underline font-bold transition-all cursor-pointer"
+                    >
+                      {lang === 'ar' ? '← تغيير رقم الهاتف' : '← Change phone number'}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={resendCooldown > 0 || smsOtpSending}
+                      onClick={handleSendSmsOtp}
+                      className="text-[11px] text-amber-400 hover:text-amber-300 disabled:text-emerald-500/60 font-bold transition-all cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      {smsOtpSending ? (
+                        <span>{lang === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</span>
+                      ) : resendCooldown > 0 ? (
+                        <span>
+                          {lang === 'ar' ? `إعادة إرسال SMS بعد (${resendCooldown} ثانية)` : `Resend SMS in (${resendCooldown}s)`}
+                        </span>
+                      ) : (
+                        <span>{lang === 'ar' ? '📱 إعادة إرسال رمز SMS' : '📱 Resend SMS code'}</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : (
+              /* Email Verification Flow */
+              !fallbackOtpSent ? (
               <div className="space-y-6">
 
                 {/* Email Input */}
@@ -551,7 +880,7 @@ export default function LoginPortal({
                   </button>
                 </div>
               </div>
-            )}
+            ))}
             
             {/* Security and Protection Note */}
             <div className="pt-4 mt-4 border-t border-emerald-950/40 flex items-center justify-center gap-1.5 text-xs text-emerald-300/80 font-bold select-none uppercase tracking-widest text-center">
