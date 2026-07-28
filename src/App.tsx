@@ -68,6 +68,7 @@ import {
   Car,
   Hammer,
   HelpCircle,
+  ShoppingBag,
   Droplets,
   Wind,
   ShieldAlert,
@@ -86,6 +87,7 @@ import HomeTab from './components/HomeTab';
 import ServicesTab from './components/ServicesTab';
 import { AdminPanel } from './components/AdminPanel';
 import TaxiTab from './components/TaxiTab';
+import { StoreTab } from './components/StoreTab';
 
 enum OperationType {
   CREATE = 'create',
@@ -225,8 +227,8 @@ export default function App() {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi'
-  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi'>('home');
+  // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store'
+  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store'>('home');
 
   // --- FCM Real-Time In-App Notification System ---
   const [notifications, setNotifications] = useState<InAppNotification[]>(() => {
@@ -3366,6 +3368,14 @@ export default function App() {
             >
               {lang === 'ar' ? 'تكسي 🚕' : lang === 'he' ? 'מונית 🚕' : 'Taxi 🚕'}
             </button>
+            <button 
+              onClick={() => {
+                setActiveTab('store');
+              }}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'store' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
+            >
+              {lang === 'ar' ? 'المتجر 🛒' : lang === 'he' ? 'חנות 🛒' : 'Store 🛒'}
+            </button>
           </nav>
 
           {/* Right actions (Sign in, language toggle, Admin portal yellow) */}
@@ -3565,6 +3575,20 @@ export default function App() {
           setActiveTab={setActiveTab as any}
           triggerToast={triggerToast}
           mapsKey={mapsKey}
+        />
+      )}
+
+      {/* ONLINE STORE & AUTO PARTS TAB */}
+      {activeTab === 'store' && (
+        <StoreTab
+          lang={lang === 'he' ? 'en' : (lang as any)}
+          t={t}
+          userRole={userRole as any}
+          isAdminUnlocked={isAdminUnlocked}
+          triggerToast={triggerToast}
+          onNavigateToAdmin={() => setActiveTab('admin')}
+          phoneNumber={userPhone || enteredPhone}
+          clientName={loggedInUserName || enteredName}
         />
       )}
 
@@ -6414,6 +6438,14 @@ export default function App() {
         >
           <Car className="w-5 h-5 shrink-0" />
           <span>{lang === 'ar' ? 'تكسي' : lang === 'he' ? 'מונית' : 'Taxi'}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('store')}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'store' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
+        >
+          <ShoppingBag className="w-5 h-5 shrink-0" />
+          <span>{lang === 'ar' ? 'المتجر' : lang === 'he' ? 'חנות' : 'Store'}</span>
         </button>
 
         <button 

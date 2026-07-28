@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Lock, 
   AlertCircle, 
@@ -18,10 +18,15 @@ import {
   Sparkles,
   ExternalLink,
   Plus,
-  Briefcase
+  Briefcase,
+  ShoppingBag,
+  Package,
+  Tag,
+  DollarSign
 } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { Product } from '../types';
 
 interface AdminPanelProps {
   lang: string;
@@ -80,6 +85,90 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   const [adminUserSearch, setAdminUserSearch] = useState('');
   const [adminUserRoleFilter, setAdminUserRoleFilter] = useState<'all' | 'client' | 'technician' | 'unassigned'>('all');
+
+  // Store Management State
+  const [products, setProducts] = useState<Product[]>([]);
+  const [newProdTitle, setNewProdTitle] = useState('');
+  const [newProdPrice, setNewProdPrice] = useState<number>(150);
+  const [newProdImage, setNewProdImage] = useState('');
+  const [newProdCategory, setNewProdCategory] = useState('معدات طوارئ');
+  const [newProdDescription, setNewProdDescription] = useState('');
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+
+  // Sync products list from Firestore in Admin
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'products'), (snapshot) => {
+      const list: Product[] = [];
+      snapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() } as Product);
+      });
+      list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setProducts(list);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProdTitle.trim() || newProdPrice <= 0) {
+      triggerToast(
+        lang === 'ar' ? 'يرجى إدخال اسم المنتج والسعر بشكل صحيح!' : 'Please enter valid product title and price!',
+        'warning'
+      );
+      return;
+    }
+
+    setIsAddingProduct(true);
+    try {
+      const prodId = 'prod-' + Date.now();
+      const defaultImg = newProdImage.trim() || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&q=80';
+      
+      await setDoc(doc(db, 'products', prodId), {
+        id: prodId,
+        title: newProdTitle,
+        arTitle: newProdTitle,
+        price: Number(newProdPrice),
+        image: defaultImg,
+        description: newProdDescription,
+        arDescription: newProdDescription,
+        category: newProdCategory,
+        arCategory: newProdCategory,
+        inStock: true,
+        createdAt: Date.now()
+      });
+
+      triggerToast(
+        lang === 'ar' ? `تمت إضافة المنتج "${newProdTitle}" للمتجر بنجاح! 🎉` : `Product "${newProdTitle}" added to store! 🎉`,
+        'success'
+      );
+
+      setNewProdTitle('');
+      setNewProdPrice(150);
+      setNewProdImage('');
+      setNewProdDescription('');
+    } catch (err: any) {
+      console.error('Error adding product:', err);
+      triggerToast(lang === 'ar' ? 'خطأ في إضافة المنتج!' : 'Failed to add product!', 'error');
+    } finally {
+      setIsAddingProduct(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id: string, title: string) => {
+    if (!window.confirm(lang === 'ar' ? `هل أنت تأكد من إزالة المنتج "${title}" من المتجر؟` : `Are you sure you want to remove "${title}"?`)) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'products', id));
+      triggerToast(
+        lang === 'ar' ? 'تمت إزالة المنتج من المتجر بنجاح 🗑️' : 'Product deleted from store 🗑️',
+        'info'
+      );
+    } catch (err: any) {
+      console.error('Error deleting product:', err);
+      triggerToast(lang === 'ar' ? 'خطأ في إزالة المنتج!' : 'Failed to delete product!', 'error');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 animate-fade-in space-y-8 bg-slate-50 text-slate-900 rounded-3xl border border-slate-200 shadow-2xl my-6">
@@ -160,6 +249,168 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           triggerToast={triggerToast}
         />
       )}
+
+      {/* Store Products Control Panel - لوحة تحكم وإدارة المتجر والمنتجات */}
+      <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-6 text-slate-900">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="space-y-1 text-right rtl:text-right ltr:text-left">
+            <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5 text-amber-500" />
+              <span>{lang === 'ar' ? 'لوحة إدارة المنتجات والمعدات بالمتجر 🛒' : 'Store Products & Equipment Control Panel 🛒'}</span>
+            </h3>
+            <p className="text-xs text-slate-500 font-semibold">
+              {lang === 'ar' ? 'إضافة قطع غيار، بطاريات ومعدات جديدة أو إزالة المنتجات الحالية المتاحة في المتجر مباشرة.' : 'Add new auto parts, batteries, or emergency tools, or delete existing products in real-time.'}
+            </p>
+          </div>
+          <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-700 text-xs font-black rounded-full shrink-0">
+            {lang === 'ar' ? `إجمالي المنتجات: ${products.length}` : `Total Products: ${products.length}`}
+          </span>
+        </div>
+
+        {/* Add Product Form */}
+        <form onSubmit={handleAddProduct} className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 text-right rtl:text-right ltr:text-left">
+          <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+            <Plus className="w-4 h-4 text-amber-500" />
+            <span>{lang === 'ar' ? 'إضافة منتج جديد للمتجر' : 'Add New Product to Store'}</span>
+          </h4>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Title */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500">
+                {lang === 'ar' ? 'اسم المنتج *' : 'Product Title *'}
+              </label>
+              <input
+                type="text"
+                required
+                value={newProdTitle}
+                onChange={(e) => setNewProdTitle(e.target.value)}
+                placeholder={lang === 'ar' ? 'مثال: بطارية 60 أمبير جافة' : 'e.g., Car Battery 60Ah'}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Price */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500">
+                {lang === 'ar' ? 'السعر (شيقل ₪) *' : 'Price (ILS ₪) *'}
+              </label>
+              <input
+                type="number"
+                required
+                min="1"
+                value={newProdPrice}
+                onChange={(e) => setNewProdPrice(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none font-mono"
+              />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500">
+                {lang === 'ar' ? 'الفئة' : 'Category'}
+              </label>
+              <select
+                value={newProdCategory}
+                onChange={(e) => setNewProdCategory(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+              >
+                <option value="معدات طوارئ">{lang === 'ar' ? 'معدات طوارئ' : 'Emergency'}</option>
+                <option value="بطاريات">{lang === 'ar' ? 'بطاريات' : 'Batteries'}</option>
+                <option value="صيانة إطارات">{lang === 'ar' ? 'صيانة إطارات' : 'Tyres'}</option>
+                <option value="أدوات فحص">{lang === 'ar' ? 'أدوات فحص' : 'Diagnostics'}</option>
+                <option value="زيوت وفلاتر">{lang === 'ar' ? 'زيوت وفلاتر' : 'Oil & Maintenance'}</option>
+                <option value="إكسسوارات">{lang === 'ar' ? 'إكسسوارات' : 'Accessories'}</option>
+              </select>
+            </div>
+
+            {/* Image URL */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500">
+                {lang === 'ar' ? 'رابط صورة المنتج (اختياري)' : 'Image URL (Optional)'}
+              </label>
+              <input
+                type="url"
+                value={newProdImage}
+                onChange={(e) => setNewProdImage(e.target.value)}
+                placeholder="https://..."
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500">
+              {lang === 'ar' ? 'وصف المنتج والتفاصيل' : 'Description'}
+            </label>
+            <input
+              type="text"
+              value={newProdDescription}
+              onChange={(e) => setNewProdDescription(e.target.value)}
+              placeholder={lang === 'ar' ? 'تفاصيل الضمان، الحجم، أو المميزات الرئيسية...' : 'Warranty, size, or key specifications...'}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="submit"
+              disabled={isAddingProduct}
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isAddingProduct ? (lang === 'ar' ? 'جاري الإضافة...' : 'Adding...') : (lang === 'ar' ? 'إضافة المنتج للمتجر 🛍️' : 'Add Product to Store 🛍️')}</span>
+            </button>
+          </div>
+        </form>
+
+        {/* Existing Products List Table/Grid */}
+        <div className="space-y-3 text-right rtl:text-right ltr:text-left">
+          <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
+            {lang === 'ar' ? 'المنتجات المعروضة حالياً بالمتجر (يمكن إزالة أي منتج بضغطة زر):' : 'Currently Available Products:'}
+          </h4>
+
+          {products.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-6 font-semibold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              {lang === 'ar' ? 'لا توجد منتجات مسجلة بالمتجر حالياً.' : 'No products currently registered in store.'}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {products.map((p) => (
+                <div
+                  key={p.id}
+                  className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3 relative group"
+                >
+                  <img
+                    src={p.image || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&q=80'}
+                    alt={p.title}
+                    className="w-14 h-14 rounded-xl object-cover shrink-0 bg-slate-200"
+                  />
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="text-xs font-black text-slate-900 truncate">
+                      {p.arTitle || p.title}
+                    </div>
+                    <div className="text-xs font-extrabold text-amber-600 font-mono">
+                      {p.price} ₪
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-400">
+                      {p.arCategory || p.category}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteProduct(p.id, p.arTitle || p.title)}
+                    title={lang === 'ar' ? 'إزالة المنتج من المتجر' : 'Delete product from store'}
+                    className="p-2 text-red-500 hover:text-white hover:bg-red-500 rounded-xl transition-all cursor-pointer shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         

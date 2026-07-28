@@ -273,10 +273,27 @@ export default function HomeTab({
               }}
               className="w-full md:flex-1 h-16 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-450 hover:to-amber-500 text-black font-black rounded-2xl shadow-xl shadow-amber-500/10 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
             >
-
               <span className="text-xl">🚕</span>
               <span className="font-black text-base">{lang === 'ar' ? 'حجز تكسي خاص / VIP' : lang === 'he' ? 'הזמנת מונית / VIP' : 'Book VIP Taxi'}</span>
               <ChevronRight className="w-5 h-5 shrink-0 text-black" />
+            </button>
+
+            {/* Action 3: تصفح متجر قطع الغيار والمعدات */}
+            <button 
+              onClick={() => {
+                setActiveTab('store');
+                triggerToast(
+                  lang === 'ar' 
+                    ? 'أهلاً بك في متجر سيسترو! تصفح قطع الغيار والبطاريات والمعدات المتاحة.' 
+                    : 'Welcome to Systro Store! Browse auto parts, batteries, and emergency gear.', 
+                  'info'
+                );
+              }}
+              className="w-full md:flex-1 h-16 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/30 font-black rounded-2xl shadow-xl hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
+            >
+              <span className="text-xl">🛒</span>
+              <span className="font-black text-base">{lang === 'ar' ? 'متجر المعدات والقطع' : 'Auto Parts & Gear Store'}</span>
+              <ChevronRight className="w-5 h-5 shrink-0 text-amber-400" />
             </button>
           </div>
 

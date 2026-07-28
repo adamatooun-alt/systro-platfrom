@@ -154,6 +154,25 @@
           }
         }
       }
+    },
+    "products": {
+      "description": "Store products, equipment, and auto spare parts",
+      "documents": {
+        "productId": {
+          "fields": {
+            "id": { "type": "string" },
+            "titleAr": { "type": "string" },
+            "titleEn": { "type": "string" },
+            "descriptionAr": { "type": "string" },
+            "descriptionEn": { "type": "string" },
+            "price": { "type": "number" },
+            "imageUrl": { "type": "string" },
+            "category": { "type": "string" },
+            "inStock": { "type": "boolean" },
+            "createdAt": { "type": "string" }
+          }
+        }
+      }
     }
   }
 }

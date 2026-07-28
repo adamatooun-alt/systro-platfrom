@@ -111,3 +111,17 @@ export interface InAppNotification {
   targetId: string;
 }
 
+export interface Product {
+  id: string;
+  title: string;
+  arTitle?: string;
+  price: number;
+  image: string;
+  description?: string;
+  arDescription?: string;
+  category?: string;
+  arCategory?: string;
+  inStock?: boolean;
+  createdAt?: number;
+}
+
