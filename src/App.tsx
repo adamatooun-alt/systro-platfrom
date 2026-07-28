@@ -88,6 +88,7 @@ import ServicesTab from './components/ServicesTab';
 import { AdminPanel } from './components/AdminPanel';
 import TaxiTab from './components/TaxiTab';
 import { StoreTab } from './components/StoreTab';
+import { PwaInstallBanner } from './components/PwaInstallBanner';
 
 enum OperationType {
   CREATE = 'create',
@@ -3255,6 +3256,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* FLOATING PWA INSTALLATION BANNER */}
+      <PwaInstallBanner lang={lang === 'he' ? 'en' : (lang as any)} triggerToast={triggerToast} />
 
       {/* TOP NAVBAR HEADER */}
       <header className="sticky top-0 z-40 bg-[#0A0B10]/95 backdrop-blur-md border-b border-[#1E293B]/70 select-none">

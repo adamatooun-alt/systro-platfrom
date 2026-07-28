@@ -47,7 +47,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Emergency',
     arCategory: 'معدات طوارئ',
     inStock: true,
-    createdAt: Date.now() - 500000
+    createdAt: Date.now() - 300000
   },
   {
     id: 'prod-car-battery-60ah',
@@ -60,7 +60,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Batteries',
     arCategory: 'بطاريات',
     inStock: true,
-    createdAt: Date.now() - 400000
+    createdAt: Date.now() - 200000
   },
   {
     id: 'prod-tyre-compressor',
@@ -73,46 +73,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Tyres',
     arCategory: 'صيانة إطارات',
     inStock: true,
-    createdAt: Date.now() - 300000
-  },
-  {
-    id: 'prod-towing-strap-5t',
-    title: '5-Ton Heavy Duty Rescue Tow Strap (5 Meters)',
-    arTitle: 'حبل سحب وإنقاذ شديد التحمل 5 طن (5 أمتار)',
-    price: 120,
-    image: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=800&q=80',
-    description: 'Reinforced nylon strap with drop-forged steel safety hooks for offroad recovery.',
-    arDescription: 'حبل سحب نايلون مقوّى مع خطافات فولاذية متينة لإنقاذ وسحب السيارات والمعدات في الطرق الوعرة والرمال.',
-    category: 'Emergency',
-    arCategory: 'معدات طوارئ',
-    inStock: true,
-    createdAt: Date.now() - 200000
-  },
-  {
-    id: 'prod-obd2-scanner',
-    title: 'Bluetooth OBD2 Car Diagnostic Scanner Code Reader',
-    arTitle: 'جهاز فحص كمبيوتر السيارات الذكي OBD2 Bluetooth',
-    price: 150,
-    image: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&q=80',
-    description: 'Reads check engine codes, displays real-time live sensor data directly on your phone.',
-    arDescription: 'جهاز فاحص محرك السيارات يربط بالهاتف الذكي مباشرة لقراءة ومسح أعطال المحرك (Check Engine) وعرض البيانات المباشرة.',
-    category: 'Diagnostics',
-    arCategory: 'أدوات فحص',
-    inStock: true,
     createdAt: Date.now() - 100000
-  },
-  {
-    id: 'prod-synthetic-oil-kit',
-    title: '5W-30 Full Synthetic Motor Oil 4L + Original Oil Filter',
-    arTitle: 'طقم زيت محرك تخليقي بالكامل 5W-30 + فلتر زيت أصلي',
-    price: 210,
-    image: 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=800&q=80',
-    description: 'Premium synthetic engine oil protecting engine parts under extreme speeds and heat.',
-    arDescription: 'زيت محرك ألماني تخليقي بالكامل لحماية المحرك وتقليل استهلاك الوقود مع فلتر زيت أصلي مطابق لسيارتك.',
-    category: 'Maintenance',
-    arCategory: 'زيوت وفلاتر',
-    inStock: true,
-    createdAt: Date.now()
   }
 ];
 
@@ -126,8 +87,8 @@ export const StoreTab: React.FC<StoreTabProps> = ({
   phoneNumber,
   clientName
 }) => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
+  const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
@@ -139,7 +100,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
 
   // Sync real-time products from Firestore
   useEffect(() => {
-    setLoading(true);
+    let isMounted = true;
     const unsub = onSnapshot(collection(db, 'products'), (snapshot) => {
       const list: Product[] = [];
       snapshot.forEach((doc) => {
@@ -155,21 +116,26 @@ export const StoreTab: React.FC<StoreTabProps> = ({
             console.error('Error seeding default product:', e);
           }
         });
-        setProducts(DEFAULT_PRODUCTS);
+        if (isMounted) setProducts(DEFAULT_PRODUCTS);
       } else {
         // Sort newest first
         list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        setProducts(list);
+        if (isMounted) setProducts(list);
       }
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }, (error) => {
       console.error('Products subscription error:', error);
       // Fallback to defaults
-      setProducts(DEFAULT_PRODUCTS);
-      setLoading(false);
+      if (isMounted) {
+        setProducts(DEFAULT_PRODUCTS);
+        setLoading(false);
+      }
     });
 
-    return () => unsub();
+    return () => {
+      isMounted = false;
+      unsub();
+    };
   }, []);
 
   // Categories list
