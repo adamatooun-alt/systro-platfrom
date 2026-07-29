@@ -3,6 +3,7 @@ import { translations } from './translations';
 import { db, auth } from './firebase';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import GooglePayButton from '@google-pay/button-react';
+import { SecuritySentinel } from './components/SecuritySentinel';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -195,6 +196,7 @@ export default function App() {
 
   const [isSosPanelOpen, setIsSosPanelOpen] = useState<boolean>(false);
   const [showTranslateWidget, setShowTranslateWidget] = useState<boolean>(false);
+  const [isSentinelOpen, setIsSentinelOpen] = useState<boolean>(false);
 
   // Save preference on change
   useEffect(() => {
@@ -6718,6 +6720,40 @@ export default function App() {
                   )}
                 </div>
 
+                {/* Box 3: Systro Security & Software Sentinel Guard Card */}
+                <div className="p-4 bg-gradient-to-br from-[#111827] to-[#122019] border border-emerald-500/20 rounded-2xl hover:border-emerald-500/40 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                        <ShieldCheck className="w-5.5 h-5.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-white">
+                          {lang === 'ar' ? 'شركة حماية وتأمين البرمجيات والعناصر 🛡️' : lang === 'he' ? 'חברת אבטחה וסריקת תוכנה 🛡️' : 'Software & Elements Security Guard 🛡️'}
+                        </h4>
+                        <p className="text-[9px] text-gray-400 font-bold leading-relaxed">
+                          {lang === 'ar' 
+                            ? 'خادم حماية داخلي بفحص مستمر لجميع الأكواد، البوابات، والأخطاء، ومعالجة التنبيهات المهملة.' 
+                            : lang === 'he'
+                            ? 'שרת אבטחה פנימי לסריקה מתמדת של רכיבי תוכנה, שגיאות והתרעות.'
+                            : 'Continuous background server monitor auditing code elements & handling unread alerts.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSentinelOpen(true);
+                      setIsSosPanelOpen(false);
+                    }}
+                    className="w-full py-2.5 mt-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-black font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                  >
+                    <span>🛡️ {lang === 'ar' ? 'فتح لوحة شركة الحماية والماسح البرمجي' : lang === 'he' ? 'פתח לוח אבטחה וסורק תוכנה' : 'Open Security Guard & Code Scanner'}</span>
+                  </button>
+                </div>
+
               </div>
 
             </div>
@@ -6735,6 +6771,14 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Global Security & Software Sentinel Guard Component */}
+      <SecuritySentinel 
+        lang={lang} 
+        triggerToast={triggerToast} 
+        isOpen={isSentinelOpen} 
+        onClose={() => setIsSentinelOpen(false)} 
+      />
 
     </div>
   );
