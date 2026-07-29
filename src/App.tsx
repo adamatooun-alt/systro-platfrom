@@ -133,8 +133,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
 }
 
 const mapPctToLatLng = (latPct: number, lngPct: number) => {
@@ -3591,7 +3590,7 @@ export default function App() {
           isAdminUnlocked={isAdminUnlocked}
           triggerToast={triggerToast}
           onNavigateToAdmin={() => setActiveTab('admin')}
-          phoneNumber={userPhone || enteredPhone}
+          phoneNumber={phoneNumber || enteredEmail}
           clientName={loggedInUserName || enteredName}
         />
       )}

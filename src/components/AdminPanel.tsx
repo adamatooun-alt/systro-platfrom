@@ -50,7 +50,7 @@ interface AdminPanelProps {
   websiteIssues: any[];
   handleDeleteWebsiteIssue: (id: string) => void;
   setIsAdminUnlocked: (unlocked: boolean) => void;
-  triggerToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  triggerToast: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   TrustPortal: any;
   SmtpConfigPanel: any;
   WhatsAppConfigPanel: any;
