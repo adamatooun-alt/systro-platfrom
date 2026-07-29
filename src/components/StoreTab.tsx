@@ -47,7 +47,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Emergency',
     arCategory: 'معدات طوارئ',
     inStock: true,
-    createdAt: Date.now() - 300000
+    createdAt: Date.now() - 500000
   },
   {
     id: 'prod-car-battery-60ah',
@@ -60,7 +60,7 @@ const DEFAULT_PRODUCTS: Product[] = [
     category: 'Batteries',
     arCategory: 'بطاريات',
     inStock: true,
-    createdAt: Date.now() - 200000
+    createdAt: Date.now() - 400000
   },
   {
     id: 'prod-tyre-compressor',
@@ -72,6 +72,32 @@ const DEFAULT_PRODUCTS: Product[] = [
     arDescription: 'ضاغط هواء سريع جداً يعمل على ولاعة السيارة مع شاشة رقمية لتحديد الضغط والتوقف التلقائي عند اكتمال الهواء.',
     category: 'Tyres',
     arCategory: 'صيانة إطارات',
+    inStock: true,
+    createdAt: Date.now() - 300000
+  },
+  {
+    id: 'prod-first-aid-kit',
+    title: 'Certified First Aid & Roadside Safety Kit',
+    arTitle: 'حقيبة الإسعافات الأولية والسلامة المعتمدة للسيارات',
+    price: 140,
+    image: 'https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=800&q=80',
+    description: 'Complete roadside safety set including reflective triangle, safety vest, fire extinguisher, and medical kit.',
+    arDescription: 'حقيبة طوارئ متكاملة تحتوي على مثلث تحذيري عاكس، سترة سلامة فسفورية، طفاية حريق بودرة، ومستلزمات إسعاف أولية معتمدة.',
+    category: 'Emergency',
+    arCategory: 'سلامة وطوارئ',
+    inStock: true,
+    createdAt: Date.now() - 200000
+  },
+  {
+    id: 'prod-tow-rope-5ton',
+    title: 'Heavy Duty Towing Cable 5-Ton Steel Wire',
+    arTitle: 'حبل وسحب السيارات الفولاذي المقوى 5 طن',
+    price: 110,
+    image: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
+    description: 'Ultra-durable steel towing rope with double safety hooks and 5-ton capacity for roadside rescue.',
+    arDescription: 'كابل سحب فولاذي فائق المتانة مزود بخطافات أمان مزدوجة وقدرة تحمل تصل إلى 5 أطنان للإنقاذ والسحب الميداني.',
+    category: 'Towing',
+    arCategory: 'معدات سحب',
     inStock: true,
     createdAt: Date.now() - 100000
   }
@@ -197,6 +223,30 @@ export const StoreTab: React.FC<StoreTabProps> = ({
 
   const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Restore default 5 products to Firestore
+  const handleRestoreDefaultProducts = async () => {
+    try {
+      setLoading(true);
+      for (const p of DEFAULT_PRODUCTS) {
+        await setDoc(doc(db, 'products', p.id), p);
+      }
+      setProducts(DEFAULT_PRODUCTS);
+      triggerToast(
+        lang === 'ar' ? 'تمت إضافة الـ 5 منتجات الافتراضية بنجاح إلى المتجر! 🛍️' : 'Added 5 default products to store! 🛍️',
+        'success'
+      );
+    } catch (err) {
+      console.error('Error restoring default products:', err);
+      setProducts(DEFAULT_PRODUCTS);
+      triggerToast(
+        lang === 'ar' ? 'عرض المنتجات الافتراضية محلياً 🛍️' : 'Showing default products locally 🛍️',
+        'info'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Submit order via WhatsApp or Phone
   const handleCheckoutWhatsApp = () => {
@@ -370,17 +420,25 @@ export const StoreTab: React.FC<StoreTabProps> = ({
             {lang === 'ar' ? 'لم يتم العثور على منتجات مطابقة' : 'No matching products found'}
           </h3>
           <p className="text-xs text-slate-500 font-semibold">
-            {lang === 'ar' ? 'جرب البحث بكلمة مختلفة أو اختر فئة أخرى من القائمة.' : 'Try searching with a different term or clear filters.'}
+            {lang === 'ar' ? 'جرب البحث بكلمة مختلفة، أو اضغط زر استعادة المنتجات الافتراضية.' : 'Try searching with a different term or restore default products.'}
           </p>
-          <button
-            onClick={() => {
-              setSearchQuery('');
-              setSelectedCategory('all');
-            }}
-            className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all cursor-pointer"
-          >
-            {lang === 'ar' ? 'إعادة ضبط البحث 🔄' : 'Reset Search 🔄'}
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedCategory('all');
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              {lang === 'ar' ? 'إعادة ضبط البحث 🔄' : 'Reset Search 🔄'}
+            </button>
+            <button
+              onClick={handleRestoreDefaultProducts}
+              className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 text-slate-950 font-black rounded-xl text-xs hover:bg-amber-400 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+            >
+              {lang === 'ar' ? 'استعادة الـ 5 منتجات الافتراضية 🛍️' : 'Restore 5 Default Products 🛍️'}
+            </button>
+          </div>
         </div>
       ) : (
         /* Products Grid */
