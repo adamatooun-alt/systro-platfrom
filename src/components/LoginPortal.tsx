@@ -383,15 +383,18 @@ export default function LoginPortal({
 
             <div className="space-y-4 pt-1">
             
-            {/* TWO SEPARATE LOGIN BUTTONS */}
-            <div className="space-y-2.5">
+            {/* TWO SEPARATE CLEAN LOGIN BUTTONS */}
+            <div className="space-y-3">
               {/* Button 1: Gmail / Google Sign In */}
               <button
                 type="button"
-                onClick={() => handleRealGoogleSignIn()}
-                className="w-full py-3 px-4 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-800 font-extrabold rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-md cursor-pointer border border-slate-200 group"
+                onClick={() => {
+                  if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
+                  handleRealGoogleSignIn();
+                }}
+                className="w-full py-3.5 px-4 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-800 font-extrabold rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-md cursor-pointer border border-slate-200 group"
               >
-                <svg className="w-4.5 h-4.5 shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fillRule="evenodd" />
@@ -413,7 +416,7 @@ export default function LoginPortal({
                     setShowAppleFallbackModal(true);
                   }
                 }}
-                className="w-full py-3 px-4 bg-black hover:bg-neutral-900 active:bg-neutral-950 text-white font-extrabold rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-md cursor-pointer border border-neutral-800 group"
+                className="w-full py-3.5 px-4 bg-black hover:bg-neutral-900 active:bg-neutral-950 text-white font-extrabold rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-md cursor-pointer border border-neutral-800 group"
               >
                 <svg className="w-5 h-5 fill-current text-white shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 170 170">
                   <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.13-1.9-14.38-6.08-3.6-2.93-7.53-7.69-11.79-14.28-6.19-9.5-11.03-20.13-14.52-31.88-3.48-11.75-5.23-22.85-5.23-33.3 0-14.2 3.52-25.85 10.57-34.96 7.05-9.12 15.89-13.78 26.51-13.98 4.95 0 10.29 1.22 16.03 3.65 5.74 2.43 9.77 3.65 12.09 3.65 1.82 0 5.82-1.25 12.02-3.75 6.19-2.5 11.39-3.68 15.59-3.56 11.4.63 20.67 4.95 27.81 12.98-10.01 6.08-14.89 14.65-14.64 25.72.25 8.7 3.55 16.14 9.9 22.32 6.35 6.18 13.99 9.8 22.92 10.87-2.31 6.83-5.24 13.68-8.79 20.55zM119.22 31.84c0-7.22 2.61-14.21 7.83-20.97 5.22-6.76 11.83-10.87 19.83-12.33.13 1.13.2 2.01.2 2.64 0 7.35-2.65 14.42-7.95 21.21-5.3 6.79-11.95 10.97-19.95 12.54-.13-.75-.2-1.78-.2-3.09z"/>
@@ -424,181 +427,10 @@ export default function LoginPortal({
               </button>
             </div>
 
-            {/* Visual Divider */}
-            <div className="relative flex items-center justify-center my-1">
-              <div className="border-t border-emerald-900/60 w-full"></div>
-              <span className="bg-[#0B1513] px-2.5 text-[10px] sm:text-[11px] font-black text-emerald-400 uppercase tracking-widest shrink-0">
-                {lang === 'ar' ? 'أو عبر رمز إيميل المباشر' : lang === 'he' ? 'או באמצעות קוד אימייל ישיר' : 'OR via Direct Email Code'}
-              </span>
-              <div className="border-t border-emerald-900/60 w-full"></div>
-            </div>
-
-            {/* OPTION 2: Email OTP Code Verification Flow */}
-            {!fallbackOtpSent ? (
-              <div className="space-y-3 sm:space-y-4 animate-fade-in">
-                
-                {/* Email Input */}
-                <div className="space-y-1 text-right">
-                  <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
-                    {lang === 'ar' ? 'البريد الإلكتروني (Gmail / iCloud / iOS):' : lang === 'he' ? 'כתובת אימייל (Gmail / iCloud / iOS):' : 'Email Address (Gmail / iCloud / iOS):'}
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-emerald-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="email"
-                      required
-                      value={customEmail}
-                      onChange={(e) => handleEmailChange(e.target.value)}
-                      placeholder="e.g. name@gmail.com"
-                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-mono text-xs sm:text-sm focus:outline-none focus:border-amber-500 text-left"
-                    />
-                  </div>
-                </div>
-
-                {/* Name Input */}
-                <div className="space-y-1 text-right">
-                  <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
-                    {lang === 'ar' ? 'الاسم بالكامل:' : lang === 'he' ? 'שם מלא:' : 'Full Name:'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder={lang === 'ar' ? 'أدخل اسمك الكريم' : lang === 'he' ? 'הזן את שמך המלא' : 'Enter your full name'}
-                    className="w-full px-4 py-2.5 sm:py-3 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-bold text-xs focus:outline-none focus:border-amber-500 text-right"
-                  />
-                </div>
-
-                {/* Terms Checkbox */}
-                <div className="flex items-start gap-2.5 text-right bg-emerald-950/20 p-2.5 sm:p-3 rounded-2xl border border-emerald-950/40">
-                  <input
-                    type="checkbox"
-                    id="main-terms-checkbox"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-emerald-500 border-emerald-950 bg-emerald-950/50 rounded focus:ring-emerald-500 cursor-pointer accent-emerald-500 shrink-0"
-                  />
-                  <label htmlFor="main-terms-checkbox" className="text-[10px] sm:text-xs text-emerald-100/80 font-bold select-none cursor-pointer leading-tight">
-                    {lang === 'ar' ? (
-                      <>
-                        أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">شروط الخدمة وسياسة الخصوصية</button> الخاصة بمنصة Systro.
-                      </>
-                    ) : lang === 'he' ? (
-                      <>
-                        אני מסכים ל-<button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">תנאי השירות ומדיניות הפרטיות</button> של רשת סיסטרו.
-                      </>
-                    ) : (
-                      <>
-                        I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#FCAD62] hover:underline inline font-black cursor-pointer">Terms of Service & Privacy Policy</button> of Systro Network.
-                      </>
-                    )}
-                  </label>
-                </div>
-
-                {/* Send Code Button */}
-                <button
-                  type="button"
-                  onClick={handleSendFallbackOtp}
-                  disabled={fallbackOtpSending}
-                  className="w-full py-3.5 bg-[#FCAD62] hover:bg-[#fcbc80] active:bg-[#e0924a] text-[#0B1513] font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-lg cursor-pointer disabled:opacity-50"
-                >
-                  {fallbackOtpSending ? (
-                    <span>{lang === 'ar' ? 'جاري إرسال الرمز...' : lang === 'he' ? 'שולח קוד אימות...' : 'Sending code...'}</span>
-                  ) : (
-                    <>
-                      <Mail className="w-4.5 h-4.5 shrink-0" />
-                      <span>{lang === 'ar' ? 'إرسال رمز التحقق للبريد' : lang === 'he' ? 'שלח קוד אימות לאימייל' : 'Send Verification Code to Email'}</span>
-                    </>
-                  )}
-                </button>
-
-              </div>
-            ) : (
-              /* Verification Code Entry Step */
-              <div className="space-y-4 animate-fade-in">
-                <div className="text-center space-y-1 bg-emerald-950/40 border border-emerald-900/50 p-3 rounded-2xl">
-                  <p className="text-[11px] sm:text-xs text-emerald-300 font-extrabold leading-relaxed">
-                    {lang === 'ar' 
-                      ? 'أرسلنا رمز تحقق آمن إلى البريد التالي:' 
-                      : lang === 'he'
-                      ? 'שלחנו קוד אימות מאובטח לאימייל הבא:'
-                      : 'Secure verification code has been sent to:'}
-                  </p>
-                  <p className="font-mono text-xs text-white font-bold break-all bg-emerald-950/60 py-1 px-3 rounded-lg inline-block border border-emerald-900/30">
-                    {customEmail}
-                  </p>
-                </div>
-
-                {/* OTP Code input */}
-                <div className="space-y-1 text-center">
-                  <label className="block text-[10px] font-extrabold text-emerald-400 uppercase tracking-wide">
-                    {lang === 'ar' ? 'رمز التحقق (6 أرقام)' : lang === 'he' ? 'קוד אימות (6 ספרות)' : 'Verification Code (6-digits)'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={fallbackOtpCode}
-                    onChange={(e) => setFallbackOtpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="123456"
-                    className="w-full px-4 py-2.5 bg-[#031A17] border border-emerald-900 rounded-xl text-white font-mono text-center text-lg sm:text-xl font-bold tracking-widest focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                {/* Submit Verification Button */}
-                <button
-                  type="button"
-                  onClick={handleVerifyFallbackOtp}
-                  disabled={fallbackOtpVerifying}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:bg-[#047857] text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-lg cursor-pointer disabled:opacity-50"
-                >
-                  {fallbackOtpVerifying ? (
-                    <span>{lang === 'ar' ? 'جاري التحقق...' : lang === 'he' ? 'מבצע אימות...' : 'Verifying code...'}</span>
-                  ) : (
-                    <>
-                      <ShieldCheck className="w-4.5 h-4.5 shrink-0" />
-                      <span>{lang === 'ar' ? 'التحقق وتسجيل الدخول' : lang === 'he' ? 'אימות והתחברות' : 'Verify & Sign In'}</span>
-                    </>
-                  )}
-                </button>
-
-                {/* Change Email back button & Resend */}
-                <div className="flex flex-col items-center gap-1.5 pt-2 border-t border-emerald-950/40">
-                  <button
-                    type="button"
-                    onClick={() => setFallbackOtpSent(false)}
-                    className="text-[11px] text-emerald-400 hover:text-emerald-300 hover:underline font-bold transition-all cursor-pointer"
-                  >
-                    {lang === 'ar' ? '← تغيير البريد الإلكتروني' : lang === 'he' ? '← שנה כתובת אימייל' : '← Change email address'}
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={resendCooldown > 0 || fallbackOtpSending}
-                    onClick={handleSendFallbackOtp}
-                    className="text-[11px] text-amber-400 hover:text-amber-300 disabled:text-emerald-500/60 font-bold transition-all cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-                  >
-                    {fallbackOtpSending ? (
-                      <span>{lang === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</span>
-                    ) : resendCooldown > 0 ? (
-                      <span>
-                        {lang === 'ar' 
-                          ? `إعادة إرسال الرمز بعد (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})` 
-                          : `Resend code in (${Math.floor(resendCooldown / 60)}:${String(resendCooldown % 60).padStart(2, '0')})`}
-                      </span>
-                    ) : (
-                      <span>{lang === 'ar' ? '✉️ إعادة إرسال الرمز' : '✉️ Resend code'}</span>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-            
             {/* Security Note */}
             <div className="pt-2 border-t border-emerald-950/40 flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] text-emerald-300/80 font-bold select-none text-center">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>{lang === 'ar' ? 'بوابة مشفرة ومحمية بالكامل بواسطة Google OAuth 2.0' : 'Fully encrypted & secured via Google OAuth 2.0'}</span>
+              <span>{lang === 'ar' ? 'بوابة مشفرة ومحمية بالكامل 100% بدون كلمة سر' : lang === 'he' ? 'התחברות מאובטחת ומוצפנת 100%' : '100% Encrypted & Passwordless Secure Sign-In'}</span>
             </div>
 
             </div>
@@ -650,8 +482,8 @@ export default function LoginPortal({
                   </p>
 
                   <div className="space-y-1">
-                    <label className={`block text-[10px] font-extrabold text-slate-400 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
-                      {lang === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
+                    <label className={`block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                      {lang === 'ar' ? 'البريد الإلكتروني (Gmail):' : lang === 'he' ? 'כתובת אימייל (Gmail):' : 'Gmail Email Address:'}
                     </label>
                     <input
                       type="email"
@@ -663,22 +495,19 @@ export default function LoginPortal({
                     />
                   </div>
 
-                  {customEmail && customName && (
-                    <div className="bg-sky-50 border border-sky-100/50 p-2.5 rounded-xl flex items-center justify-between text-xs animate-fade-in">
-                      <div className={`flex flex-col gap-0.5 ${lang === 'ar' ? 'text-right w-full' : 'text-left w-full'}`}>
-                        <span className="text-[10px] text-sky-600 font-black">
-                          {lang === 'ar' ? 'الاسم المستنتج تلقائياً:' : 'Auto-detected Name:'}
-                        </span>
-                        <input
-                          type="text"
-                          value={customName}
-                          onChange={(e) => setCustomName(e.target.value)}
-                          className={`text-slate-700 font-extrabold focus:outline-none bg-transparent w-full ${lang === 'ar' ? 'text-right' : 'text-left'}`}
-                          placeholder={lang === 'ar' ? 'الاسم الكامل' : 'Full name'}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  <div className="space-y-1">
+                    <label className={`block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                      {lang === 'ar' ? 'الاسم بالكامل:' : lang === 'he' ? 'שם מלא:' : 'Full Name:'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder={lang === 'ar' ? 'أدخل اسمك الكريم' : lang === 'he' ? 'הזן את שמך המלא' : 'Enter your full name'}
+                      className={`w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-bold text-sm focus:outline-none focus:border-sky-500 ${lang === 'ar' ? 'text-right' : 'text-left'}`}
+                    />
+                  </div>
 
                   <div className="flex items-start gap-2.5 text-right bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <input
@@ -851,7 +680,7 @@ export default function LoginPortal({
                       value={appleEmail}
                       onChange={(e) => {
                         setAppleEmail(e.target.value);
-                        if (e.target.value.includes('@')) {
+                        if (e.target.value.includes('@') && !appleName) {
                           const username = e.target.value.split('@')[0];
                           const formattedName = username
                             .split(/[._-]/)
@@ -865,22 +694,19 @@ export default function LoginPortal({
                     />
                   </div>
 
-                  {appleEmail && (
-                    <div className="bg-neutral-900 border border-neutral-800 p-2.5 rounded-xl flex items-center justify-between text-xs animate-fade-in">
-                      <div className={`flex flex-col gap-0.5 ${lang === 'ar' ? 'text-right w-full' : 'text-left w-full'}`}>
-                        <span className="text-[10px] text-neutral-400 font-black">
-                          {lang === 'ar' ? 'اسم المستخدم المسجل لدى Apple:' : 'Apple Profile Name:'}
-                        </span>
-                        <input
-                          type="text"
-                          value={appleName}
-                          onChange={(e) => setAppleName(e.target.value)}
-                          className={`text-white font-extrabold focus:outline-none bg-transparent w-full ${lang === 'ar' ? 'text-right' : 'text-left'}`}
-                          placeholder={lang === 'ar' ? 'الاسم الكامل' : 'Full name'}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  <div className="space-y-1">
+                    <label className={`block text-[10px] font-extrabold text-neutral-400 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                      {lang === 'ar' ? 'الاسم بالكامل:' : lang === 'he' ? 'שם מלא:' : 'Full Name:'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={appleName}
+                      onChange={(e) => setAppleName(e.target.value)}
+                      placeholder={lang === 'ar' ? 'أدخل اسمك الكريم' : lang === 'he' ? 'הזן את שמך המלא' : 'Enter full name'}
+                      className={`w-full px-4 py-2.5 bg-neutral-900 border border-neutral-700 rounded-xl text-white font-bold text-sm focus:outline-none focus:border-white ${lang === 'ar' ? 'text-right' : 'text-left'}`}
+                    />
+                  </div>
 
                   <div className="flex items-start gap-2.5 text-right bg-neutral-900/80 p-3 rounded-xl border border-neutral-800">
                     <input
