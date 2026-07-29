@@ -9,6 +9,9 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon.svg" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <meta name="theme-color" content="#0f172a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -25,6 +28,19 @@
           navigator.serviceWorker.register('/sw.js').then(
             (reg) => {
               console.log('Systro PWA ServiceWorker registered successfully: ', reg.scope);
+              // Check for service worker updates immediately on page load
+              reg.update();
+              reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                if (installingWorker) {
+                  installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      console.log('New update available! Reloading...');
+                      window.location.reload();
+                    }
+                  };
+                }
+              };
             },
             (err) => {
               console.log('ServiceWorker registration failed: ', err);
