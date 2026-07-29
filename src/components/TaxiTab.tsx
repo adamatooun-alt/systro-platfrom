@@ -338,6 +338,17 @@ export default function TaxiTab({
                 plateNumber: active.selectedTechnicianPlate || "41-789-32"
               });
             }
+          }).catch((err) => {
+            console.warn("Could not fetch bids offline, falling back to local bid:", err);
+            setSelectedBid({
+              technicianId: active.selectedTechnicianId,
+              technicianName: active.selectedTechnicianName || active.selectedTechnicianId,
+              price: active.approximatePrice || 100,
+              etaMinutes: active.etaMinutes || 10,
+              rating: 4.9,
+              carModel: active.selectedTechnicianCar || "Skoda Octavia",
+              plateNumber: active.selectedTechnicianPlate || "41-789-32"
+            });
           });
         }
       } else {

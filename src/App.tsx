@@ -194,6 +194,7 @@ export default function App() {
   });
 
   const [isSosPanelOpen, setIsSosPanelOpen] = useState<boolean>(false);
+  const [showTranslateWidget, setShowTranslateWidget] = useState<boolean>(false);
 
   // Save preference on change
   useEffect(() => {
@@ -905,9 +906,9 @@ export default function App() {
           lat: providerLat,
           lng: providerLng,
           isOnline: true
-        });
+        }).catch((err) => console.warn("Failed to update technician location offline:", err));
       }
-    });
+    }).catch((err) => console.warn("Technician document offline check:", err));
   }, [providerLat, providerLng, isLoggedIn, loggedInUserEmail, userRole]);
 
   // Synchronize services from Firestore (real-time)
@@ -2757,7 +2758,7 @@ export default function App() {
         sessionStorage.removeItem('systro_phone_number');
       }
     } catch (err) {
-      console.error("Error persisting/fetching user from Firestore:", err);
+      console.warn("Firestore offline or unavailable during sign-in, maintaining local session state:", err);
     }
 
     setActiveTab('simulator');
@@ -6599,6 +6600,122 @@ export default function App() {
                   >
                     <span>📞 {lang === 'ar' ? 'اتصال عاجل: 1221' : lang === 'he' ? 'שיחת חירום: 1221' : 'Call Emergency: 1221'}</span>
                   </a>
+                </div>
+
+                {/* Box 1: SOS Floating Toggle Card */}
+                <div className="p-4 bg-gradient-to-br from-[#111827] to-[#1F1924] border border-red-500/20 rounded-2xl hover:border-red-500/40 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 shrink-0">
+                        <AlertTriangle className="w-5.5 h-5.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-white">
+                          {lang === 'ar' ? 'زر الطوارئ السريع SOS 🚨' : lang === 'he' ? 'לחצן חירום מהיר SOS 🚨' : 'SOS Emergency Button 🚨'}
+                        </h4>
+                        <p className="text-[9px] text-gray-400 font-bold leading-relaxed">
+                          {lang === 'ar' 
+                            ? 'تفعيل زر عائم أحمر بأسفل الشاشة للاتصال بالشرطة وطواقم الإسعاف فوراً.' 
+                            : lang === 'he'
+                            ? 'הפעלת לחצן צף אדום בתחתית המסך לחיוג מהיר למשטרה והצלה.'
+                            : 'Toggle persistent red floating button at bottom for rapid emergency calls.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSosButton(!showSosButton);
+                      triggerToast(
+                        lang === 'ar' 
+                          ? (!showSosButton ? '✅ تم إظهار زر SOS العائم بأسفل الشاشة!' : '❌ تم إخفاء زر SOS العائم') 
+                          : lang === 'he'
+                          ? (!showSosButton ? '✅ לחצן SOS הופעל בהצלחה!' : '❌ לחצן SOS הוסתר')
+                          : (!showSosButton ? '✅ SOS floating button is now visible!' : '❌ SOS floating button hidden'), 
+                        !showSosButton ? 'success' : 'info'
+                      );
+                    }}
+                    className={`w-full py-2.5 mt-2 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
+                      showSosButton 
+                        ? 'bg-amber-500 hover:bg-amber-600 text-black shadow-amber-500/20' 
+                        : 'bg-gray-800 hover:bg-gray-750 text-white border border-gray-700'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${showSosButton ? 'bg-black animate-pulse' : 'bg-gray-500'}`}></span>
+                    <span>
+                      {lang === 'ar' 
+                        ? (showSosButton ? 'زر SOS نشط' : 'إظهار زر SOS') 
+                        : lang === 'he' 
+                        ? (showSosButton ? 'زر SOS פעיל' : 'הצג לחצן SOS') 
+                        : (showSosButton ? 'SOS Enabled' : 'Show SOS Button')}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Box 2: Google Universal Translator Card */}
+                <div className="p-4 bg-gradient-to-br from-[#111827] to-[#0F1E28] border border-blue-500/20 rounded-2xl hover:border-blue-500/40 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 shrink-0">
+                        <Globe className="w-5.5 h-5.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-white">
+                          {lang === 'ar' ? 'مترجم جوجل الفوري العالمي 🌐' : lang === 'he' ? 'מתרגם גוגל העולמי 🌐' : 'Google Universal Translator 🌐'}
+                        </h4>
+                        <p className="text-[9px] text-gray-400 font-bold leading-relaxed">
+                          {lang === 'ar' 
+                            ? 'ترجمة الموقع بالكامل فوراً إلى أي لغة في العالم عبر مترجم قوقل التلقائي.' 
+                            : lang === 'he'
+                            ? 'תרגום האתר כולו באופן מיידי לכל שפה בעולם.'
+                            : 'Instantly translate the entire portal to any global language via Google Translate.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {!showTranslateWidget ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowTranslateWidget(true)}
+                      className="w-full py-2.5 mt-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-orange-500/20 cursor-pointer"
+                    >
+                      <span>🌐 {lang === 'ar' ? 'تفعيل الترجمة الفورية لجميع اللغات' : lang === 'he' ? 'הפעל תרגום מיידי לכל השפות' : 'Enable Instant Universal Translator'}</span>
+                    </button>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2.5 mt-2 border-t border-white/10 pt-3">
+                      <div className="flex items-center gap-2 w-full justify-center">
+                        <span className="text-[10px] font-black text-gray-400">
+                          {lang === 'ar' ? 'اختيار اللغة:' : lang === 'he' ? 'בחירת שפה:' : 'Language Selector:'}
+                        </span>
+                        <div id="google_translate_element" className="min-h-[42px] flex items-center justify-center py-1"></div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            const iframe = document.querySelector('.goog-te-banner-frame') as HTMLIFrameElement;
+                            if (iframe) {
+                              const restoreButton = iframe.contentWindow?.document.querySelector('.goog-te-button button') as HTMLButtonElement;
+                              if (restoreButton) restoreButton.click();
+                            } else {
+                              document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                              document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+                              window.location.reload();
+                            }
+                          } catch (e) {
+                            window.location.reload();
+                          }
+                        }}
+                        className="text-[10px] text-orange-400 hover:text-orange-300 font-black transition-colors underline cursor-pointer flex items-center gap-1 mt-1"
+                      >
+                        <span>🔄 {lang === 'ar' ? 'إعادة الموقع للغة الأصلية' : lang === 'he' ? 'חזור לשפת המקור' : 'Restore Original Language'}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
               </div>
