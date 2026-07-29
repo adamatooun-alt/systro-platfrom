@@ -3262,66 +3262,129 @@ export default function App() {
         </div>
       )}
 
-      {/* Google Maps Style Custom Geolocation Prompt Banner */}
+      {/* Prominent Center-Screen Initial Location & Access Permission Modal Banner */}
       {showLocationPrompt && (
-        <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-8 md:w-[440px] z-50 bg-[#0C101F]/98 border border-amber-500/30 rounded-2xl p-5 shadow-2xl backdrop-blur-md animate-fade-in transition-all">
-          <div className="flex gap-4">
-            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 border border-amber-500/20 animate-pulse">
-              <MapPin className="w-6 h-6 text-amber-400" />
-            </div>
-            <div className="flex-1 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <h4 className="text-sm font-black text-white font-sans">
-                  {t.locationPromptTitle}
-                </h4>
-                <button 
-                  onClick={() => {
-                    try {
-                      sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
-                    } catch (e) {}
-                    setShowLocationPrompt(false);
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X className="w-4.5 h-4.5" />
-                </button>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-black border-2 border-emerald-500/60 rounded-[32px] max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-[0_25px_60px_-15px_rgba(16,185,129,0.35)] relative text-white my-auto text-center animate-scale-up">
+            
+            {/* Top Close Button */}
+            <button 
+              onClick={() => {
+                try {
+                  sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
+                } catch (e) {}
+                setShowLocationPrompt(false);
+              }}
+              className="absolute top-4 left-4 p-2 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-full transition-all cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Icon & Glowing Header */}
+            <div className="space-y-3 pt-2">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 text-slate-950 flex items-center justify-center mx-auto shadow-2xl shadow-emerald-500/40 border-2 border-emerald-300 relative group">
+                <MapPin className="w-10 h-10 text-slate-950 animate-bounce" />
+                <div className="absolute -bottom-1 -right-1 bg-slate-950 text-emerald-400 p-1.5 rounded-full border border-emerald-400 shadow-md">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
               </div>
-              <p className="text-xs text-gray-300 leading-relaxed font-sans font-medium">
-                {t.locationPromptDesc}
+
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-black">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span>{lang === 'ar' ? 'طلب إذن السماح بالوصول والإنقاذ' : lang === 'he' ? 'בקשת הרשאת גישה למיקום' : 'Permission Access Request'}</span>
+              </div>
+
+              <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
+                {lang === 'ar' 
+                  ? 'هل تسمح لسيسترو بتحديد موقعك الجغرافي؟ 📍' 
+                  : lang === 'he'
+                  ? 'האם אתה מאשור לסיסטרו גישה למיקום שלך? 📍'
+                  : 'Allow Systro to access your location? 📍'}
+              </h2>
+            </div>
+
+            {/* Explanatory Features Card */}
+            <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 sm:p-5 text-right rtl:text-right ltr:text-left space-y-3 text-xs sm:text-sm text-slate-200">
+              <p className="font-bold text-white leading-relaxed">
+                {lang === 'ar'
+                  ? 'للحصول على أسرع خدمة إنقاذ وطوارئ وتكسي، نحتاج لمعرفة موقعك الدقيق على الخريطة لتوجيه أقرب مركبة صيانة إليك مباشرة.'
+                  : 'To provide the fastest emergency, towing & taxi dispatch, we need your accurate GPS location on the map.'}
               </p>
-              <div className="pt-2 flex flex-col sm:flex-row gap-2 select-none">
-                <button
-                  onClick={() => {
-                    detectCurrentLocation(false);
-                    try {
-                      sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
-                    } catch (e) {}
-                    setShowLocationPrompt(false);
-                  }}
-                  className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs rounded-xl shadow-md shadow-amber-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{t.locationPromptAllow}</span>
-                </button>
-                <button
-                  onClick={() => {
-                    try {
-                      sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
-                    } catch (e) {}
-                    setShowLocationPrompt(false);
-                    triggerToast(
-                      lang === 'ar'
-                        ? 'ℹ️ حسناً، يمكنك الضغط يدوياً على الخريطة لتحديد موقعك بدقة.'
-                        : 'ℹ️ Alright, you can manually click on the map to set your location.',
-                      'info'
-                    );
-                  }}
-                  className="py-2.5 px-4 bg-[#171C2F] hover:bg-[#1E253F] text-gray-300 hover:text-white border border-gray-800 rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
-                >
-                  {t.locationPromptDecline}
-                </button>
+
+              <div className="space-y-2 pt-1 font-extrabold text-xs text-emerald-300">
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{lang === 'ar' ? 'تحديد دقيق لموقع تعطل المركبة بنسبة 100%' : '100% accurate breakdown location pinning'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{lang === 'ar' ? 'إرسال التنبيهات الفورية لأقرب الفنيين بالمنطقة' : 'Instant dispatch alerts to nearby maintenance technicians'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{lang === 'ar' ? 'خصوصية مشفرة بالكامل بدون حفظ أو تتبع' : 'Fully encrypted & private, zero background tracking'}</span>
+                </div>
               </div>
             </div>
+
+            {/* THE TWO BIG CLEAR BUTTONS: ALLOW / DENY */}
+            <div className="space-y-3 pt-1">
+              {/* BUTTON 1: ALLOW / سماح */}
+              <button
+                type="button"
+                onClick={() => {
+                  detectCurrentLocation(false);
+                  try {
+                    sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
+                  } catch (e) {}
+                  setShowLocationPrompt(false);
+                }}
+                className="w-full py-4 px-6 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-slate-950 font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-emerald-500/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer border-2 border-emerald-300 group"
+              >
+                <Check className="w-6 h-6 shrink-0 group-hover:scale-110 transition-transform" />
+                <span>
+                  {lang === 'ar' 
+                    ? 'سماح بالوصول وتحديد موقعي الآن 📍' 
+                    : lang === 'he'
+                    ? 'אפשר גישה וזהה מיקום עכשיו 📍'
+                    : 'Allow Access & Pin Location Now 📍'}
+                </span>
+              </button>
+
+              {/* BUTTON 2: DENY / غير مسموح */}
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
+                  } catch (e) {}
+                  setShowLocationPrompt(false);
+                  triggerToast(
+                    lang === 'ar'
+                      ? 'ℹ️ تم رفض إذن تحديد الموقع التلقائي. يمكنك التحديد يدوياً على الخريطة.'
+                      : 'ℹ️ Automatic location permission declined. You can manually pin on the map.',
+                    'info'
+                  );
+                }}
+                className="w-full py-3.5 px-6 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white font-black text-xs sm:text-sm rounded-2xl border border-slate-700 shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <X className="w-4.5 h-4.5 text-slate-400 shrink-0" />
+                <span>
+                  {lang === 'ar' 
+                    ? 'غير مسموح (سأحدد موقعي يدوياً على الخريطة) ❌' 
+                    : lang === 'he'
+                    ? 'לא מאושר (אבחר מיקום באופן ידני) ❌'
+                    : 'Don\'t Allow (Manual Pin on Map) ❌'}
+                </span>
+              </button>
+            </div>
+
+            {/* Footer security badge */}
+            <div className="pt-2 text-[11px] font-bold text-slate-400 flex items-center justify-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>{lang === 'ar' ? 'حماية وأمان معتمدين 100% لموقعك الجغرافي' : '100% Verified Location Privacy & Protection'}</span>
+            </div>
+
           </div>
         </div>
       )}
