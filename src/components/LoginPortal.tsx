@@ -11,7 +11,10 @@ interface LoginPortalProps {
   setEnteredEmail: (email: string) => void;
   showGoogleFallbackModal: boolean;
   setShowGoogleFallbackModal: (show: boolean) => void;
+  showAppleFallbackModal?: boolean;
+  setShowAppleFallbackModal?: (show: boolean) => void;
   handleRealGoogleSignIn: (isFallbackMode?: boolean, fallbackEmail?: string, fallbackName?: string) => Promise<void>;
+  handleRealAppleSignIn?: (isFallbackMode?: boolean, fallbackEmail?: string, fallbackName?: string) => Promise<void>;
   handleGoogleSignIn: (email: string, name: string) => Promise<void>;
   triggerToast: (text: string, type?: 'success' | 'warning' | 'info' | 'error') => void;
   t: any;
@@ -27,13 +30,22 @@ export default function LoginPortal({
   setEnteredEmail,
   showGoogleFallbackModal,
   setShowGoogleFallbackModal,
+  showAppleFallbackModal = false,
+  setShowAppleFallbackModal,
   handleRealGoogleSignIn,
+  handleRealAppleSignIn,
   handleGoogleSignIn,
   triggerToast,
   t,
 }: LoginPortalProps) {
   const [customName, setCustomName] = React.useState(() => sessionStorage.getItem('systro_saved_google_name') || '');
   const [customEmail, setCustomEmail] = React.useState(() => sessionStorage.getItem('systro_saved_google_email') || '');
+  const [appleEmail, setAppleEmail] = React.useState(() => sessionStorage.getItem('systro_saved_apple_email') || '');
+  const [appleName, setAppleName] = React.useState(() => sessionStorage.getItem('systro_saved_apple_name') || '');
+  const [appleOtpSent, setAppleOtpSent] = React.useState(false);
+  const [appleOtpCode, setAppleOtpCode] = React.useState('');
+  const [appleOtpSending, setAppleOtpSending] = React.useState(false);
+  const [appleOtpVerifying, setAppleOtpVerifying] = React.useState(false);
   const [acceptedTerms, setAcceptedTerms] = React.useState(false);
   const [showTermsModal, setShowTermsModal] = React.useState(false);
 
@@ -390,18 +402,24 @@ export default function LoginPortal({
                 </span>
               </button>
 
-              {/* Button 2: iOS Mail / Apple Sign In */}
+              {/* Button 2: Sign in with Apple (Apple HIG Compliant) */}
               <button
                 type="button"
-                onClick={() => setShowGoogleFallbackModal(true)}
-                className="w-full py-3 px-4 bg-gradient-to-r from-slate-900 via-slate-800 to-black hover:from-slate-800 hover:to-slate-900 text-white font-extrabold rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-md cursor-pointer border border-slate-700/80 group"
+                onClick={() => {
+                  setShowGoogleFallbackModal(false);
+                  if (handleRealAppleSignIn) {
+                    handleRealAppleSignIn();
+                  } else if (setShowAppleFallbackModal) {
+                    setShowAppleFallbackModal(true);
+                  }
+                }}
+                className="w-full py-3 px-4 bg-black hover:bg-neutral-900 active:bg-neutral-950 text-white font-extrabold rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2.5 shadow-md cursor-pointer border border-neutral-800 group"
               >
-                <svg className="w-4.5 h-4.5 fill-current text-white shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 170 170">
+                <svg className="w-5 h-5 fill-current text-white shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 170 170">
                   <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.13-1.9-14.38-6.08-3.6-2.93-7.53-7.69-11.79-14.28-6.19-9.5-11.03-20.13-14.52-31.88-3.48-11.75-5.23-22.85-5.23-33.3 0-14.2 3.52-25.85 10.57-34.96 7.05-9.12 15.89-13.78 26.51-13.98 4.95 0 10.29 1.22 16.03 3.65 5.74 2.43 9.77 3.65 12.09 3.65 1.82 0 5.82-1.25 12.02-3.75 6.19-2.5 11.39-3.68 15.59-3.56 11.4.63 20.67 4.95 27.81 12.98-10.01 6.08-14.89 14.65-14.64 25.72.25 8.7 3.55 16.14 9.9 22.32 6.35 6.18 13.99 9.8 22.92 10.87-2.31 6.83-5.24 13.68-8.79 20.55zM119.22 31.84c0-7.22 2.61-14.21 7.83-20.97 5.22-6.76 11.83-10.87 19.83-12.33.13 1.13.2 2.01.2 2.64 0 7.35-2.65 14.42-7.95 21.21-5.3 6.79-11.95 10.97-19.95 12.54-.13-.75-.2-1.78-.2-3.09z"/>
                 </svg>
-                <Mail className="w-4 h-4 text-sky-400 shrink-0" />
                 <span>
-                  {lang === 'ar' ? 'تسجيل الدخول عبر iOS Mail / Apple' : lang === 'he' ? 'התחברות באמצעות iOS Mail / Apple' : 'Sign in with iOS Mail / Apple'}
+                  {lang === 'ar' ? 'تسجيل الدخول باستخدام Apple' : lang === 'he' ? 'התחבר באמצעות Apple' : 'Sign in with Apple'}
                 </span>
               </button>
             </div>
@@ -590,8 +608,8 @@ export default function LoginPortal({
 
       {/* Google Interactive Account Modal Fallback */}
       {showGoogleFallbackModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white border border-slate-100 rounded-t-[28px] sm:rounded-[28px] max-w-sm w-full p-6 space-y-5 shadow-2xl text-slate-800 relative">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white border border-slate-100 rounded-[28px] max-w-sm w-full p-6 space-y-5 shadow-2xl text-slate-800 relative my-auto">
             
             <button 
               onClick={() => setShowGoogleFallbackModal(false)}
@@ -775,6 +793,258 @@ export default function LoginPortal({
                       ) : (
                         <span>{lang === 'ar' ? '✉️ إعادة إرسال الرمز' : '✉️ Resend verification code'}</span>
                       )}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Apple Interactive Account Modal Fallback */}
+      {showAppleFallbackModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-[#0f0f10] border border-neutral-800 rounded-[28px] max-w-sm w-full p-6 space-y-5 shadow-2xl text-white relative my-auto">
+            
+            <button 
+              onClick={() => setShowAppleFallbackModal && setShowAppleFallbackModal(false)}
+              className="absolute top-4 left-4 p-1.5 hover:bg-neutral-800 rounded-full transition-colors cursor-pointer text-neutral-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="space-y-4 pt-2">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <svg className="w-9 h-9 fill-current text-white" viewBox="0 0 170 170">
+                  <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.13-1.9-14.38-6.08-3.6-2.93-7.53-7.69-11.79-14.28-6.19-9.5-11.03-20.13-14.52-31.88-3.48-11.75-5.23-22.85-5.23-33.3 0-14.2 3.52-25.85 10.57-34.96 7.05-9.12 15.89-13.78 26.51-13.98 4.95 0 10.29 1.22 16.03 3.65 5.74 2.43 9.77 3.65 12.09 3.65 1.82 0 5.82-1.25 12.02-3.75 6.19-2.5 11.39-3.68 15.59-3.56 11.4.63 20.67 4.95 27.81 12.98-10.01 6.08-14.89 14.65-14.64 25.72.25 8.7 3.55 16.14 9.9 22.32 6.35 6.18 13.99 9.8 22.92 10.87-2.31 6.83-5.24 13.68-8.79 20.55zM119.22 31.84c0-7.22 2.61-14.21 7.83-20.97 5.22-6.76 11.83-10.87 19.83-12.33.13 1.13.2 2.01.2 2.64 0 7.35-2.65 14.42-7.95 21.21-5.3 6.79-11.95 10.97-19.95 12.54-.13-.75-.2-1.78-.2-3.09z"/>
+                </svg>
+                <span className="text-[11px] font-bold text-neutral-400 tracking-wide font-sans">
+                  {lang === 'ar' ? 'Sign in with Apple ID' : lang === 'he' ? 'Sign in with Apple ID' : 'Sign in with Apple ID'}
+                </span>
+              </div>
+
+              <div className="space-y-1 text-center">
+                <h2 className="text-lg font-bold text-white tracking-tight leading-tight select-none font-sans">
+                  {lang === 'ar' ? 'تسجيل الدخول باستخدام Apple' : lang === 'he' ? 'התחבר באמצעות Apple' : 'Sign in with Apple'}
+                </h2>
+                <p className="text-xs text-neutral-400 font-medium leading-relaxed px-1">
+                  {lang === 'ar' 
+                    ? 'أدخل حساب Apple ID أو iCloud الخاص بك للدخول السريع والآمن.' 
+                    : lang === 'he'
+                    ? 'הזן את חשבון ה-Apple ID או ה-iCloud שלך לכניסה מהירה ומאובטחת.'
+                    : 'Enter your Apple ID or iCloud email address for fast, secure sign-in.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {!appleOtpSent ? (
+                <>
+                  <div className="space-y-1">
+                    <label className={`block text-[10px] font-extrabold text-neutral-400 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                      {lang === 'ar' ? 'البريد الإلكتروني لـ Apple ID / iCloud:' : 'Apple ID / iCloud Email:'}
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={appleEmail}
+                      onChange={(e) => {
+                        setAppleEmail(e.target.value);
+                        if (e.target.value.includes('@')) {
+                          const username = e.target.value.split('@')[0];
+                          const formattedName = username
+                            .split(/[._-]/)
+                            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+                            .join(' ');
+                          setAppleName(formattedName || (lang === 'ar' ? 'مستخدم Apple' : 'Apple User'));
+                        }
+                      }}
+                      placeholder="name@icloud.com"
+                      className="w-full px-4 py-2.5 bg-neutral-900 border border-neutral-700 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-white text-left"
+                    />
+                  </div>
+
+                  {appleEmail && (
+                    <div className="bg-neutral-900 border border-neutral-800 p-2.5 rounded-xl flex items-center justify-between text-xs animate-fade-in">
+                      <div className={`flex flex-col gap-0.5 ${lang === 'ar' ? 'text-right w-full' : 'text-left w-full'}`}>
+                        <span className="text-[10px] text-neutral-400 font-black">
+                          {lang === 'ar' ? 'اسم المستخدم المسجل لدى Apple:' : 'Apple Profile Name:'}
+                        </span>
+                        <input
+                          type="text"
+                          value={appleName}
+                          onChange={(e) => setAppleName(e.target.value)}
+                          className={`text-white font-extrabold focus:outline-none bg-transparent w-full ${lang === 'ar' ? 'text-right' : 'text-left'}`}
+                          placeholder={lang === 'ar' ? 'الاسم الكامل' : 'Full name'}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-2.5 text-right bg-neutral-900/80 p-3 rounded-xl border border-neutral-800">
+                    <input
+                      type="checkbox"
+                      id="apple-terms-checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="mt-1 w-4.5 h-4.5 text-white border-neutral-600 rounded focus:ring-white cursor-pointer"
+                    />
+                    <label htmlFor="apple-terms-checkbox" className="text-[11px] text-neutral-300 font-bold select-none cursor-pointer leading-relaxed text-right w-full">
+                      {lang === 'ar' ? (
+                        <>
+                          أوافق على <button type="button" onClick={() => setShowTermsModal(true)} className="text-white hover:underline inline font-black cursor-pointer">شروط الخدمة وسياسة الخصوصية</button> الخاصة بـ Apple و Systro.
+                        </>
+                      ) : (
+                        <>
+                          I agree to the <button type="button" onClick={() => setShowTermsModal(true)} className="text-white hover:underline inline font-black cursor-pointer">Terms & Privacy Policy</button> of Apple & Systro.
+                        </>
+                      )}
+                    </label>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={!appleEmail || !appleEmail.includes('@') || appleOtpSending}
+                    onClick={async () => {
+                      if (!acceptedTerms) {
+                        triggerToast(lang === 'ar' ? 'يرجى الموافقة على شروط الخدمة أولاً!' : 'Please accept terms of service first!', 'warning');
+                        return;
+                      }
+                      setAppleOtpSending(true);
+                      sessionStorage.setItem('systro_saved_apple_email', appleEmail.trim());
+                      sessionStorage.setItem('systro_saved_apple_name', appleName.trim() || 'Apple User');
+                      
+                      try {
+                        const response = await fetch('/api/send-otp', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: appleEmail.trim() })
+                        });
+                        const data = await response.json();
+                        if (response.ok && data.success) {
+                          setAppleOtpSent(true);
+                          triggerToast(
+                            lang === 'ar' 
+                              ? `تم إرسال رمز التحقق الآمن إلى بريد Apple ID (${appleEmail.trim()}) بنجاح! ✉️` 
+                              : `Verification code sent to Apple ID (${appleEmail.trim()})! ✉️`, 
+                            'success'
+                          );
+                        } else {
+                          // Fallback to direct login
+                          if (handleRealAppleSignIn) {
+                            await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
+                          } else {
+                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User');
+                            if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
+                          }
+                        }
+                      } catch (err) {
+                        if (handleRealAppleSignIn) {
+                          await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
+                        } else {
+                          await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User');
+                          if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
+                        }
+                      } finally {
+                        setAppleOtpSending(false);
+                      }
+                    }}
+                    className="w-full py-3.5 bg-white hover:bg-neutral-200 active:bg-neutral-300 text-black font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {appleOtpSending ? (
+                      <span>{lang === 'ar' ? 'جاري الاتصال بـ Apple...' : 'Connecting to Apple...'}</span>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-5 h-5 shrink-0" />
+                        <span>
+                          {lang === 'ar' ? 'المتابعة مع Apple ID' : 'Continue with Apple ID'}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="text-center space-y-2 bg-neutral-900 border border-neutral-800 p-3.5 rounded-2xl">
+                    <p className="text-xs text-neutral-300 font-extrabold leading-relaxed">
+                      {lang === 'ar' 
+                        ? `لقد أرسلنا رمز التحقق إلى حساب Apple ID التالي:` 
+                        : `Verification code sent to Apple ID:`}
+                    </p>
+                    <p className="font-mono text-xs text-white font-bold break-all bg-black py-1 px-3.5 rounded-lg inline-block border border-neutral-800">
+                      {appleEmail}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className={`block text-[10px] font-extrabold text-neutral-400 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                      {lang === 'ar' ? 'رمز التحقق المكون من 6 أرقام:' : '6-Digit Verification Code:'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      value={appleOtpCode}
+                      onChange={(e) => setAppleOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="******"
+                      className="w-full px-4 py-3 bg-neutral-900 border border-neutral-700 rounded-xl text-white font-mono text-center text-lg font-bold tracking-widest focus:outline-none focus:border-white"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={appleOtpVerifying || appleOtpCode.length < 6}
+                    onClick={async () => {
+                      setAppleOtpVerifying(true);
+                      try {
+                        const response = await fetch('/api/verify-otp', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: appleEmail.trim(), otp: appleOtpCode.trim() })
+                        });
+                        const data = await response.json();
+                        if (response.ok && data.success) {
+                          if (handleRealAppleSignIn) {
+                            await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
+                          } else {
+                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User');
+                            if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
+                          }
+                          triggerToast(
+                            lang === 'ar' ? 'تم تسجيل الدخول بنجاح عبر حساب Apple! ' : 'Signed in successfully via Apple ID! ',
+                            'success'
+                          );
+                        } else {
+                          triggerToast(data.error || (lang === 'ar' ? 'رمز التحقق غير صحيح!' : 'Invalid code!'), 'error');
+                        }
+                      } catch (err) {
+                        triggerToast(lang === 'ar' ? 'خطأ أثناء التحقق!' : 'Error verifying code!', 'error');
+                      } finally {
+                        setAppleOtpVerifying(false);
+                      }
+                    }}
+                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {appleOtpVerifying ? (
+                      <span>{lang === 'ar' ? 'جاري التحقق...' : 'Verifying...'}</span>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-5 h-5 shrink-0" />
+                        <span>
+                          {lang === 'ar' ? 'تأكيد ودخول بحساب Apple' : 'Confirm & Sign in with Apple'}
+                        </span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => setAppleOtpSent(false)}
+                      className="text-[11px] text-neutral-400 hover:text-white hover:underline font-bold transition-all cursor-pointer"
+                    >
+                      {lang === 'ar' ? '← تغيير حساب Apple ID' : '← Change Apple ID email'}
                     </button>
                   </div>
                 </>
