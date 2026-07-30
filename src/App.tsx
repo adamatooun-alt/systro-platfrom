@@ -3068,55 +3068,74 @@ export default function App() {
   };
 
   const handleSaveProfile = async () => {
-    if (!profileNameInput.trim()) {
+    const trimmedName = profileNameInput.trim();
+    if (!trimmedName) {
       triggerToast(lang === 'ar' ? 'الرجاء إدخال اسم صحيح!' : 'Please enter a valid name!', 'warning');
       return;
     }
 
     try {
-      const trimmedName = profileNameInput.trim();
       const trimmedPhone = profilePhoneInput.trim();
       const trimmedAvatar = profileAvatarInput.trim();
+      const targetEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim();
 
       // 1. Update local states
       setLoggedInUserName(trimmedName);
       setPhoneNumber(trimmedPhone);
       setUserAvatar(trimmedAvatar);
+      if (targetEmail) {
+        setLoggedInUserEmail(targetEmail);
+      }
+
       if (activeTechDoc || userRole === 'technician') {
         setProviderName(trimmedName);
         setProviderPhone(trimmedPhone);
         setProviderAvatar(trimmedAvatar);
+        setActiveTechDoc(prev => prev ? {
+          ...prev,
+          name: trimmedName,
+          arName: trimmedName,
+          phone: trimmedPhone,
+          avatar: trimmedAvatar
+        } : null);
       }
 
       // 2. Update sessionStorage
       sessionStorage.setItem('systro_user_name', trimmedName);
       sessionStorage.setItem('systro_phone_number', trimmedPhone);
       sessionStorage.setItem('systro_user_avatar', trimmedAvatar);
+      if (targetEmail) {
+        sessionStorage.setItem('systro_user_email', targetEmail);
+      }
 
-      // 3. Update Firestore users collection
-      if (loggedInUserEmail) {
-        const userDocRef = doc(db, "users", loggedInUserEmail);
+      // 3. Update Firestore users collection strictly linked to email
+      if (targetEmail) {
+        const userDocRef = doc(db, "users", targetEmail);
         await setDoc(userDocRef, {
+          email: targetEmail,
           name: trimmedName,
           phone: trimmedPhone,
-          avatar: trimmedAvatar
+          avatar: trimmedAvatar,
+          updatedAt: new Date().toISOString()
         }, { merge: true });
 
-        // 4. Update Firestore technicians collection if they are a registered technician
-        const techDocRef = doc(db, "technicians", loggedInUserEmail);
+        // 4. Update Firestore technicians collection if document exists or technician role
+        const techDocRef = doc(db, "technicians", targetEmail);
         const techSnap = await getDoc(techDocRef);
         if (techSnap.exists()) {
-          await updateDoc(techDocRef, {
+          await setDoc(techDocRef, {
+            id: targetEmail,
+            email: targetEmail,
             name: trimmedName,
             arName: trimmedName,
             phone: trimmedPhone,
             avatar: trimmedAvatar
-          });
+          }, { merge: true });
         }
       }
 
       setShowProfileModal(false);
-      triggerToast(lang === 'ar' ? 'تم تحديث الاسم ورقم الهاتف والصورة بنجاح!' : 'Profile updated successfully!', 'success');
+      triggerToast(lang === 'ar' ? 'تم حفظ وتحديث البيانات والملف الشخصي بنجاح!' : 'Profile saved successfully!', 'success');
     } catch (err) {
       console.error("Error saving user profile:", err);
       triggerToast(lang === 'ar' ? 'حدث خطأ أثناء حفظ التعديلات!' : 'Error saving profile changes!', 'error');
@@ -7072,120 +7091,126 @@ export default function App() {
 
       {/* User Profile Edit Modal */}
       {showProfileModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in select-none overflow-y-auto">
-          <div className="w-full max-w-md bg-[#0F1424] border border-amber-500/30 p-6 rounded-3xl space-y-5 relative text-right rtl:text-right ltr:text-left shadow-2xl">
-            <button 
-              onClick={() => setShowProfileModal(false)}
-              className="absolute top-4 left-4 w-8 h-8 rounded-full bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center text-sm font-bold cursor-pointer transition-colors"
-            >
-              ✕
-            </button>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fade-in select-none">
+          <div className="w-full max-w-md max-h-[85vh] sm:max-h-[88vh] flex flex-col bg-[#0F1424] border border-amber-500/30 rounded-3xl relative text-right rtl:text-right ltr:text-left shadow-2xl overflow-hidden my-auto">
+            
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 pb-3 border-b border-gray-800/80 relative shrink-0 text-center space-y-1 bg-[#0F1424]">
+              <button 
+                onClick={() => setShowProfileModal(false)}
+                className="absolute top-4 left-4 w-8 h-8 rounded-full bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center text-sm font-bold cursor-pointer transition-colors z-10"
+              >
+                ✕
+              </button>
 
-            <div className="text-center space-y-1">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-500">
-                <User className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-500 shadow-inner">
+                <User className="w-5 h-5" />
               </div>
-              <h3 className="text-lg font-black text-white">
+              <h3 className="text-base sm:text-lg font-black text-white">
                 {lang === 'ar' ? 'الملف الشخصي والحساب' : lang === 'he' ? 'פרופיל אישי וחשבון' : 'User Profile & Account'}
               </h3>
-              <p className="text-xs text-gray-400 font-medium dir-ltr text-center">
-                {loggedInUserEmail || 'user@systro.live'}
+              <p className="text-xs text-amber-400 font-bold dir-ltr text-center bg-amber-500/10 py-1 px-3 rounded-full inline-block border border-amber-500/20">
+                {loggedInUserEmail || sessionStorage.getItem('systro_user_email') || 'user@systro.live'}
               </p>
             </div>
 
-            {/* Avatar preview & change section */}
-            <div className="flex flex-col items-center gap-3 bg-[#0A0B10] p-4 rounded-2xl border border-gray-800">
-              <div className="relative group">
-                <img 
-                  src={profileAvatarInput || userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} 
-                  alt="Profile Avatar" 
-                  className="w-20 h-20 rounded-full object-cover border-2 border-amber-500/50 shadow-lg shadow-amber-500/10"
-                  referrerPolicy="no-referrer"
-                />
-                <label className="absolute bottom-0 right-0 p-2 bg-amber-500 hover:bg-amber-400 text-black rounded-full cursor-pointer shadow-md transition-all" title={lang === 'ar' ? 'تغيير الصورة من الجهاز' : 'Upload photo'}>
-                  <Camera className="w-4 h-4" />
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={handleAvatarFileUpload}
+            {/* Scrollable Modal Body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+              {/* Avatar preview & change section */}
+              <div className="flex flex-col items-center gap-3 bg-[#0A0B10] p-3.5 rounded-2xl border border-gray-800">
+                <div className="relative group">
+                  <img 
+                    src={profileAvatarInput || userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} 
+                    alt="Profile Avatar" 
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-amber-500/50 shadow-lg shadow-amber-500/10"
+                    referrerPolicy="no-referrer"
                   />
-                </label>
+                  <label className="absolute bottom-0 right-0 p-1.5 sm:p-2 bg-amber-500 hover:bg-amber-400 text-black rounded-full cursor-pointer shadow-md transition-all active:scale-95" title={lang === 'ar' ? 'تغيير الصورة من الجهاز' : 'Upload photo'}>
+                    <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleAvatarFileUpload}
+                    />
+                  </label>
+                </div>
+
+                <div className="text-center space-y-1 w-full">
+                  <span className="text-[11px] font-bold text-gray-400">
+                    {lang === 'ar' ? 'اختر صورة شخصية جاهزة:' : lang === 'he' ? 'בחר תמונת פרופיל:' : 'Choose Preset Avatar:'}
+                  </span>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    {avatarPresets.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setProfileAvatarInput(preset)}
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border-2 transition-all cursor-pointer ${
+                          profileAvatarInput === preset ? 'border-amber-500 scale-110 shadow-md ring-2 ring-amber-500/30' : 'border-gray-700 opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        <img src={preset} alt="preset" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              <div className="text-center space-y-1 w-full">
-                <span className="text-[10px] font-bold text-gray-400">
-                  {lang === 'ar' ? 'اختر صورة شخصية جاهزة:' : lang === 'he' ? 'בחר תמונת פרופיל:' : 'Choose Preset Avatar:'}
-                </span>
-                <div className="flex items-center justify-center gap-2 pt-1">
-                  {avatarPresets.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setProfileAvatarInput(preset)}
-                      className={`w-8 h-8 rounded-full overflow-hidden border-2 transition-all cursor-pointer ${
-                        profileAvatarInput === preset ? 'border-amber-500 scale-110 shadow-md' : 'border-gray-700 opacity-60 hover:opacity-100'
-                      }`}
-                    >
-                      <img src={preset} alt="preset" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    </button>
-                  ))}
+              <div className="space-y-3.5">
+                {/* Name Input */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-black text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" />
+                    <span>{lang === 'ar' ? 'الاسم بالكامل (أو اسم الشهرة):' : lang === 'he' ? 'שם מלא:' : 'Full Name / Display Name:'}</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={profileNameInput}
+                    onChange={(e) => setProfileNameInput(e.target.value)}
+                    placeholder={lang === 'ar' ? 'أدخل اسمك هنا' : 'Enter your name'}
+                    className="w-full px-4 py-2.5 sm:py-3 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-white font-bold text-xs transition-colors"
+                  />
+                </div>
+
+                {/* Phone Input */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-black text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>{lang === 'ar' ? 'رقم الهاتف / واتساب للتواصل:' : lang === 'he' ? 'מספר טלפון / וואטסאפ:' : 'Phone / WhatsApp Number:'}</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={profilePhoneInput}
+                    onChange={(e) => setProfilePhoneInput(e.target.value)}
+                    placeholder="+972 59-XXX-XXXX"
+                    className="w-full px-4 py-2.5 sm:py-3 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-white font-bold text-xs transition-colors dir-ltr text-left"
+                  />
+                </div>
+
+                {/* Avatar URL Input */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>{lang === 'ar' ? 'رابط صورة شخصية (اختياري):' : lang === 'he' ? 'קישור לתמונה (רשות):' : 'Avatar Image URL (Optional):'}</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={profileAvatarInput}
+                    onChange={(e) => setProfileAvatarInput(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-4 py-2 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-gray-300 font-mono text-[11px] transition-colors dir-ltr text-left"
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              {/* Name Input */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-black text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5" />
-                  <span>{lang === 'ar' ? 'الاسم بالكامل (أو اسم الشهرة):' : lang === 'he' ? 'שם מלא:' : 'Full Name / Display Name:'}</span>
-                </label>
-                <input 
-                  type="text" 
-                  value={profileNameInput}
-                  onChange={(e) => setProfileNameInput(e.target.value)}
-                  placeholder={lang === 'ar' ? 'أدخل اسمك هنا' : 'Enter your name'}
-                  className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-white font-bold text-xs transition-colors"
-                />
-              </div>
-
-              {/* Phone Input */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-black text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>{lang === 'ar' ? 'رقم الهاتف / واتساب للتواصل:' : lang === 'he' ? 'מספר טלפון / וואטסאפ:' : 'Phone / WhatsApp Number:'}</span>
-                </label>
-                <input 
-                  type="text" 
-                  value={profilePhoneInput}
-                  onChange={(e) => setProfilePhoneInput(e.target.value)}
-                  placeholder="+972 59-XXX-XXXX"
-                  className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-white font-bold text-xs transition-colors dir-ltr text-left"
-                />
-              </div>
-
-              {/* Avatar URL Input */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5" />
-                  <span>{lang === 'ar' ? 'رابط صورة شخصية (اختياري):' : lang === 'he' ? 'קישור לתמונה (רשות):' : 'Avatar Image URL (Optional):'}</span>
-                </label>
-                <input 
-                  type="text" 
-                  value={profileAvatarInput}
-                  onChange={(e) => setProfileAvatarInput(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-gray-300 font-mono text-[11px] transition-colors dir-ltr text-left"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2 flex items-center gap-3">
+            {/* Fixed Footer Buttons - Always visible at bottom of modal */}
+            <div className="p-3.5 sm:p-4 border-t border-gray-800 bg-[#0A0B10] flex items-center gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={handleSaveProfile}
-                className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-2"
+                className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>✓</span>
                 <span>{lang === 'ar' ? 'حفظ التغييرات والمعلومات' : lang === 'he' ? 'שמור שינויים' : 'Save Profile Changes'}</span>
@@ -7194,11 +7219,12 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowProfileModal(false)}
-                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-300 font-bold text-xs rounded-xl transition-all cursor-pointer shrink-0"
               >
                 {lang === 'ar' ? 'إلغاء' : lang === 'he' ? 'ביטול' : 'Cancel'}
               </button>
             </div>
+
           </div>
         </div>
       )}
