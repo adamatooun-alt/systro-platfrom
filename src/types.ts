@@ -46,6 +46,9 @@ export interface RescueRequest {
   timestamp: string;
   pickupLocation?: string;
   dropoffLocation?: string;
+  payerType?: 'client' | 'technician';
+  paymentMethod?: 'gpay' | 'card' | 'whatsapp' | 'commission';
+  commissionAmount?: number;
 }
 
 export interface Technician {
@@ -67,6 +70,10 @@ export interface Technician {
   email?: string;
   notifyEmail?: boolean;
   notifyWhatsapp?: boolean;
+  paymentPlan?: 'per_task' | 'monthly_subscription';
+  commissionRate?: number; // e.g., 5 or 10 (%)
+  subscriptionStatus?: 'active' | 'inactive' | 'pending';
+  subscriptionExpiry?: string;
 }
 
 export interface Bid {

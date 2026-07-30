@@ -738,8 +738,10 @@ export default function App() {
   // Current simulation rating state
   const [simRating, setSimRating] = useState<number>(5);
 
-  // Google Pay and Card payment options states
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<'gpay' | 'card'>('gpay');
+  // Google Pay, Card, WhatsApp, and Commission payment options states
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<'gpay' | 'card' | 'whatsapp' | 'commission'>('gpay');
+  const [taskPayerType, setTaskPayerType] = useState<'client' | 'technician'>('client');
+  const [techSelectedCommissionRate, setTechSelectedCommissionRate] = useState<number>(10);
   const [isPaymentProcessing, setIsPaymentProcessing] = useState<boolean>(false);
   const [cardNumber, setCardNumber] = useState<string>('');
   const [cardExpiry, setCardExpiry] = useState<string>('');
@@ -2131,13 +2133,17 @@ export default function App() {
     }
   };
 
-  // Client: Deposit into Escrow Safe Vault & Start Transit
-  const handleEscrowDeposit = async () => {
+  // Client: Deposit into Escrow Safe Vault & Start Transit with flexible payment methods
+  const handleEscrowDeposit = async (paymentMethodOverride?: 'gpay' | 'card' | 'whatsapp' | 'commission') => {
     if (!selectedBid || !activeRequestId || !liveRequest) return;
+
+    const chosenMethod = paymentMethodOverride || selectedPaymentTab;
 
     try {
       await updateDoc(doc(db, "requests", activeRequestId), {
-        status: "en_route"
+        status: "en_route",
+        payerType: taskPayerType,
+        paymentMethod: chosenMethod
       });
 
       triggerToast(t.simDepositSuccessToast, 'success');
@@ -2151,9 +2157,26 @@ export default function App() {
         techName: lang === 'ar' ? selectedBid.technicianArName : selectedBid.technicianName,
         amount: selectedBid.price,
         serviceType: liveRequest.serviceType,
-        status: 'escrowed'
+        status: 'escrowed',
+        payerType: taskPayerType,
+        paymentMethod: chosenMethod
       };
       await setDoc(doc(db, "escrows", escrowId), newEscrow);
+
+      let systemNoticeMsg = '';
+      if (chosenMethod === 'whatsapp') {
+        systemNoticeMsg = lang === 'ar'
+          ? `💬 تم التنسيق والتأكيد عبر الواتساب المباشر والتوجيه لطلب بقيمة ${selectedBid.price} ₪.`
+          : `💬 Guidance & Payment confirmed via Direct WhatsApp Support (${selectedBid.price} ₪).`;
+      } else if (chosenMethod === 'commission' || taskPayerType === 'technician') {
+        systemNoticeMsg = lang === 'ar'
+          ? `🛠️ المهمة مغطاة برسوم وعمولة مقدم الخدمة (${activeTechDoc?.paymentPlan === 'monthly_subscription' ? 'اشتراك شهري 199 ₪' : `عمولة ${activeTechDoc?.commissionRate || 10}%`}).`
+          : `🛠️ Task fees covered by Provider (${activeTechDoc?.paymentPlan === 'monthly_subscription' ? 'Monthly Sub 199 ₪' : `Commission ${activeTechDoc?.commissionRate || 10}%`}).`;
+      } else {
+        systemNoticeMsg = lang === 'ar'
+          ? `🔒 تم تأمين وحجز مبلغ ${selectedBid.price} ₪ في محفظة الأمان المالي. لن يتم تحرير الدفعة إلا بعد اكتمال الخدمة.`
+          : `🔒 ${selectedBid.price} ₪ successfully secured in the Escrow Safe Vault. Funds remain locked until service validation.`;
+      }
 
       // Add messages in Chat
       const m1Id = `c1-${Date.now()}`;
@@ -2161,8 +2184,8 @@ export default function App() {
         id: m1Id,
         requestId: activeRequestId,
         sender: 'system',
-        text: lang === 'ar' ? `🔒 تم تأمين وحجز مبلغ ${selectedBid.price} ₪ في محفظة الأمان المالي. لن يتم تحرير الدفعة إلا بعد اكتمال الخدمة.` : `🔒 ${selectedBid.price} ₪ successfully secured in the Escrow Safe Vault. Funds remain locked until service validation.`,
-        timestamp: '11:55',
+        text: systemNoticeMsg,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         createdTime: Date.now()
       });
 
@@ -2171,8 +2194,8 @@ export default function App() {
         id: m2Id,
         requestId: activeRequestId,
         sender: 'technician',
-        text: lang === 'ar' ? `مرحباً بك يا غالي، لقد استلمت إشعار إيداع الضمان بنجاح وأنا متحرك إليك الآن بسيارة الإنقاذ. هل يمكنك تأكيد نوع سيارتك؟` : `Hello there, I have received the secure Escrow deposit notification. I am driving towards you now. Could you please confirm your car model?`,
-        timestamp: '11:56',
+        text: lang === 'ar' ? `مرحباً بك يا غالي، لقد استلمت إشعار إيداع وتأكيد الخدمة بنجاح وأنا متحرك إليك الآن بسيارة الإنقاذ. هل يمكنك تأكيد موقعك ونوع سيارتك؟` : `Hello there, I have received the secure deposit notification. I am driving towards you now with the service vehicle.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         createdTime: Date.now() + 100
       });
 
@@ -2311,6 +2334,64 @@ export default function App() {
         setIsPaymentProcessing(false);
       }
     }, 2500);
+  };
+
+  // WhatsApp Guidance & Direct Contact Payment Handler
+  const handleWhatsAppGuidancePayment = async () => {
+    if (!selectedBid || !activeRequestId || !liveRequest) return;
+    
+    setIsPaymentProcessing(true);
+    triggerToast(lang === 'ar' ? 'جاري فتح محادثة WhatsApp المباشرة مع فريق الدعم والتوجيه...' : 'Opening direct WhatsApp conversation for guidance & payment...', 'info');
+
+    const msgText = lang === 'ar'
+      ? `مرحباً فريق سيسترو، أرغب بالاستفسار والتوجيه المباشر والدفع عن طريق الواتساب لطلب الإنقاذ التالية تفاصيله:\n\n- نوع الخدمة: ${liveRequest.serviceType}\n- قيمة الطلب: ${selectedBid.price} ₪\n- الفني المختار: ${selectedBid.technicianArName || selectedBid.technicianName}\n- الموقع: ${liveRequest.arLocationName || liveRequest.locationName || 'موقع محدد'}\n\nيرجى التواصل لندلّكم وتوجيهنا وتأكيد الدفعة.`
+      : `Hello Systro Team, I would like to inquire, get guidance, and process payment via WhatsApp for rescue request:\n- Service: ${liveRequest.serviceType}\n- Amount: ${selectedBid.price} ILS\n- Tech: ${selectedBid.technicianName}\n- Location: ${liveRequest.locationName}`;
+
+    window.open(`https://wa.me/972599999999?text=${encodeURIComponent(msgText)}`, '_blank');
+    
+    setTimeout(async () => {
+      try {
+        setIsPaymentProcessing(false);
+        await handleEscrowDeposit('whatsapp');
+        triggerToast(
+          lang === 'ar'
+            ? `✅ تم التأكيد والتوجيه بنجاح عبر الواتساب المباشر!`
+            : `✅ Direct WhatsApp guidance & payment initiated!`,
+          'success'
+        );
+      } catch (err) {
+        console.error("WhatsApp payment error:", err);
+        setIsPaymentProcessing(false);
+      }
+    }, 1500);
+  };
+
+  // Handler for technician to save/update payment billing plan (Per-task commission vs Monthly Subscription)
+  const handleSaveTechPaymentPlan = async (plan: 'per_task' | 'monthly_subscription', rate = 10) => {
+    if (!isLoggedIn || !loggedInUserEmail || userRole !== 'technician') return;
+    try {
+      await setDoc(doc(db, "technicians", loggedInUserEmail), {
+        paymentPlan: plan,
+        commissionRate: rate,
+        subscriptionStatus: plan === 'monthly_subscription' ? 'active' : 'inactive',
+        subscriptionExpiry: plan === 'monthly_subscription' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : null,
+        updatedAt: Date.now()
+      }, { merge: true });
+
+      triggerToast(
+        lang === 'ar'
+          ? (plan === 'monthly_subscription' 
+              ? '✅ تم تفعيل الاشتراك الشهري (199 ₪/شهرياً) بنجاح! عمولة 0% على كافة المهمات.' 
+              : `✅ تم تفعيل خيار الدفع عن كل مهمة بنسبة عمولة ${rate}%!`)
+          : (plan === 'monthly_subscription'
+              ? '✅ Monthly subscription (199 ₪/mo) active! 0% commission on all tasks.'
+              : `✅ Pay per task active with ${rate}% commission!`),
+        'success'
+      );
+    } catch (err) {
+      console.error("Error updating tech payment plan:", err);
+      triggerToast(lang === 'ar' ? 'حدث خطأ في تحديث الخطة' : 'Error updating plan', 'error');
+    }
   };
 
   // Client: Release funds from Escrow to partner
@@ -4534,6 +4615,105 @@ export default function App() {
                             })}
                           </div>
                         </div>
+
+                        {/* Provider Billing & Payment Plan Options (خطة مدفوعات الخدمة والعمولات) */}
+                        <div className="space-y-3 pt-3 border-t border-gray-900">
+                          <div className="flex items-center justify-between">
+                            <h5 className="text-[11px] font-black text-amber-400 flex items-center gap-1.5">
+                              <Coins className="w-3.5 h-3.5 text-amber-500" />
+                              <span>{lang === 'ar' ? '💳 نظام ونموذج المدفوعات لمقدم الخدمة:' : '💳 Provider Billing & Payment Model:'}</span>
+                            </h5>
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold">
+                              {activeTechDoc?.paymentPlan === 'monthly_subscription'
+                                ? (lang === 'ar' ? '🟢 اشتراك شهري (عمولة 0%)' : '🟢 Monthly Sub (0% Comm.)')
+                                : (lang === 'ar' ? `🎯 دفع بالمهمة (${activeTechDoc?.commissionRate || 10}%)` : `🎯 Per-Task (${activeTechDoc?.commissionRate || 10}%)`)}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-right">
+                            {/* Option 1: Pay Per Task / Commission */}
+                            <div className={`p-3.5 rounded-2xl border transition-all ${
+                              activeTechDoc?.paymentPlan !== 'monthly_subscription'
+                                ? 'bg-amber-500/10 border-amber-500/50 text-white'
+                                : 'bg-[#05060A] border-gray-900 text-gray-400'
+                            }`}>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-xs font-black text-amber-400">
+                                  {lang === 'ar' ? 'الخيار 1: دفع نسبة / عمولة عن كل مهمة' : 'Option 1: Pay Commission Per Task'}
+                                </span>
+                                <span className="text-[10px] bg-amber-500/20 text-amber-300 font-mono font-bold px-1.5 py-0.5 rounded">
+                                  5% - 10%
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-gray-400 font-semibold mb-3 leading-relaxed">
+                                {lang === 'ar'
+                                  ? 'يدفع مقدم الخدمة نسبة بسيطة (5% أو 10%) عن كل مهمة إنقاذ ناجحة دون أي رسوم أو التزام شهري ثابت.'
+                                  : 'Pay a small percentage (5% or 10%) per successful rescue without fixed monthly commitment.'}
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveTechPaymentPlan('per_task', 5)}
+                                  className={`flex-1 py-1.5 text-[10px] font-black rounded-xl border transition-all cursor-pointer ${
+                                    activeTechDoc?.paymentPlan !== 'monthly_subscription' && (activeTechDoc?.commissionRate === 5)
+                                      ? 'bg-amber-500 text-black border-amber-400'
+                                      : 'bg-[#0F1017] border-gray-800 text-gray-300 hover:border-amber-500/50'
+                                  }`}
+                                >
+                                  {lang === 'ar' ? 'تفعيل عمولة 5%' : 'Enable 5% Comm.'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveTechPaymentPlan('per_task', 10)}
+                                  className={`flex-1 py-1.5 text-[10px] font-black rounded-xl border transition-all cursor-pointer ${
+                                    activeTechDoc?.paymentPlan !== 'monthly_subscription' && (activeTechDoc?.commissionRate !== 5)
+                                      ? 'bg-amber-500 text-black border-amber-400'
+                                      : 'bg-[#0F1017] border-gray-800 text-gray-300 hover:border-amber-500/50'
+                                  }`}
+                                >
+                                  {lang === 'ar' ? 'تفعيل عمولة 10%' : 'Enable 10% Comm.'}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Option 2: Monthly Subscription */}
+                            <div className={`p-3.5 rounded-2xl border transition-all ${
+                              activeTechDoc?.paymentPlan === 'monthly_subscription'
+                                ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
+                                : 'bg-[#05060A] border-gray-900 text-gray-400'
+                            }`}>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-xs font-black text-emerald-400">
+                                  {lang === 'ar' ? 'الخيار 2: الاشتراك الشهري (199 ₪ / شهرياً)' : 'Option 2: Monthly Subscription (199 ₪/mo)'}
+                                </span>
+                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-mono font-bold px-1.5 py-0.5 rounded">
+                                  0% عمولة
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-gray-400 font-semibold mb-3 leading-relaxed">
+                                {lang === 'ar'
+                                  ? 'اشتراك شهري كامل يمنحك استقبال كافة المهمات والتنبيهات بلا حدود وبنسبة عمولة 0% على أرباحك.'
+                                  : 'Full monthly sub granting unlimited rescues and 0% commission deducted from your earnings.'}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveTechPaymentPlan('monthly_subscription', 0)}
+                                className={`w-full py-2 text-[10px] font-black rounded-xl border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  activeTechDoc?.paymentPlan === 'monthly_subscription'
+                                    ? 'bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-950/40'
+                                    : 'bg-[#0F1017] border-gray-800 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40'
+                                }`}
+                              >
+                                <Zap className="w-3.5 h-3.5" />
+                                <span>
+                                  {activeTechDoc?.paymentPlan === 'monthly_subscription'
+                                    ? (lang === 'ar' ? 'الاشتراك الشهري نشط حالياً 🟢' : 'Monthly Sub Active 🟢')
+                                    : (lang === 'ar' ? 'تفعيل الاشتراك الشهري الآن (199 ₪) 💳' : 'Activate Monthly Sub (199 ₪) 💳')}
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Registering specialties ("يا نقدم خدمات تكتبلهم شو خدماتهم بكل قائمة نكتب إضافة سجل") */}
@@ -5457,22 +5637,58 @@ export default function App() {
 
                       {/* Payment gateway selection */}
                       <div className="space-y-4">
-                        <span className="text-xs font-black text-gray-400 uppercase block tracking-wider">
-                          {lang === 'ar' ? 'اختر بوابة الدفع الآمنة' : 'Select Secure Payment Gateway'}
-                        </span>
-                        
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between border-b border-gray-900 pb-2">
+                          <span className="text-xs font-black text-gray-300 uppercase tracking-wider">
+                            {lang === 'ar' ? 'خيارات وطرق الدفع وتحديد المسؤولية 💳' : 'Payment Options & Responsible Payer 💳'}
+                          </span>
+                        </div>
+
+                        {/* Payer responsibility selector toggle */}
+                        <div className="p-3 bg-[#07080E] border border-amber-500/20 rounded-2xl space-y-2">
+                          <span className="text-[10px] font-black text-amber-400 block text-right">
+                            {lang === 'ar' ? 'حدد من يقوم بالدفع لهذه المهمة 🎯' : 'Select who pays for this task 🎯'}
+                          </span>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setTaskPayerType('client')}
+                              className={`py-2 px-3 rounded-xl border text-[11px] font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                taskPayerType === 'client'
+                                  ? 'bg-amber-500 text-black border-amber-400 shadow-md'
+                                  : 'bg-[#0E0F17] border-gray-800 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              <Users className="w-3.5 h-3.5" />
+                              <span>{lang === 'ar' ? 'الزبون (حجز بالضمان)' : 'Customer (Escrow)'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setTaskPayerType('technician')}
+                              className={`py-2 px-3 rounded-xl border text-[11px] font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                taskPayerType === 'technician'
+                                  ? 'bg-amber-500 text-black border-amber-400 shadow-md'
+                                  : 'bg-[#0E0F17] border-gray-800 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              <Wrench className="w-3.5 h-3.5" />
+                              <span>{lang === 'ar' ? 'مقدم الخدمة (عمولة)' : 'Provider (Commission)'}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 4 Tabs Selector */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           <button
                             type="button"
                             onClick={() => setSelectedPaymentTab('gpay')}
-                            className={`p-4 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2 text-center ${
+                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer ${
                               selectedPaymentTab === 'gpay'
                                 ? 'bg-amber-500/10 border-amber-500 text-amber-500'
                                 : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
                             }`}
                           >
-                            <span className="text-xs font-black tracking-wider flex items-center gap-1.5">
-                              {/* Custom Colored Google Pay Mock Label */}
+                            <span className="text-xs font-black tracking-wider flex items-center gap-1">
                               <span className="text-white">G</span>
                               <span className="text-blue-500">o</span>
                               <span className="text-red-500">o</span>
@@ -5481,23 +5697,53 @@ export default function App() {
                               <span className="text-blue-500">e</span>
                               <span className="text-white ml-0.5">Pay</span>
                             </span>
-                            <span className="text-[10px] text-gray-500 font-bold block">
-                              {lang === 'ar' ? 'دفع سريع وآمن' : 'Fast & Secure'}
+                            <span className="text-[9px] text-gray-500 font-bold block">
+                              {lang === 'ar' ? 'دفع سريع' : 'Fast Pay'}
                             </span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setSelectedPaymentTab('card')}
-                            className={`p-4 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2 text-center ${
+                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer ${
                               selectedPaymentTab === 'card'
                                 ? 'bg-amber-500/10 border-amber-500 text-amber-500'
                                 : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
                             }`}
                           >
-                            <CreditCard className="w-5 h-5" />
+                            <CreditCard className="w-4 h-4" />
                             <span className="text-xs font-black">
                               {lang === 'ar' ? 'بطاقة ائتمان' : 'Credit Card'}
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPaymentTab('whatsapp')}
+                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer ${
+                              selectedPaymentTab === 'whatsapp'
+                                ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400'
+                                : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
+                            }`}
+                          >
+                            <MessageSquare className="w-4 h-4 text-emerald-400" />
+                            <span className="text-xs font-black">
+                              {lang === 'ar' ? 'واتساب 💬' : 'WhatsApp 💬'}
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPaymentTab('commission')}
+                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer ${
+                              selectedPaymentTab === 'commission'
+                                ? 'bg-amber-500/10 border-amber-500 text-amber-500'
+                                : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
+                            }`}
+                          >
+                            <Wrench className="w-4 h-4" />
+                            <span className="text-xs font-black">
+                              {lang === 'ar' ? 'خطة الفني 🛠️' : 'Provider Plan 🛠️'}
                             </span>
                           </button>
                         </div>
@@ -5560,12 +5806,12 @@ export default function App() {
                                 />
                               </div>
 
-                              {/* Elegant Sandbox Bypasser/Direct Pay button to guarantee flawless performance across iframe limitations */}
+                              {/* Elegant Sandbox Bypasser/Direct Pay button */}
                               <div className="border-t border-gray-950 pt-3">
                                 <button
                                   type="button"
                                   onClick={() => handleGooglePayPayment()}
-                                  className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                                  className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                                 >
                                   <Lock className="w-4 h-4" />
                                   <span>
@@ -5575,6 +5821,60 @@ export default function App() {
                                   </span>
                                 </button>
                               </div>
+                            </div>
+                          ) : selectedPaymentTab === 'whatsapp' ? (
+                            <div className="space-y-4 text-center">
+                              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl space-y-2 text-right">
+                                <h5 className="text-xs font-black text-emerald-400 flex items-center gap-1.5 justify-start">
+                                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                                  <span>{lang === 'ar' ? 'التواصل والتوجيه والدفع المباشر عبر واتساب 💬' : 'Direct WhatsApp Guidance & Payment 💬'}</span>
+                                </h5>
+                                <p className="text-[11px] text-gray-300 font-semibold leading-relaxed">
+                                  {lang === 'ar'
+                                    ? 'يمكنك التواصل المباشر مع الدعم الفني لسيسترو عبر الواتساب للاستفسار أو إتمام التوجيه والدفع بكل سهولة ومتابعة فورية خطوة بخطوة.'
+                                    : 'You can contact Systro direct support team via WhatsApp for inquiry, guidance, and payment tracking step-by-step.'}
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleWhatsAppGuidancePayment}
+                                className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                                <span>
+                                  {lang === 'ar'
+                                    ? 'محادثة فريق سيسترو لندلّك وتأكيد الطلب عبر واتساب 📲'
+                                    : 'Chat with Systro Team via WhatsApp 📲'}
+                                </span>
+                              </button>
+                            </div>
+                          ) : selectedPaymentTab === 'commission' ? (
+                            <div className="space-y-4 text-center">
+                              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2 text-right">
+                                <h5 className="text-xs font-black text-amber-400 flex items-center gap-1.5 justify-start">
+                                  <Wrench className="w-4 h-4 text-amber-400" />
+                                  <span>{lang === 'ar' ? 'دفع رسوم وعمولة الخدمة عن طريق مقدم الخدمة 🛠️' : 'Provider Payment & Commission Plan 🛠️'}</span>
+                                </h5>
+                                <p className="text-[11px] text-gray-300 font-semibold leading-relaxed">
+                                  {lang === 'ar'
+                                    ? `بموجب خطة مقدم الخدمة المختارة (${activeTechDoc?.paymentPlan === 'monthly_subscription' ? 'اشتراك شهري 199 ₪ / عمولة 0%' : `خصم عمولة ${activeTechDoc?.commissionRate || 10}% لكل مهمة`})، لا يُدفع أي مبلغ مسبق من قبل الزبون هنا.`
+                                    : `Under the provider billing plan (${activeTechDoc?.paymentPlan === 'monthly_subscription' ? 'Monthly Sub 199 ILS' : `Commission ${activeTechDoc?.commissionRate || 10}%`}), no advance escrow payment is required from customer.`}
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleEscrowDeposit('commission')}
+                                className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>
+                                  {lang === 'ar'
+                                    ? 'تأكيد الانطلاق وبدء المهمة بضمان خطة الفني 🚚'
+                                    : 'Confirm Dispatch via Provider Plan 🚚'}
+                                </span>
+                              </button>
                             </div>
                           ) : (
                             <form onSubmit={handleCardPayment} className="space-y-4 text-left rtl:text-right">
