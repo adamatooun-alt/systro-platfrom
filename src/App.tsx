@@ -63,6 +63,7 @@ import {
   Volume2,
   Ban,
   User,
+  Camera,
   Bell,
   BellOff,
   CheckCheck,
@@ -488,6 +489,36 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileNameInput, setProfileNameInput] = useState('');
   const [profilePhoneInput, setProfilePhoneInput] = useState('');
+  const [userAvatar, setUserAvatar] = useState(() => {
+    return sessionStorage.getItem('systro_user_avatar') || '';
+  });
+  const [profileAvatarInput, setProfileAvatarInput] = useState('');
+
+  const avatarPresets = [
+    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120',
+    'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120',
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120',
+    'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120',
+  ];
+
+  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 3 * 1024 * 1024) {
+        triggerToast(lang === 'ar' ? 'حجم الصورة كبير جداً! اختر صورة أقل من 3 ميجابايت' : 'Image too large! Please choose an image under 3MB', 'warning');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setProfileAvatarInput(reader.result);
+          triggerToast(lang === 'ar' ? 'تم تحضير الصورة بنجاح!' : 'Photo selected successfully!', 'info');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Dynamic Collections state synced in real-time from Firestore
   const [dbServices, setDbServices] = useState<any[]>([]);
@@ -764,50 +795,92 @@ export default function App() {
   const [prevRequestStatus, setPrevRequestStatus] = useState<string>('idle');
   const [prevChatMsgsCount, setPrevChatMsgsCount] = useState<number>(0);
 
-  // Synthesized emergency radar alarm sound for new pending rescue tasks
+  // Track notified request IDs to prevent missing multi-device dispatches
+  const notifiedReqIdsRef = useRef<Set<string>>(new Set());
+
+  // Web Audio Context manager for mobile browsers (iOS Safari & Android Chrome)
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const getAudioContext = () => {
+    if (!audioCtxRef.current) {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtxClass) {
+        audioCtxRef.current = new AudioCtxClass();
+      }
+    }
+    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume().catch(e => console.warn("Could not resume AudioContext:", e));
+    }
+    return audioCtxRef.current;
+  };
+
+  // Unlock audio on first user touch or click anywhere on the screen
+  useEffect(() => {
+    const unlockAudio = () => {
+      getAudioContext();
+    };
+
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+    window.addEventListener('pointerdown', unlockAudio);
+
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('pointerdown', unlockAudio);
+    };
+  }, []);
+
+  // Synthesized high-visibility emergency radar siren sound & vibration for new pending rescue tasks
   const playRescueAlertSound = () => {
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
+      const ctx = getAudioContext();
+      if (!ctx) return;
       const now = ctx.currentTime;
       
-      // High Chime
+      // Siren Pulse 1
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(950, now);
-      gain1.gain.setValueAtTime(0.35, now);
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(1050, now);
+      osc1.frequency.exponentialRampToValueAtTime(750, now + 0.25);
+      gain1.gain.setValueAtTime(0.4, now);
       gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
       osc1.connect(gain1);
       gain1.connect(ctx.destination);
       osc1.start(now);
       osc1.stop(now + 0.25);
 
-      // Low Chime delayed by 120ms
+      // Siren Pulse 2
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(760, now + 0.12);
-      gain2.gain.setValueAtTime(0.35, now + 0.12);
-      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
+      osc2.type = 'sawtooth';
+      osc2.frequency.setValueAtTime(1200, now + 0.22);
+      osc2.frequency.exponentialRampToValueAtTime(850, now + 0.5);
+      gain2.gain.setValueAtTime(0.45, now + 0.22);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
       osc2.connect(gain2);
       gain2.connect(ctx.destination);
-      osc2.start(now + 0.12);
-      osc2.stop(now + 0.42);
+      osc2.start(now + 0.22);
+      osc2.stop(now + 0.5);
 
-      // Sub-pulse delayed by 250ms for the "radar dispatch" feeling
+      // Siren Pulse 3
       const osc3 = ctx.createOscillator();
       const gain3 = ctx.createGain();
-      osc3.type = 'triangle';
-      osc3.frequency.setValueAtTime(600, now + 0.25);
-      gain3.gain.setValueAtTime(0.2, now + 0.25);
-      gain3.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+      osc3.type = 'sine';
+      osc3.frequency.setValueAtTime(1400, now + 0.45);
+      osc3.frequency.exponentialRampToValueAtTime(900, now + 0.8);
+      gain3.gain.setValueAtTime(0.4, now + 0.45);
+      gain3.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
       osc3.connect(gain3);
       gain3.connect(ctx.destination);
-      osc3.start(now + 0.25);
-      osc3.stop(now + 0.65);
+      osc3.start(now + 0.45);
+      osc3.stop(now + 0.8);
 
+      // Physical vibration alert for mobile devices
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([300, 100, 300, 100, 500]);
+      }
     } catch (err) {
       console.warn("Audio Context blocked or not supported:", err);
     }
@@ -867,7 +940,7 @@ export default function App() {
 
   // Real-time listener for the active technician's profile document linked strictly to loggedInUserEmail
   useEffect(() => {
-    if (!isLoggedIn || !loggedInUserEmail || userRole !== 'technician') {
+    if (!isLoggedIn || !loggedInUserEmail) {
       setActiveTechDoc(null);
       setProviderVehicle('');
       setProviderPlate('');
@@ -884,14 +957,23 @@ export default function App() {
         setProviderPlate(data.plateNumber || '');
         setProviderName(data.name || data.arName || loggedInUserName || '');
         setProviderAvatar(data.avatar || '');
+
+        // Auto-promote user role to technician if document exists and role is unassigned
+        if (userRole === null) {
+          setUserRole('technician');
+          sessionStorage.setItem('systro_user_role', 'technician');
+        }
       } else {
-        // If technician doc does NOT exist for this specific email,
-        // keep activeTechDoc as null so they fill out THEIR OWN details in the setup profile form.
+        // If technician doc does NOT exist for this specific email, keep activeTechDoc null unless role is explicitly technician
         setActiveTechDoc(null);
-        setProviderVehicle('');
-        setProviderPlate('');
-        setProviderName(loggedInUserName || '');
-        setProviderAvatar('');
+        if (userRole === 'technician') {
+          setProviderName(loggedInUserName || '');
+        } else {
+          setProviderVehicle('');
+          setProviderPlate('');
+          setProviderName('');
+          setProviderAvatar('');
+        }
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `technicians/${loggedInUserEmail}`);
@@ -1062,53 +1144,70 @@ export default function App() {
     }
   }, [isLoggedIn, loggedInUserEmail, userRole, activeRequestId, allRequests]);
 
-  // 1. Real-time dispatch notification alert when a new client request is created
+  // 1. Real-time dispatch notification alert when a new client request is created across any device
   useEffect(() => {
-    if (userRole !== 'technician') return;
+    // Check if user is acting as technician or has an active technician profile
+    const isTech = userRole === 'technician' || activeTechDoc !== null;
 
     const pendingReqs = allRequests.filter(r => r.status === 'pending_bids');
 
-    // If a new pending request arrives
-    if (pendingReqs.length > prevPendingCount) {
-      const newestReq = pendingReqs[0]; // sorted by newest first
-      if (newestReq) {
-        // Trigger smart in-app notification & play sound
-        const serviceArName = getServiceArName(newestReq.serviceType);
-        const serviceEnName = getServiceEnName(newestReq.serviceType);
-        triggerNotification(
-          'new_request',
-          '🚨 نداء استغاثة عاجل!',
-          '🚨 Emergency Rescue Alert!',
-          `مطلوب فني لـ [${serviceArName}] بقيمة [${newestReq.escrowAmount || 120} ₪] بموقعك!`,
-          `Urgent dispatch for [${serviceEnName}] at [${newestReq.escrowAmount || 120} ₪] nearby!`,
-          newestReq.id
-        );
+    pendingReqs.forEach(req => {
+      // Skip if this request ID was already notified in this session
+      if (notifiedReqIdsRef.current.has(req.id)) return;
 
-        // Trigger simulated notifications
-        if (notifyWhatsapp) {
-          setTimeout(() => {
-            triggerToast(
-              lang === 'ar'
-                ? `📱 إشعار WhatsApp: تم إرسال نداء استغاثة جديد من [${newestReq.clientName}] إلى هاتفك المسجل!`
-                : `📱 WhatsApp Alert: New breakdown rescue alert from [${newestReq.clientName}] dispatched to your phone!`,
-              'success'
-            );
-          }, 1000);
-        }
-        if (notifyEmail) {
-          setTimeout(() => {
-            triggerToast(
-              lang === 'ar'
-                ? `📧 إشعار البريد الإلكتروني: تم إرسال تفاصيل الصيانة لـ [${newestReq.serviceType}] إلى بريدك الإلكتروني ${loggedInUserEmail}!`
-                : `📧 Email Alert: New task details for [${newestReq.serviceType}] sent to ${loggedInUserEmail}!`,
-              'info'
-            );
-          }, 2500);
+      // Skip if this request was created by the currently logged-in user on this same phone/session
+      const isMyOwnRequest = (loggedInUserEmail && req.requestedBy === loggedInUserEmail) || (req.sessionId === currentSessionId);
+
+      if (!isMyOwnRequest) {
+        // Mark request as notified
+        notifiedReqIdsRef.current.add(req.id);
+
+        if (isTech) {
+          // Trigger smart in-app notification & play siren sound
+          const serviceArName = getServiceArName(req.serviceType);
+          const serviceEnName = getServiceEnName(req.serviceType);
+          triggerNotification(
+            'new_request',
+            '🚨 نداء استغاثة عاجل جديد!',
+            '🚨 Emergency Rescue Alert!',
+            `مطلوب فني فوراً لـ [${serviceArName}] بقيمة [${req.approximatePrice || 150} ₪] بموقعك!`,
+            `Urgent dispatch for [${serviceEnName}] at [${req.approximatePrice || 150} ₪] nearby!`,
+            req.id
+          );
+
+          // Toast alert
+          triggerToast(
+            lang === 'ar'
+              ? `🚨 بلاغ طوارئ جديد على الطريق: [${serviceArName}] من العميل [${req.clientName}]`
+              : `🚨 New Emergency Alert: [${serviceEnName}] from [${req.clientName}]`,
+            'warning'
+          );
+
+          // Simulated WhatsApp & Email alerts
+          if (notifyWhatsapp) {
+            setTimeout(() => {
+              triggerToast(
+                lang === 'ar'
+                  ? `📱 إشعار WhatsApp: تم توجيه إشعار الاستغاثة من [${req.clientName}] إلى هاتفك المسجل!`
+                  : `📱 WhatsApp Alert: Breakdown rescue alert from [${req.clientName}] dispatched to your phone!`,
+                'success'
+              );
+            }, 1000);
+          }
+          if (notifyEmail) {
+            setTimeout(() => {
+              triggerToast(
+                lang === 'ar'
+                  ? `📧 البريد الإلكتروني: تم إرسال تفاصيل المهمة إلى بريدك ${loggedInUserEmail}!`
+                  : `📧 Email Alert: Task details sent to ${loggedInUserEmail}!`,
+                'info'
+              );
+            }, 2500);
+          }
         }
       }
-    }
-    setPrevPendingCount(pendingReqs.length);
-  }, [allRequests, userRole, notifyWhatsapp, notifyEmail, lang, loggedInUserEmail, prevPendingCount]);
+    });
+  }, [allRequests, userRole, activeTechDoc, notifyWhatsapp, notifyEmail, lang, loggedInUserEmail, currentSessionId]);
 
   // 2. Real-time notification alert when a technician submits a bid (for Clients)
   useEffect(() => {
@@ -2903,6 +3002,10 @@ export default function App() {
           setUserRole(null);
           sessionStorage.removeItem('systro_user_role');
         }
+        if (data.avatar) {
+          setUserAvatar(data.avatar);
+          sessionStorage.setItem('systro_user_avatar', data.avatar);
+        }
         if (data.phone) {
           setPhoneNumber(data.phone);
           sessionStorage.setItem('systro_phone_number', data.phone);
@@ -2917,6 +3020,7 @@ export default function App() {
           name: resolvedName,
           role: null,
           phone: '',
+          avatar: '',
           createdAt: new Date().toISOString()
         }, { merge: true });
         setUserRole(null);
@@ -2937,6 +3041,7 @@ export default function App() {
     setLoggedInUserEmail('');
     setLoggedInUserName('');
     setPhoneNumber('');
+    setUserAvatar('');
     setActiveTechDoc(null);
     setProviderVehicle('');
     setProviderPlate('');
@@ -2955,6 +3060,7 @@ export default function App() {
     sessionStorage.removeItem('systro_user_name');
     sessionStorage.removeItem('systro_user_role');
     sessionStorage.removeItem('systro_phone_number');
+    sessionStorage.removeItem('systro_user_avatar');
     sessionStorage.removeItem('systro_active_request_id');
     const newSid = 'sess_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
     sessionStorage.setItem('systro_session_id', newSid);
@@ -2968,33 +3074,49 @@ export default function App() {
     }
 
     try {
+      const trimmedName = profileNameInput.trim();
+      const trimmedPhone = profilePhoneInput.trim();
+      const trimmedAvatar = profileAvatarInput.trim();
+
       // 1. Update local states
-      setLoggedInUserName(profileNameInput.trim());
-      setPhoneNumber(profilePhoneInput.trim());
+      setLoggedInUserName(trimmedName);
+      setPhoneNumber(trimmedPhone);
+      setUserAvatar(trimmedAvatar);
+      if (activeTechDoc || userRole === 'technician') {
+        setProviderName(trimmedName);
+        setProviderPhone(trimmedPhone);
+        setProviderAvatar(trimmedAvatar);
+      }
 
       // 2. Update sessionStorage
-      sessionStorage.setItem('systro_user_name', profileNameInput.trim());
-      sessionStorage.setItem('systro_phone_number', profilePhoneInput.trim());
+      sessionStorage.setItem('systro_user_name', trimmedName);
+      sessionStorage.setItem('systro_phone_number', trimmedPhone);
+      sessionStorage.setItem('systro_user_avatar', trimmedAvatar);
 
       // 3. Update Firestore users collection
-      const userDocRef = doc(db, "users", loggedInUserEmail);
-      await setDoc(userDocRef, {
-        name: profileNameInput.trim(),
-        phone: profilePhoneInput.trim()
-      }, { merge: true });
+      if (loggedInUserEmail) {
+        const userDocRef = doc(db, "users", loggedInUserEmail);
+        await setDoc(userDocRef, {
+          name: trimmedName,
+          phone: trimmedPhone,
+          avatar: trimmedAvatar
+        }, { merge: true });
 
-      // 4. Update Firestore technicians collection if they are a registered technician
-      const techDocRef = doc(db, "technicians", loggedInUserEmail);
-      const techSnap = await getDoc(techDocRef);
-      if (techSnap.exists()) {
-        await updateDoc(techDocRef, {
-          name: profileNameInput.trim(),
-          phone: profilePhoneInput.trim()
-        });
+        // 4. Update Firestore technicians collection if they are a registered technician
+        const techDocRef = doc(db, "technicians", loggedInUserEmail);
+        const techSnap = await getDoc(techDocRef);
+        if (techSnap.exists()) {
+          await updateDoc(techDocRef, {
+            name: trimmedName,
+            arName: trimmedName,
+            phone: trimmedPhone,
+            avatar: trimmedAvatar
+          });
+        }
       }
 
       setShowProfileModal(false);
-      triggerToast(lang === 'ar' ? 'تم تحديث الملف الشخصي بنجاح!' : 'Profile updated successfully!', 'success');
+      triggerToast(lang === 'ar' ? 'تم تحديث الاسم ورقم الهاتف والصورة بنجاح!' : 'Profile updated successfully!', 'success');
     } catch (err) {
       console.error("Error saving user profile:", err);
       triggerToast(lang === 'ar' ? 'حدث خطأ أثناء حفظ التعديلات!' : 'Error saving profile changes!', 'error');
@@ -3066,6 +3188,16 @@ export default function App() {
         <div 
           onClick={() => {
             if (activeNotification.targetId) {
+              const targetReq = allRequests.find(r => r.id === activeNotification.targetId);
+              if (targetReq) {
+                setSelectedBidRequest(targetReq);
+                setCustomBidPrice(String(targetReq.approximatePrice || 150));
+                setPinnedLocation({ lat: targetReq.locationLat, lng: targetReq.locationLng });
+              }
+              if (userRole !== 'technician') {
+                setUserRole('technician');
+                sessionStorage.setItem('systro_user_role', 'technician');
+              }
               setActiveRequestId(activeNotification.targetId);
               setActiveTab('simulator');
             }
@@ -3700,12 +3832,17 @@ export default function App() {
                   onClick={() => {
                     setProfileNameInput(loggedInUserName);
                     setProfilePhoneInput(phoneNumber);
+                    setProfileAvatarInput(userAvatar || providerAvatar || activeTechDoc?.avatar || '');
                     setShowProfileModal(true);
                   }}
                   className="px-3.5 h-11 bg-[#0F1424] hover:bg-[#161C33] border border-gray-800 rounded-xl text-xs font-bold text-gray-200 transition-all flex items-center gap-1.5 cursor-pointer"
                   title={lang === 'ar' ? 'الملف الشخصي' : 'User Profile'}
                 >
-                  <User className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="avatar" className="w-4 h-4 rounded-full object-cover border border-amber-500/50" referrerPolicy="no-referrer" />
+                  ) : (
+                    <User className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                  )}
                   <span>{lang === 'ar' ? 'حسابي' : 'Profile'}</span>
                 </button>
 
@@ -3720,30 +3857,36 @@ export default function App() {
               </div>
             )}
 
-            {/* Mobile Profile Button */}
+            {/* Mobile Vertical Stack for Profile & Logout Buttons (As Requested in Green Circle) */}
             {isLoggedIn && (
-              <button
-                onClick={() => {
-                  setProfileNameInput(loggedInUserName);
-                  setProfilePhoneInput(phoneNumber);
-                  setShowProfileModal(true);
-                }}
-                className="lg:hidden p-2 bg-[#0F1424] hover:bg-[#161C33] border border-gray-800 rounded-xl text-gray-200 transition-all cursor-pointer flex items-center justify-center shrink-0"
-                title={lang === 'ar' ? 'الملف الشخصي' : 'User Profile'}
-              >
-                <User className="w-4 h-4 text-amber-500" />
-              </button>
-            )}
+              <div className="lg:hidden flex flex-col gap-1 items-center justify-center shrink-0 my-0.5">
+                {/* Profile Button (Top) */}
+                <button
+                  onClick={() => {
+                    setProfileNameInput(loggedInUserName);
+                    setProfilePhoneInput(phoneNumber);
+                    setProfileAvatarInput(userAvatar || providerAvatar || activeTechDoc?.avatar || '');
+                    setShowProfileModal(true);
+                  }}
+                  className="p-1.5 bg-[#0F1424] hover:bg-[#161C33] border border-gray-800 rounded-lg text-gray-200 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                  title={lang === 'ar' ? 'الملف الشخصي' : 'User Profile'}
+                >
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="avatar" className="w-4 h-4 rounded-full object-cover border border-amber-500/50" referrerPolicy="no-referrer" />
+                  ) : (
+                    <User className="w-3.5 h-3.5 text-amber-500" />
+                  )}
+                </button>
 
-            {/* Mobile Logout Button */}
-            {isLoggedIn && (
-              <button
-                onClick={handleLogout}
-                className="lg:hidden p-2 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-xl text-red-400 transition-all cursor-pointer flex items-center justify-center shrink-0"
-                title={lang === 'ar' ? 'تسجيل الخروج' : lang === 'he' ? 'התנתק' : 'Logout'}
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+                {/* Logout Button (Bottom) */}
+                <button
+                  onClick={handleLogout}
+                  className="p-1.5 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-lg text-red-400 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                  title={lang === 'ar' ? 'تسجيل الخروج' : lang === 'he' ? 'התנתק' : 'Logout'}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
 
             {/* Yellow Admin access button - Hidden on smallest screens to prevent overlap */}
@@ -6921,6 +7064,139 @@ export default function App() {
                 className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black rounded-xl text-xs transition-colors cursor-pointer"
               >
                 {lang === 'ar' ? 'إرسال الخدمة المخصصة للمراجعة والموافقة' : lang === 'he' ? 'שלח שירות מותאם אישית לאישור' : 'Submit Custom Service for Approval'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Profile Edit Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in select-none overflow-y-auto">
+          <div className="w-full max-w-md bg-[#0F1424] border border-amber-500/30 p-6 rounded-3xl space-y-5 relative text-right rtl:text-right ltr:text-left shadow-2xl">
+            <button 
+              onClick={() => setShowProfileModal(false)}
+              className="absolute top-4 left-4 w-8 h-8 rounded-full bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center text-sm font-bold cursor-pointer transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="text-center space-y-1">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-500">
+                <User className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-black text-white">
+                {lang === 'ar' ? 'الملف الشخصي والحساب' : lang === 'he' ? 'פרופיל אישי וחשבון' : 'User Profile & Account'}
+              </h3>
+              <p className="text-xs text-gray-400 font-medium dir-ltr text-center">
+                {loggedInUserEmail || 'user@systro.live'}
+              </p>
+            </div>
+
+            {/* Avatar preview & change section */}
+            <div className="flex flex-col items-center gap-3 bg-[#0A0B10] p-4 rounded-2xl border border-gray-800">
+              <div className="relative group">
+                <img 
+                  src={profileAvatarInput || userAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} 
+                  alt="Profile Avatar" 
+                  className="w-20 h-20 rounded-full object-cover border-2 border-amber-500/50 shadow-lg shadow-amber-500/10"
+                  referrerPolicy="no-referrer"
+                />
+                <label className="absolute bottom-0 right-0 p-2 bg-amber-500 hover:bg-amber-400 text-black rounded-full cursor-pointer shadow-md transition-all" title={lang === 'ar' ? 'تغيير الصورة من الجهاز' : 'Upload photo'}>
+                  <Camera className="w-4 h-4" />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleAvatarFileUpload}
+                  />
+                </label>
+              </div>
+
+              <div className="text-center space-y-1 w-full">
+                <span className="text-[10px] font-bold text-gray-400">
+                  {lang === 'ar' ? 'اختر صورة شخصية جاهزة:' : lang === 'he' ? 'בחר תמונת פרופיל:' : 'Choose Preset Avatar:'}
+                </span>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  {avatarPresets.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setProfileAvatarInput(preset)}
+                      className={`w-8 h-8 rounded-full overflow-hidden border-2 transition-all cursor-pointer ${
+                        profileAvatarInput === preset ? 'border-amber-500 scale-110 shadow-md' : 'border-gray-700 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={preset} alt="preset" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Name Input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-black text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'الاسم بالكامل (أو اسم الشهرة):' : lang === 'he' ? 'שם מלא:' : 'Full Name / Display Name:'}</span>
+                </label>
+                <input 
+                  type="text" 
+                  value={profileNameInput}
+                  onChange={(e) => setProfileNameInput(e.target.value)}
+                  placeholder={lang === 'ar' ? 'أدخل اسمك هنا' : 'Enter your name'}
+                  className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-white font-bold text-xs transition-colors"
+                />
+              </div>
+
+              {/* Phone Input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-black text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'رقم الهاتف / واتساب للتواصل:' : lang === 'he' ? 'מספר טלפון / וואטסאפ:' : 'Phone / WhatsApp Number:'}</span>
+                </label>
+                <input 
+                  type="text" 
+                  value={profilePhoneInput}
+                  onChange={(e) => setProfilePhoneInput(e.target.value)}
+                  placeholder="+972 59-XXX-XXXX"
+                  className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-white font-bold text-xs transition-colors dir-ltr text-left"
+                />
+              </div>
+
+              {/* Avatar URL Input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'رابط صورة شخصية (اختياري):' : lang === 'he' ? 'קישור לתמונה (רשות):' : 'Avatar Image URL (Optional):'}</span>
+                </label>
+                <input 
+                  type="text" 
+                  value={profileAvatarInput}
+                  onChange={(e) => setProfileAvatarInput(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-gray-300 font-mono text-[11px] transition-colors dir-ltr text-left"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>✓</span>
+                <span>{lang === 'ar' ? 'حفظ التغييرات والمعلومات' : lang === 'he' ? 'שמור שינויים' : 'Save Profile Changes'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                {lang === 'ar' ? 'إلغاء' : lang === 'he' ? 'ביטול' : 'Cancel'}
               </button>
             </div>
           </div>
