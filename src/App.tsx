@@ -4276,45 +4276,38 @@ export default function App() {
                       </div>
 
                       <div className="space-y-4 text-right">
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'اسم الفني / الشركة المعتمد:' : 'Certified Display Name:'}</label>
-                          <input 
-                            type="text" 
-                            value={providerName || loggedInUserName} 
-                            onChange={(e) => setProviderName(e.target.value)}
-                            placeholder={lang === 'ar' ? 'مثال: آدم عطون' : 'e.g. Adam Atoun'}
-                            className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'الصورة الشخصية (اختر صورة أو الصق رابطاً):' : 'Profile Picture (Select or paste link):'}</label>
-                          <div className="flex items-center gap-2 overflow-x-auto py-2 no-scrollbar">
-                            {[
-                              "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120",
-                              "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=120",
-                              "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120",
-                              "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
-                              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
-                              "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120"
-                            ].map((presetUrl, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => setProviderAvatar(presetUrl)}
-                                className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all flex-shrink-0 ${providerAvatar === presetUrl || (!providerAvatar && idx === 0) ? 'border-amber-500 scale-105 shadow-md shadow-amber-500/20' : 'border-gray-800 opacity-60 hover:opacity-100'}`}
-                              >
-                                <img src={presetUrl} alt="" className="w-full h-full object-cover" />
-                              </button>
-                            ))}
+                        {/* User Verified Profile Summary Card */}
+                        <div className="flex items-center justify-between bg-[#0A0B10] p-3.5 rounded-2xl border border-gray-800">
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={userAvatar || providerAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} 
+                              alt="Profile Avatar" 
+                              className="w-11 h-11 rounded-full object-cover border-2 border-amber-500/50 shadow-md shrink-0"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <h4 className="text-xs font-black text-white">{loggedInUserName || (lang === 'ar' ? 'مزود خدمة' : 'Provider')}</h4>
+                                <span className="bg-amber-500/10 text-amber-400 text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-amber-500/20">
+                                  {lang === 'ar' ? 'حساب معتمد' : 'Verified'}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-gray-400 font-mono mt-0.5 dir-ltr text-right">{loggedInUserEmail || 'user@systro.live'}</p>
+                            </div>
                           </div>
-                          <input 
-                            type="text" 
-                            value={providerAvatar} 
-                            onChange={(e) => setProviderAvatar(e.target.value)}
-                            placeholder={lang === 'ar' ? 'أو الصق رابط الصورة المباشر هنا...' : 'Or paste a direct image URL here...'} 
-                            className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileNameInput(loggedInUserName);
+                              setProfilePhoneInput(phoneNumber);
+                              setProfileAvatarInput(userAvatar || providerAvatar || '');
+                              setShowProfileModal(true);
+                            }}
+                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-amber-400 border border-amber-500/20 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                          >
+                            <User className="w-3.5 h-3.5" />
+                            <span>{lang === 'ar' ? 'تعديل الصورة والاسم' : 'Edit Profile'}</span>
+                          </button>
                         </div>
 
                         <div className="flex flex-col gap-1.5">
@@ -4343,8 +4336,8 @@ export default function App() {
 
                         <button 
                           onClick={async () => {
-                            const vName = providerName.trim() || loggedInUserName;
-                            const vAvatar = providerAvatar.trim() || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120";
+                            const vName = loggedInUserName.trim() || providerName.trim() || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician');
+                            const vAvatar = userAvatar.trim() || providerAvatar.trim() || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120";
                             if (!providerVehicle.trim() || !providerPlate.trim()) {
                               triggerToast(lang === 'ar' ? 'الرجاء تعبئة مواصفات المركبة ورقم اللوحة!' : 'Please fill in the vehicle specs and license plate!', 'warning');
                               return;
@@ -4449,43 +4442,33 @@ export default function App() {
                           </div>
 
                           <div className="space-y-4">
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'الاسم الشخصي / اسم العرض:' : 'Certified Display Name:'}</label>
-                              <input 
-                                type="text" 
-                                value={providerName} 
-                                onChange={(e) => setProviderName(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-[#050609] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                              />
-                            </div>
-
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'رابط الصورة الشخصية أو اختر من المعرض:' : 'Profile Picture:'}</label>
-                              <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar">
-                                {[
-                                  "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120",
-                                  "https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=120",
-                                  "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120",
-                                  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
-                                  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
-                                  "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120"
-                                ].map((presetUrl, idx) => (
-                                  <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => setProviderAvatar(presetUrl)}
-                                    className={`relative w-10 h-10 rounded-full overflow-hidden border-2 transition-all flex-shrink-0 ${providerAvatar === presetUrl ? 'border-amber-500 scale-105' : 'border-gray-900 opacity-60'}`}
-                                  >
-                                    <img src={presetUrl} alt="" className="w-full h-full object-cover" />
-                                  </button>
-                                ))}
+                            {/* Profile Info Note */}
+                            <div className="flex items-center justify-between bg-[#050609] p-3 rounded-xl border border-gray-800">
+                              <div className="flex items-center gap-2.5">
+                                <img 
+                                  src={userAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} 
+                                  alt="Avatar" 
+                                  className="w-9 h-9 rounded-full object-cover border border-amber-500/50 shrink-0"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div>
+                                  <h5 className="text-xs font-bold text-white">{loggedInUserName || activeTechDoc?.name}</h5>
+                                  <p className="text-[10px] text-gray-400">{lang === 'ar' ? 'الاسم والصورة مُدارة من الملف الشخصي العام' : 'Name & picture managed from account profile'}</p>
+                                </div>
                               </div>
-                              <input 
-                                type="text" 
-                                value={providerAvatar} 
-                                onChange={(e) => setProviderAvatar(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-[#050609] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setProfileNameInput(loggedInUserName || activeTechDoc?.name || '');
+                                  setProfilePhoneInput(phoneNumber);
+                                  setProfileAvatarInput(userAvatar || activeTechDoc?.avatar || '');
+                                  setShowProfileModal(true);
+                                }}
+                                className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-amber-400 border border-amber-500/20 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                              >
+                                <User className="w-3 h-3" />
+                                <span>{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
+                              </button>
                             </div>
 
                             <div className="flex flex-col gap-1.5">
@@ -4511,21 +4494,21 @@ export default function App() {
                             <div className="flex items-center gap-2 pt-2">
                               <button
                                 onClick={async () => {
-                                  if (!providerName.trim() || !providerVehicle.trim() || !providerPlate.trim()) {
-                                    triggerToast(lang === 'ar' ? 'الرجاء ملء جميع الحقول المذكورة!' : 'Please fill in all details!', 'warning');
+                                  if (!providerVehicle.trim() || !providerPlate.trim()) {
+                                    triggerToast(lang === 'ar' ? 'الرجاء تعبئة تفاصيل المركبة ورقم اللوحة!' : 'Please fill in vehicle details!', 'warning');
                                     return;
                                   }
                                   try {
                                     await updateDoc(doc(db, "technicians", loggedInUserEmail), {
-                                      name: providerName,
-                                      arName: providerName,
-                                      avatar: providerAvatar || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120",
+                                      name: loggedInUserName || activeTechDoc.name,
+                                      arName: loggedInUserName || activeTechDoc.arName || activeTechDoc.name,
+                                      avatar: userAvatar || activeTechDoc.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
                                       carModel: providerVehicle,
                                       arCarModel: providerVehicle,
                                       plateNumber: providerPlate
                                     });
                                     setIsEditingTechProfile(false);
-                                    triggerToast(lang === 'ar' ? 'تم تحديث تفاصيل ملفك بنجاح!' : 'Profile updated successfully!', 'success');
+                                    triggerToast(lang === 'ar' ? 'تم تحديث تفاصيل المركبة بنجاح!' : 'Vehicle details updated successfully!', 'success');
                                   } catch (err) {
                                     console.error(err);
                                     triggerToast(lang === 'ar' ? 'حدث خطأ أثناء تحديث البيانات!' : 'Error updating profile!', 'error');
