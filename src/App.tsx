@@ -76,7 +76,9 @@ import {
   Trash2,
   Search,
   Plus,
-  PlusCircle
+  PlusCircle,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -700,6 +702,7 @@ export default function App() {
   // Simulated Chat messages state
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  const [isClientChatExpanded, setIsClientChatExpanded] = useState<boolean>(false);
 
   // Dispute Simulation State
   const [disputeReason, setDisputeReason] = useState('');
@@ -860,29 +863,63 @@ export default function App() {
   // REAL-TIME FIREBASE FIRESTORE SYNC LISTENERS
   // ==========================================
 
-  // Real-time listener for the active technician's profile document
+  // Real-time listener for the active technician's profile document linked strictly to loggedInUserEmail
   useEffect(() => {
     if (!isLoggedIn || !loggedInUserEmail || userRole !== 'technician') {
       setActiveTechDoc(null);
+      setProviderVehicle('');
+      setProviderPlate('');
+      setProviderName('');
+      setProviderAvatar('');
       return;
     }
     const docRef = doc(db, "technicians", loggedInUserEmail);
-    const unsub = onSnapshot(docRef, (snapshot) => {
+    const unsub = onSnapshot(docRef, async (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         setActiveTechDoc(data);
-        if (data.carModel && !providerVehicle) setProviderVehicle(data.carModel);
-        if (data.plateNumber && !providerPlate) setProviderPlate(data.plateNumber);
-        if (data.name && !providerName) setProviderName(data.name);
-        if (data.avatar && !providerAvatar) setProviderAvatar(data.avatar);
+        setProviderVehicle(data.carModel || data.arCarModel || '');
+        setProviderPlate(data.plateNumber || '');
+        setProviderName(data.name || data.arName || loggedInUserName || '');
+        setProviderAvatar(data.avatar || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120");
       } else {
-        setActiveTechDoc(null);
+        // Auto-provision personal technician profile linked directly to loggedInUserEmail
+        const initialTech = {
+          id: loggedInUserEmail,
+          email: loggedInUserEmail,
+          name: loggedInUserName || 'فني معتمد',
+          arName: loggedInUserName || 'فني معتمد',
+          phone: '+972 59-999-9999',
+          rating: 5.0,
+          reviewsCount: 1,
+          isOnline: true,
+          lat: 40,
+          lng: 40,
+          avatar: "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120",
+          carModel: 'سيارة طوارئ وسحب',
+          arCarModel: 'سيارة طوارئ وسحب',
+          plateNumber: '5982614',
+          specialties: ['fuel', 'mechanic', 'towing', 'locksmith'],
+          notifyEmail: true,
+          notifyWhatsapp: true,
+          createdAt: Date.now()
+        };
+        try {
+          await setDoc(docRef, initialTech, { merge: true });
+          setActiveTechDoc(initialTech);
+          setProviderVehicle(initialTech.carModel);
+          setProviderPlate(initialTech.plateNumber);
+          setProviderName(initialTech.name);
+          setProviderAvatar(initialTech.avatar);
+        } catch (e) {
+          console.error("Error auto-creating technician doc:", e);
+        }
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `technicians/${loggedInUserEmail}`);
     });
     return () => unsub();
-  }, [isLoggedIn, loggedInUserEmail, userRole, providerVehicle, providerPlate, providerName, providerAvatar]);
+  }, [isLoggedIn, loggedInUserEmail, userRole]);
 
   // Sync notification preferences when activeTechDoc is updated from Firestore
   useEffect(() => {
@@ -4413,6 +4450,92 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* PRIVATE TECHNICIAN WORKSPACE & EMAIL LOGS CARD */}
+                      <div className="p-5 bg-gradient-to-br from-[#0D111E] to-[#0A0B10] border border-amber-500/30 rounded-3xl space-y-4 shadow-2xl text-right">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
+                          <div>
+                            <h4 className="text-xs font-black text-amber-500 flex items-center justify-start gap-2">
+                              <UserCheck className="w-4 h-4 text-amber-500" />
+                              <span>{lang === 'ar' ? `المساحة الشخصية وسجل الأنشطة للفني (${loggedInUserEmail})` : `Personal Workspace & History Logs (${loggedInUserEmail})`}</span>
+                            </h4>
+                            <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                              {lang === 'ar' 
+                                ? 'جميع بياناتك، إعداداتك، عروض أسعارك، وسجلات أعمالك محفوظة بأمان ومربوطة ببريدك الإلكتروني الخاط بك بدون تداخل مع الفنيين الآخرين.'
+                                : 'All your personal settings, vehicle specs, bids, and task records are saved securely linked to your email with 100% privacy.'}
+                            </p>
+                          </div>
+                          <span className="px-2.5 py-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full text-[10px] font-bold self-start sm:self-center">
+                            🟢 {lang === 'ar' ? 'حساب معتمد ومستقل' : 'Verified Partner Account'}
+                          </span>
+                        </div>
+
+                        {/* Quick Stats Grid linked to loggedInUserEmail */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                          <div className="p-3 bg-[#05060A] border border-gray-900 rounded-2xl">
+                            <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'عروض الأسعار المقدمة' : 'Submitted Bids'}</span>
+                            <span className="text-sm font-black text-amber-400 font-mono">
+                              {incomingBids.filter(b => b.technicianId === loggedInUserEmail).length}
+                            </span>
+                          </div>
+                          <div className="p-3 bg-[#05060A] border border-gray-900 rounded-2xl">
+                            <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'المهمات المقبولة والجارية' : 'Active Rescues'}</span>
+                            <span className="text-sm font-black text-blue-400 font-mono">
+                              {allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && r.status !== 'completed').length}
+                            </span>
+                          </div>
+                          <div className="p-3 bg-[#05060A] border border-gray-900 rounded-2xl">
+                            <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'المهمات المكتملة' : 'Completed Rescues'}</span>
+                            <span className="text-sm font-black text-emerald-400 font-mono">
+                              {allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && r.status === 'completed').length}
+                            </span>
+                          </div>
+                          <div className="p-3 bg-[#05060A] border border-gray-900 rounded-2xl">
+                            <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'طلبات التخصصات' : 'Custom Trade Requests'}</span>
+                            <span className="text-sm font-black text-purple-400 font-mono">
+                              {pendingServices.filter(s => s.requestedBy === loggedInUserEmail).length}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Recent Personal Bids & Log Entries for loggedInUserEmail */}
+                        <div className="space-y-2 pt-2 border-t border-gray-900">
+                          <h5 className="text-[11px] font-black text-gray-300 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-amber-500" />
+                            <span>{lang === 'ar' ? 'سجل الحركات والعروض الأخيرة لبريدك الإلكتروني:' : 'Recent Account Bids & Activity Logs:'}</span>
+                          </h5>
+
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {incomingBids.filter(b => b.technicianId === loggedInUserEmail).length === 0 && (
+                              <div className="p-4 bg-[#05060A] rounded-2xl border border-gray-900 text-center text-xs text-gray-500 font-bold">
+                                {lang === 'ar' 
+                                  ? 'لم تقم بتقديم عروض أسعار حتى الآن. تصفح التنبيهات بالأسفل وقدم عرضك الأول!' 
+                                  : 'No submitted bids yet. Check emergency alerts below and submit your first bid!'}
+                              </div>
+                            )}
+
+                            {incomingBids.filter(b => b.technicianId === loggedInUserEmail).map((bid) => {
+                              const relatedReq = allRequests.find(r => r.id === bid.requestId);
+                              return (
+                                <div key={bid.id} className="p-3 bg-[#05060A] border border-gray-850 hover:border-amber-500/40 rounded-2xl flex items-center justify-between gap-3 transition-all text-xs">
+                                  <div className="space-y-0.5 text-right min-w-0">
+                                    <span className="font-black text-amber-400 block truncate">
+                                      🛠️ {lang === 'ar' ? (relatedReq?.serviceType || 'طلب صيانة طارئ') : (relatedReq?.serviceType || 'Emergency Task')}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 font-semibold block">
+                                      {lang === 'ar' ? `الموقع: ${relatedReq?.arLocationName || relatedReq?.locationName || 'غير محدد'}` : `Location: ${relatedReq?.locationName || 'N/A'}`}
+                                    </span>
+                                  </div>
+                                  <div className="text-left shrink-0 font-mono">
+                                    <span className="text-emerald-400 font-black block text-xs">{bid.price} ₪</span>
+                                    <span className="text-[9px] text-gray-500 font-bold block">{bid.etaMinutes} min ETA</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Registering specialties ("يا نقدم خدمات تكتبلهم شو خدماتهم بكل قائمة نكتب إضافة سجل") */}
                       <div className="space-y-3">
                         <h4 className="text-xs font-black text-white uppercase tracking-wider border-b border-gray-950 pb-2">
@@ -4895,19 +5018,117 @@ export default function App() {
                                               status: 'pending_bids'
                                             });
 
-                                            triggerToast(lang === 'ar' ? `تم إرسال عرض السعر بقيمة ${priceNum} ₪ للعميل بنجاح!` : `Bid of ${priceNum} ₪ submitted successfully!`, 'success');
-                                            setCustomBidPrice('150');
-                                            setCustomBidEta('15');
-                                            setSelectedBidRequest(null);
+                                            // Send initial greeting/bid message to chats collection
+                                            const chatMsgId = `chat-bid-${Date.now()}`;
+                                            await setDoc(doc(db, "chats", chatMsgId), {
+                                              id: chatMsgId,
+                                              requestId: req.id,
+                                              sender: 'technician',
+                                              senderName: loggedInUserName || (lang === 'ar' ? 'الفني' : 'Technician'),
+                                              text: lang === 'ar' 
+                                                ? `⚡ أهلاً بك! لقد أرسلت لك عرض سعر بقيمة [${priceNum} ₪] ووقت وصول متوقع خلال [${etaNum} دقيقة]. يمكنك المحادثة والتواصل معي مباشرة هنا.` 
+                                                : `⚡ Welcome! I submitted a bid of [${priceNum} ₪] with ETA of [${etaNum} mins]. You can chat with me directly here.`,
+                                              timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+                                              createdTime: Date.now()
+                                            });
+
+                                            triggerToast(lang === 'ar' ? `تم إرسال عرض السعر بقيمة ${priceNum} ₪ والانتقال فوراً للمحادثة! 💬` : `Bid submitted! Navigated to live chat 💬`, 'success');
+                                            
+                                            // Activate this request & open chat view immediately
+                                            setActiveRequestId(req.id);
+                                            setSelectedBid(newBidObj);
+                                            setSelectedBidRequest(req);
+
+                                            // Smooth scroll to chat container
+                                            setTimeout(() => {
+                                              const chatElement = document.getElementById(`chat-container-${req.id}`);
+                                              if (chatElement) {
+                                                chatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                              }
+                                            }, 120);
+
                                           } catch (err) {
                                             console.error(err);
                                             triggerToast('Error submitting bid', 'error');
                                           }
                                         }}
-                                        className="w-full py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-extrabold text-xs rounded-xl transition-all shadow-md cursor-pointer"
+                                        className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-extrabold text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
                                       >
-                                        {lang === 'ar' ? 'إرسال عرض السعر الفوري للعميل ⚡' : 'Submit Emergency Pricing Bid ⚡'}
+                                        <Send className="w-4 h-4" />
+                                        <span>{lang === 'ar' ? 'إرسال عرض السعر الفوري وانتقال للمحادثة 💬⚡' : 'Submit Bid & Open Live Chat 💬⚡'}</span>
                                       </button>
+
+                                      {/* Live Chat Section right inside the request card once bid is submitted or request is active */}
+                                      {activeRequestId === req.id && (
+                                        <div id={`chat-container-${req.id}`} className="mt-4 pt-4 border-t border-amber-500/30 space-y-3 animate-fade-in text-right rtl:text-right ltr:text-left">
+                                          <div className="flex items-center justify-between border-b border-gray-900 pb-2">
+                                            <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 shadow-sm">
+                                              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                                              <span>{lang === 'ar' ? 'المحادثة الحية والمتابعة الفورية مع العميل' : 'Live Client Conversation'}</span>
+                                            </span>
+                                            <h5 className="text-[11px] font-black text-amber-500">
+                                              {req.clientName}
+                                            </h5>
+                                          </div>
+
+                                          {/* Chat Messages Box */}
+                                          <div className="bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between h-64 shadow-inner">
+                                            <div className="flex-1 overflow-y-auto space-y-2.5 pb-2.5 pr-1 text-[11px] font-semibold text-right">
+                                              {chatMessages.length === 0 ? (
+                                                <div className="h-full flex flex-col items-center justify-center text-gray-500 font-bold text-center gap-2">
+                                                  <span className="animate-spin text-amber-500 text-lg">💬</span>
+                                                  <span>{lang === 'ar' ? 'جاري فتح المحادثة المباشرة...' : 'Opening live chat...'}</span>
+                                                </div>
+                                              ) : (
+                                                chatMessages.map(msg => {
+                                                  const isSystem = msg.sender === 'system';
+                                                  const isTech = msg.sender === 'technician';
+                                                  return (
+                                                    <div key={msg.id} className={`flex ${isSystem ? 'justify-center' : isTech ? 'justify-end' : 'justify-start'}`}>
+                                                      <div className={`p-2.5 max-w-[85%] rounded-xl font-semibold leading-relaxed ${
+                                                        isSystem 
+                                                          ? 'bg-gray-900 text-gray-400 text-[9px] text-center max-w-full font-sans border border-gray-850' 
+                                                          : isTech 
+                                                          ? 'bg-amber-500 text-black rounded-tr-none shadow-md' 
+                                                          : 'bg-[#1F2937] text-gray-200 rounded-tl-none border border-gray-850 shadow-md'
+                                                      }`}>
+                                                        {msg.text}
+                                                        <span className={`block text-[8px] mt-1 opacity-75 ${isTech ? 'text-black/80 text-left' : 'text-gray-400 text-right'}`}>
+                                                          {msg.timestamp}
+                                                        </span>
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })
+                                              )}
+                                            </div>
+
+                                            {/* Input Message Form */}
+                                            <form 
+                                              onSubmit={(e) => {
+                                                e.preventDefault();
+                                                handleChatSend(e);
+                                              }} 
+                                              className="pt-2 border-t border-gray-900 flex items-center gap-2"
+                                            >
+                                              <input 
+                                                type="text" 
+                                                value={chatInput}
+                                                onChange={(e) => setChatInput(e.target.value)}
+                                                placeholder={lang === 'ar' ? 'أكتب رسالة مباشرة للعميل...' : 'Type direct message to client...'}
+                                                className="flex-1 px-3 py-2 bg-[#111827] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-xs text-white placeholder-gray-500 transition-colors"
+                                              />
+                                              <button 
+                                                type="submit"
+                                                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                                              >
+                                                <Send className="w-3.5 h-3.5" />
+                                                <span className="text-xs font-black">{lang === 'ar' ? 'إرسال' : 'Send'}</span>
+                                              </button>
+                                            </form>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -5485,27 +5706,132 @@ export default function App() {
                         </span>
                       </div>
 
-                      {/* Dynamic simulated sidebar chat with technician */}
-                      <div className="bg-[#0A0B10] border border-gray-900 rounded-2xl p-4 flex flex-col justify-between h-56">
-                        <div className="flex-1 overflow-y-auto space-y-3 pb-3 pr-1 text-xs">
-                          {chatMessages.map(msg => {
-                            const isSystem = msg.sender === 'system';
-                            const isTech = msg.sender === 'technician';
-                            return (
-                              <div key={msg.id} className={`flex ${isSystem ? 'justify-center' : isTech ? 'justify-start' : 'justify-end'}`}>
-                                <div className={`p-2.5 max-w-sm rounded-xl font-semibold leading-relaxed ${
-                                  isSystem 
-                                    ? 'bg-gray-900 text-gray-400 text-[10px] text-center max-w-full font-sans border border-gray-800' 
-                                    : isTech 
-                                    ? 'bg-[#1F2937] text-gray-200 rounded-tl-none border border-gray-850' 
-                                    : 'bg-amber-500 text-black rounded-tr-none'
-                                }`}>
-                                  {msg.text}
-                                </div>
-                              </div>
-                            );
-                          })}
+                      {/* Dynamic Interactive Live Chat with Technician for Client */}
+                      <div className={`bg-[#0A0B10] border border-amber-500/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 shadow-2xl ${
+                        isClientChatExpanded ? 'h-[500px]' : 'h-80'
+                      }`}>
+                        {/* Chat Header with Status & Expand Button */}
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-900 gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="relative flex items-center justify-center">
+                              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full block"></span>
+                              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full block absolute inset-0 animate-ping opacity-75"></span>
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-black text-amber-500 flex items-center gap-1.5">
+                                <MessageCircle className="w-4 h-4 text-amber-500" />
+                                <span>{lang === 'ar' ? 'المحادثة الحية والمتابعة المباشرة مع الفني' : 'Live Chat with Technician'}</span>
+                              </h4>
+                              <span className="text-[10px] text-emerald-400 font-bold block">
+                                {selectedBid?.technicianName || technicians[0].arName} {lang === 'ar' ? '(متصل الآن 🟢)' : '(Online Now 🟢)'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Expand / Minimize Toggle Button */}
+                            <button
+                              type="button"
+                              onClick={() => setIsClientChatExpanded(!isClientChatExpanded)}
+                              className="px-2.5 py-1.5 bg-gray-900 hover:bg-gray-800 text-amber-400 border border-gray-800 hover:border-amber-500/50 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                            >
+                              {isClientChatExpanded ? (
+                                <>
+                                  <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
+                                  <span>{lang === 'ar' ? 'تصغير المحادثة' : 'Minimize'}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                                  <span>{lang === 'ar' ? 'تكبير وتوسيع المحادثة 🔍' : 'Expand Chat 🔍'}</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
+
+                        {/* Quick Response Chips */}
+                        <div className="py-2 flex items-center gap-1.5 overflow-x-auto text-[10px] border-b border-gray-900/60 pb-2">
+                          <button
+                            type="button"
+                            onClick={() => setChatInput(lang === 'ar' ? 'أين أنت الآن؟ 📍' : 'Where are you now? 📍')}
+                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-full font-bold whitespace-nowrap transition-all cursor-pointer"
+                          >
+                            📍 {lang === 'ar' ? 'أين أنت الآن؟' : 'Where are you?'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChatInput(lang === 'ar' ? 'أنا بانتظارك في موقع البلاغ ⏳' : 'Waiting for you at location ⏳')}
+                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-full font-bold whitespace-nowrap transition-all cursor-pointer"
+                          >
+                            ⏳ {lang === 'ar' ? 'أنا بانتظارك' : 'I am waiting'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChatInput(lang === 'ar' ? 'تفاصيل إضافية عن عطل المركبة 🔧' : 'Additional vehicle issue details 🔧')}
+                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-full font-bold whitespace-nowrap transition-all cursor-pointer"
+                          >
+                            🔧 {lang === 'ar' ? 'تفاصيل العطل' : 'Issue details'}
+                          </button>
+                        </div>
+
+                        {/* Messages List Container */}
+                        <div className="flex-1 overflow-y-auto space-y-2.5 my-2 pr-1 text-xs">
+                          {chatMessages.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-gray-500 font-bold text-center gap-2 py-6">
+                              <MessageSquare className="w-8 h-8 text-amber-500/50 animate-bounce" />
+                              <span className="text-xs text-gray-400">
+                                {lang === 'ar' 
+                                  ? 'لا توجد رسائل سابقة. يمكنك كتابة رسالة للفني بالأسفل والتواصل معه فوراً...' 
+                                  : 'No previous messages. Type a message to technician below...'}
+                              </span>
+                            </div>
+                          ) : (
+                            chatMessages.map(msg => {
+                              const isSystem = msg.sender === 'system';
+                              const isTech = msg.sender === 'technician';
+                              return (
+                                <div key={msg.id} className={`flex ${isSystem ? 'justify-center' : isTech ? 'justify-start' : 'justify-end'}`}>
+                                  <div className={`p-2.5 max-w-[85%] rounded-xl font-semibold leading-relaxed shadow-md ${
+                                    isSystem 
+                                      ? 'bg-gray-900 text-gray-400 text-[10px] text-center max-w-full font-sans border border-gray-800' 
+                                      : isTech 
+                                      ? 'bg-[#1F2937] text-gray-200 rounded-tl-none border border-gray-800' 
+                                      : 'bg-amber-500 text-black rounded-tr-none font-bold'
+                                  }`}>
+                                    {isTech && (
+                                      <span className="block text-[9px] text-amber-400 font-extrabold mb-0.5">
+                                        🛠️ {msg.senderName || selectedBid?.technicianName || 'الفني'}
+                                      </span>
+                                    )}
+                                    {msg.text}
+                                    <span className={`block text-[8px] mt-1 opacity-70 ${isTech ? 'text-gray-400 text-left' : 'text-black/80 text-left'}`}>
+                                      {msg.timestamp}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Direct Message Input & Send Form */}
+                        <form onSubmit={handleChatSend} className="pt-2 border-t border-gray-900 flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            placeholder={lang === 'ar' ? 'أكتب رسالتك للفني...' : 'Type message to technician...'}
+                            className="flex-1 px-3.5 py-2.5 bg-[#111827] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-xs text-white placeholder-gray-500 font-semibold transition-colors"
+                          />
+                          <button
+                            type="submit"
+                            className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-lg active:scale-95"
+                          >
+                            <Send className="w-4 h-4" />
+                            <span>{lang === 'ar' ? 'إرسال 💬' : 'Send 💬'}</span>
+                          </button>
+                        </form>
                       </div>
                     </div>
                   )}
@@ -6565,7 +6891,7 @@ export default function App() {
           className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
         >
           <Activity className="w-5 h-5 animate-pulse shrink-0" />
-          <span>{lang === 'ar' ? 'الخدمة' : lang === 'he' ? 'סימולטור' : 'Simulator'}</span>
+          <span>{lang === 'ar' ? 'العمليات' : lang === 'he' ? 'פעילויות' : 'Operations'}</span>
         </button>
 
         <button 

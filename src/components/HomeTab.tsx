@@ -229,7 +229,7 @@ export default function HomeTab({
           {/* Pre-heading Gold Badge */}
                   {/* Main Requested Dual-Action Service Buttons (عميل مقطوع vs طلب تكسي) */}
           <div className="pt-6 flex flex-col md:flex-row items-center justify-center gap-5 max-w-4xl mx-auto">
-            {/* Action 1: عميل مقطوع */}
+            {/* Action 1: العمليات */}
             <button 
               onClick={async () => {
                 setUserRole('client');
@@ -244,17 +244,17 @@ export default function HomeTab({
                 setActiveTab('simulator');
                 triggerToast(
                   lang === 'ar' 
-                    ? 'أهلاً بك! تم التوجيه كعميل مقطوع - تفضل بتحديد موقعك لطلب الفنيين فورا.' 
+                    ? 'أهلاً بك في صفحة العمليات - تفضل بتحديد موقعك لطلب الفنيين فورا.' 
                     : lang === 'he'
-                    ? 'ברוך הבא! מצב לקוח תקוע הופעל - אנא בחר מיקום להזמנת סיוע מיידי.'
-                    : 'Welcome! Stranded Client mode is active - please select your location to request assistance.', 
+                    ? 'ברוך הבא לדף הפעילויות - אנא בחר מיקום להזמנת סיוע מיידי.'
+                    : 'Welcome to Operations - please select your location to request assistance.', 
                   'success'
                 );
               }}
               className="w-full md:flex-1 h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black rounded-2xl shadow-xl shadow-orange-500/15 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
             >
               <span className="text-xl">🚗</span>
-              <span className="font-black text-base">{lang === 'ar' ? 'عميل مقطوع' : lang === 'he' ? 'לקוח תקוע' : 'Stranded Client'}</span>
+              <span className="font-black text-base">{lang === 'ar' ? 'العمليات' : lang === 'he' ? 'פעילויות' : 'Operations'}</span>
               <ChevronRight className="w-5 h-5 shrink-0" />
             </button>
 

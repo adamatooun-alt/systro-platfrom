@@ -84,6 +84,7 @@ export interface Bid {
 export interface ChatMsg {
   id: string;
   sender: 'client' | 'technician' | 'system';
+  senderName?: string;
   text: string;
   timestamp: string;
   createdTime?: number;

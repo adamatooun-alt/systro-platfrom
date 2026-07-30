@@ -129,7 +129,7 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     logoSub: "SYSTRO",
     home: "الرئيسية",
     services: "خدماتنا",
-    simulator: "بوابة طلبات الطوارئ",
+    simulator: "العمليات",
     adminPortal: "بوابة الإدارة",
     adminGateway: "(Admin Gateway) تسجيل دخول المشرفين",
     languageToggle: "English",
