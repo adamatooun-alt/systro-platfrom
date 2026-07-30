@@ -596,8 +596,8 @@ export default function App() {
   // Derived Services configuration list loaded in real-time from Firestore database - fully bilingual
   const servicesList = dbServices.length > 0 
     ? dbServices.map(s => {
-        const nameAr = s.arName || s.name;
-        const nameEn = s.name || s.arName;
+        const nameAr = s.arName || s.name || '';
+        const nameEn = s.name || s.arName || '';
         
         let arDesc = s.arDescription || s.description || '';
         let enDesc = s.description || s.arDescription || '';
@@ -620,10 +620,20 @@ export default function App() {
           enDesc = enDesc || 'Specialized emergency service delivered by certified, fully equipped partner technicians to rescue you immediately.';
         }
         
+        const cleanName = lang === 'en' 
+          ? (nameEn || nameAr) 
+          : lang === 'he' 
+          ? (nameAr || nameEn)
+          : (nameAr || nameEn);
+
+        const cleanDesc = lang === 'en'
+          ? (enDesc || arDesc)
+          : (arDesc || enDesc);
+
         return {
           id: s.id as ServiceType,
-          name: `${nameAr} / ${nameEn}`,
-          desc: `${arDesc}\n—\n${enDesc}`,
+          name: cleanName,
+          desc: cleanDesc,
           icon: getServiceIcon(s.icon, `${s.arName || ''} ${s.name || ''}`),
           color: getServiceColor(s.id),
           basePrice: s.basePrice || 120,
@@ -632,40 +642,40 @@ export default function App() {
     : [
         {
           id: 'fuel' as ServiceType,
-          name: `${translations.ar.fuelName} / ${translations.en.fuelName}`,
-          desc: `${translations.ar.fuelDesc}\n—\n${translations.en.fuelDesc}`,
+          name: lang === 'en' ? translations.en.fuelName : translations.ar.fuelName,
+          desc: lang === 'en' ? translations.en.fuelDesc : translations.ar.fuelDesc,
           icon: Fuel,
           color: 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/15',
           basePrice: 100,
         },
         {
           id: 'locksmith' as ServiceType,
-          name: `${translations.ar.locksmithName} / ${translations.en.locksmithName}`,
-          desc: `${translations.ar.locksmithDesc}\n—\n${translations.en.locksmithDesc}`,
+          name: lang === 'en' ? translations.en.locksmithName : translations.ar.locksmithName,
+          desc: lang === 'en' ? translations.en.locksmithDesc : translations.ar.locksmithDesc,
           icon: Key,
           color: 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/15',
           basePrice: 150,
         },
         {
           id: 'mechanic' as ServiceType,
-          name: `${translations.ar.mechanicName} / ${translations.en.mechanicName}`,
-          desc: `${translations.ar.mechanicDesc}\n—\n${translations.en.mechanicDesc}`,
+          name: lang === 'en' ? translations.en.mechanicName : translations.ar.mechanicName,
+          desc: lang === 'en' ? translations.en.mechanicDesc : translations.ar.mechanicDesc,
           icon: Wrench,
           color: 'bg-purple-500/10 text-purple-500 border-purple-500/20 hover:bg-purple-500/15',
           basePrice: 200,
         },
         {
           id: 'towing' as ServiceType,
-          name: `${translations.ar.towingName} / ${translations.en.towingName}`,
-          desc: `${translations.ar.towingDesc}\n—\n${translations.en.towingDesc}`,
+          name: lang === 'en' ? translations.en.towingName : translations.ar.towingName,
+          desc: lang === 'en' ? translations.en.towingDesc : translations.ar.towingDesc,
           icon: Truck,
           color: 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/15',
           basePrice: 150,
         },
         {
           id: 'battery' as ServiceType,
-          name: `${translations.ar.batteryName} / ${translations.en.batteryName}`,
-          desc: `${translations.ar.batteryDesc}\n—\n${translations.en.batteryDesc}`,
+          name: lang === 'en' ? translations.en.batteryName : translations.ar.batteryName,
+          desc: lang === 'en' ? translations.en.batteryDesc : translations.ar.batteryDesc,
           icon: Zap,
           color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/15',
           basePrice: 120,
@@ -3135,7 +3145,10 @@ export default function App() {
       }
 
       setShowProfileModal(false);
-      triggerToast(lang === 'ar' ? 'تم حفظ وتحديث البيانات والملف الشخصي بنجاح!' : 'Profile saved successfully!', 'success');
+      setIsEditingTechProfile(false);
+      setActiveTab('home');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      triggerToast(lang === 'ar' ? 'تم حفظ التغييرات والعودة إلى الشاشة الرئيسية!' : 'Profile saved and returned to home screen!', 'success');
     } catch (err) {
       console.error("Error saving user profile:", err);
       triggerToast(lang === 'ar' ? 'حدث خطأ أثناء حفظ التعديلات!' : 'Error saving profile changes!', 'error');
