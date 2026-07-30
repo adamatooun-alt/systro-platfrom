@@ -1548,12 +1548,70 @@ export default function App() {
 
   // Listen for registered users
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "users"), (snapshot) => {
-      const list: any[] = [];
-      snapshot.forEach(docSnap => {
-        list.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      setRegisteredUsers(list);
+    const unsub = onSnapshot(collection(db, "users"), async (snapshot) => {
+      if (snapshot.empty) {
+        // Seed initial default registered users so Admin can view network users immediately
+        const initialUsers = [
+          {
+            id: 'adam.atooun@gmail.com',
+            email: 'adam.atooun@gmail.com',
+            name: 'آدم عطون (المدير العام)',
+            role: 'technician',
+            phone: '+972 59-999-0000',
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120',
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'raed.masoud@systro.live',
+            email: 'raed.masoud@systro.live',
+            name: 'رائد مسعود',
+            role: 'technician',
+            phone: '+972 59-123-4567',
+            avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120',
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'mohamed.alhussein@systro.live',
+            email: 'mohamed.alhussein@systro.live',
+            name: 'محمد الحسين',
+            role: 'technician',
+            phone: '+972 59-765-4321',
+            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120',
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'shady.yousef@systro.live',
+            email: 'shady.yousef@systro.live',
+            name: 'شادي يوسف',
+            role: 'technician',
+            phone: '+972 59-888-2233',
+            avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120',
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: 'client.demo@systro.live',
+            email: 'client.demo@systro.live',
+            name: 'عميل تجريبي سيسترو',
+            role: 'client',
+            phone: '+972 59-000-1111',
+            avatar: '',
+            createdAt: new Date().toISOString()
+          }
+        ];
+        for (const u of initialUsers) {
+          try {
+            await setDoc(doc(db, "users", u.id), u);
+          } catch (e) {
+            console.warn("Error seeding user:", e);
+          }
+        }
+      } else {
+        const list: any[] = [];
+        snapshot.forEach(docSnap => {
+          list.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        setRegisteredUsers(list);
+      }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "users");
     });
@@ -2971,11 +3029,41 @@ export default function App() {
     triggerToast(lang === 'ar' ? 'تم إرسال رمز التحقق المؤقت OTP إلى جوالك!' : 'Temporary verification code OTP sent to your phone!', 'success');
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otpCode === '1234' || otpCode) {
       setIsLoggedIn(true);
-      setUserRole(portalTab === 'client' ? 'client' : 'technician');
+      const role = portalTab === 'client' ? 'client' : 'technician';
+      setUserRole(role);
+      
+      const cleanPhone = phoneNumber ? phoneNumber.trim() : '';
+      const resolvedEmail = loggedInUserEmail || (cleanPhone ? `${cleanPhone.replace(/[^0-9]/g, '')}@systro.live` : `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`);
+      const resolvedName = loggedInUserName || (role === 'technician' ? (lang === 'ar' ? 'فني سيسترو' : 'Systro Tech') : (lang === 'ar' ? 'عميل سيسترو' : 'Systro Client'));
+
+      setLoggedInUserEmail(resolvedEmail);
+      setLoggedInUserName(resolvedName);
+
+      sessionStorage.setItem('systro_is_logged_in', 'true');
+      sessionStorage.setItem('systro_user_email', resolvedEmail);
+      sessionStorage.setItem('systro_user_name', resolvedName);
+      sessionStorage.setItem('systro_user_role', role);
+      if (cleanPhone) sessionStorage.setItem('systro_phone_number', cleanPhone);
+
+      try {
+        const userDocRef = doc(db, "users", resolvedEmail);
+        await setDoc(userDocRef, {
+          id: resolvedEmail,
+          email: resolvedEmail,
+          name: resolvedName,
+          phone: cleanPhone,
+          role: role,
+          avatar: userAvatar || '',
+          createdAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Firestore error saving OTP user:", err);
+      }
+
       setActiveTab('simulator');
       triggerToast(lang === 'ar' ? 'تم تسجيل الدخول بنجاح لبوابة سيسترو الآمنة!' : 'Successfully signed in to secure Systro portal!', 'success');
     } else {
