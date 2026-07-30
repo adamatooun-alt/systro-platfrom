@@ -231,16 +231,10 @@ export default function HomeTab({
           <div className="pt-6 flex flex-col md:flex-row items-center justify-center gap-5 max-w-4xl mx-auto">
             {/* Action 1: العمليات */}
             <button 
-              onClick={async () => {
+              type="button"
+              onClick={() => {
                 setUserRole('client');
                 sessionStorage.setItem('systro_user_role', 'client');
-                if (loggedInUserEmail) {
-                  try {
-                    await setDoc(doc(db, "users", loggedInUserEmail), { role: 'client' }, { merge: true });
-                  } catch (err) {
-                    console.error("Failed to save user role on HomeTab click:", err);
-                  }
-                }
                 setActiveTab('simulator');
                 triggerToast(
                   lang === 'ar' 
@@ -250,6 +244,11 @@ export default function HomeTab({
                     : 'Welcome to Operations - please select your location to request assistance.', 
                   'success'
                 );
+                if (loggedInUserEmail) {
+                  setDoc(doc(db, "users", loggedInUserEmail), { role: 'client' }, { merge: true }).catch(err => {
+                    console.error("Failed to save user role on HomeTab click:", err);
+                  });
+                }
               }}
               className="w-full md:flex-1 h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black rounded-2xl shadow-xl shadow-orange-500/15 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
             >
@@ -369,20 +368,16 @@ export default function HomeTab({
                 key={service.id} 
                 onClick={() => {
                   setSelectedService(service.id);
-                  if (isLoggedIn) {
-                    setActiveTab('simulator');
-                  } else {
-                    const element = document.getElementById('login-portal-section');
-                    if (element) element.scrollIntoView({ behavior: 'smooth' });
-                    triggerToast(
-                      lang === 'ar' 
-                        ? 'الرجاء تسجيل الدخول أولاً لطلب الخدمة المباشرة!' 
-                        : lang === 'he'
-                        ? 'אנא התחבר תחילה כדי להזמין שירות חילוץ ישיר!'
-                        : 'Please sign in first to submit a live rescue request!', 
-                      'info'
-                    );
-                  }
+                  setUserRole('client');
+                  setActiveTab('simulator');
+                  triggerToast(
+                    lang === 'ar' 
+                      ? 'أهلاً بك في صفحة العمليات - تفضل بتحديد موقعك لطلب الفنيين فورا.' 
+                      : lang === 'he'
+                      ? 'ברוך הבא לדף הפעילויות - אנא בחר מיקום להזמנת סיוע מיידי.'
+                      : 'Welcome to Operations - please select your location to request assistance.', 
+                    'success'
+                  );
                 }}
                 className="p-6 bg-[#0F1424]/60 hover:bg-[#0F1424]/90 border border-gray-800 hover:border-gray-700 rounded-3xl transition-all duration-300 cursor-pointer flex flex-col justify-between group h-64"
               >
@@ -772,18 +767,15 @@ export default function HomeTab({
               <button onClick={() => setActiveTab('services')} className="hover:text-amber-500 transition-colors cursor-pointer">{t.services}</button>
               <button 
                 onClick={() => {
-                  if (!isLoggedIn) {
-                    triggerToast(
-                      lang === 'ar' 
-                        ? 'سجل دخولك للدخول إلى بوابة طلبات الطوارئ!' 
-                        : lang === 'he'
-                        ? 'התחבר כדי לגשת לפורטל קריאות חירום!'
-                        : 'Sign in to access the emergency rescue portal!', 
-                      'warning'
-                    );
-                  } else {
-                    setActiveTab('simulator');
-                  }
+                  setActiveTab('simulator');
+                  triggerToast(
+                    lang === 'ar' 
+                      ? 'أهلاً بك في صفحة العمليات - تفضل بتحديد موقعك لطلب الفنيين فورا.' 
+                      : lang === 'he'
+                      ? 'ברוך הבא לדף הפעילויות - אנא בחר מיקום להזמנת סיוע מיידי.'
+                      : 'Welcome to Operations - please select your location to request assistance.', 
+                    'success'
+                  );
                 }} 
                 className="hover:text-amber-500 transition-colors cursor-pointer"
               >
