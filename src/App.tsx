@@ -6871,20 +6871,6 @@ export default function App() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-gray-400 uppercase">
-                  {lang === 'ar' ? 'شرح ووصف الخدمة (بالإنجليزي):' : lang === 'he' ? 'תיאור השירות (אנגלית):' : 'Description (English):'}
-                </label>
-                <textarea 
-                  required
-                  rows={2}
-                  placeholder="Short explanation of the service scope..."
-                  value={customServiceDescEn}
-                  onChange={(e) => setCustomServiceDescEn(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#0A0B10] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors resize-none"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase">
                   {lang === 'ar' ? 'السعر الأساسي التقديري (₪):' : lang === 'he' ? 'מחיר בסיס משוער (₪):' : 'Base Price (₪):'}
                 </label>
                 <input 
