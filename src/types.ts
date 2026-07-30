@@ -86,6 +86,8 @@ export interface Bid {
   etaMinutes: number;
   rating: number;
   avatar: string;
+  carModel?: string;
+  plateNumber?: string;
 }
 
 export interface ChatMsg {

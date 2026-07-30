@@ -883,45 +883,21 @@ export default function App() {
         setProviderVehicle(data.carModel || data.arCarModel || '');
         setProviderPlate(data.plateNumber || '');
         setProviderName(data.name || data.arName || loggedInUserName || '');
-        setProviderAvatar(data.avatar || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120");
+        setProviderAvatar(data.avatar || '');
       } else {
-        // Auto-provision personal technician profile linked directly to loggedInUserEmail
-        const initialTech = {
-          id: loggedInUserEmail,
-          email: loggedInUserEmail,
-          name: loggedInUserName || 'فني معتمد',
-          arName: loggedInUserName || 'فني معتمد',
-          phone: '+972 59-999-9999',
-          rating: 5.0,
-          reviewsCount: 1,
-          isOnline: true,
-          lat: 40,
-          lng: 40,
-          avatar: "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120",
-          carModel: 'سيارة طوارئ وسحب',
-          arCarModel: 'سيارة طوارئ وسحب',
-          plateNumber: '5982614',
-          specialties: ['fuel', 'mechanic', 'towing', 'locksmith'],
-          notifyEmail: true,
-          notifyWhatsapp: true,
-          createdAt: Date.now()
-        };
-        try {
-          await setDoc(docRef, initialTech, { merge: true });
-          setActiveTechDoc(initialTech);
-          setProviderVehicle(initialTech.carModel);
-          setProviderPlate(initialTech.plateNumber);
-          setProviderName(initialTech.name);
-          setProviderAvatar(initialTech.avatar);
-        } catch (e) {
-          console.error("Error auto-creating technician doc:", e);
-        }
+        // If technician doc does NOT exist for this specific email,
+        // keep activeTechDoc as null so they fill out THEIR OWN details in the setup profile form.
+        setActiveTechDoc(null);
+        setProviderVehicle('');
+        setProviderPlate('');
+        setProviderName(loggedInUserName || '');
+        setProviderAvatar('');
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `technicians/${loggedInUserEmail}`);
     });
     return () => unsub();
-  }, [isLoggedIn, loggedInUserEmail, userRole]);
+  }, [isLoggedIn, loggedInUserEmail, userRole, loggedInUserName]);
 
   // Sync notification preferences when activeTechDoc is updated from Firestore
   useEffect(() => {
@@ -2082,28 +2058,35 @@ export default function App() {
       return;
     }
 
-    const techProfile = technicians.find(t => t.id === techBidProfileId);
-    if (!techProfile) return;
+    const currentTechId = loggedInUserEmail || techBidProfileId;
+    const currentTechName = loggedInUserName || providerName || activeTechDoc?.name || 'فني معتمد';
+    const currentAvatar = providerAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120';
+    const currentRating = activeTechDoc?.rating || 5.0;
+    const currentCar = providerVehicle || activeTechDoc?.carModel || '';
+    const currentPlate = providerPlate || activeTechDoc?.plateNumber || '';
 
     try {
-      const bidId = `bid-${techBidProfileId}-${Date.now()}`;
+      const sanitizedId = currentTechId.replace(/[^a-zA-Z0-9]/g, '_');
+      const bidId = `bid-${sanitizedId}-${Date.now()}`;
       const newBid: Bid = {
         id: bidId,
         requestId: activeRequestId,
-        technicianId: techBidProfileId,
-        technicianName: techProfile.name,
-        technicianArName: techProfile.arName,
+        technicianId: currentTechId,
+        technicianName: currentTechName,
+        technicianArName: currentTechName,
         price: Number(techBidPrice),
         etaMinutes: Number(techBidEta),
-        rating: techProfile.rating,
-        avatar: techProfile.avatar
+        rating: currentRating,
+        avatar: currentAvatar,
+        carModel: currentCar,
+        plateNumber: currentPlate
       };
 
       await setDoc(doc(db, "bids", bidId), newBid);
       triggerToast(
         lang === 'ar' 
-          ? `تم إرسال عرض بقيمة ${techBidPrice} ₪ بنجاح من الفني ${techProfile.arName}!` 
-          : `Bid of ${techBidPrice} ₪ submitted by ${techProfile.name}!`, 
+          ? `تم إرسال عرض بقيمة ${techBidPrice} ₪ بنجاح من الفني ${currentTechName}!` 
+          : `Bid of ${techBidPrice} ₪ submitted by ${currentTechName}!`, 
         'success'
       );
     } catch (err) {
@@ -2954,6 +2937,11 @@ export default function App() {
     setLoggedInUserEmail('');
     setLoggedInUserName('');
     setPhoneNumber('');
+    setActiveTechDoc(null);
+    setProviderVehicle('');
+    setProviderPlate('');
+    setProviderName('');
+    setProviderAvatar('');
     setActiveRequestId(null);
     setSimStatus('idle');
     setPinnedLocation(null);
@@ -5187,7 +5175,7 @@ export default function App() {
                                               price: priceNum,
                                               etaMinutes: etaNum,
                                               rating: activeTechDoc.rating || 5.0,
-                                              avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120',
+                                              avatar: providerAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120',
                                               carModel: activeTechDoc.carModel,
                                               plateNumber: activeTechDoc.plateNumber
                                             };
@@ -5990,7 +5978,9 @@ export default function App() {
                               {simStatus === 'in_progress' && t.simTechWorking}
                               {simStatus === 'disputed' && (lang === 'ar' ? 'الطلب قيد النزاع والمراجعة الإدارية ⚠️' : 'Under Dispute & Administrative Review ⚠️')}
                             </h4>
-                            <span className="text-[10px] text-gray-500 font-semibold block">{lang === 'ar' ? 'رقم اللوحة:' : 'License Plate:'} {technicians[0].plateNumber}</span>
+                            {selectedBid?.plateNumber && (
+                              <span className="text-[10px] text-gray-500 font-semibold block">{lang === 'ar' ? 'رقم اللوحة:' : 'License Plate:'} {selectedBid.plateNumber}</span>
+                            )}
                           </div>
                         </div>
 
@@ -6023,7 +6013,7 @@ export default function App() {
                                 <span>{lang === 'ar' ? 'المحادثة الحية والمتابعة المباشرة مع الفني' : 'Live Chat with Technician'}</span>
                               </h4>
                               <span className="text-[10px] text-emerald-400 font-bold block">
-                                {selectedBid?.technicianName || technicians[0].arName} {lang === 'ar' ? '(متصل الآن 🟢)' : '(Online Now 🟢)'}
+                                {selectedBid?.technicianName || (lang === 'ar' ? 'الفني المعتمد' : 'Assigned Technician')} {lang === 'ar' ? '(متصل الآن 🟢)' : '(Online Now 🟢)'}
                               </span>
                             </div>
                           </div>
