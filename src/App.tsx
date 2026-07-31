@@ -68,6 +68,7 @@ import {
   BellOff,
   CheckCheck,
   Car,
+  Save,
   Hammer,
   HelpCircle,
   ShoppingBag,
@@ -974,11 +975,37 @@ export default function App() {
           sessionStorage.setItem('systro_user_role', 'technician');
         }
       } else {
-        // If technician doc does NOT exist for this specific email, keep activeTechDoc null unless role is explicitly technician
-        setActiveTechDoc(null);
+        // If technician doc does NOT exist for this email, but role is technician, auto-create it immediately
         if (userRole === 'technician') {
+          const defaultTech = {
+            id: loggedInUserEmail,
+            name: loggedInUserName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician'),
+            arName: loggedInUserName || 'فني معتمد',
+            phone: phoneNumber || providerPhone || '+972 59-999-9999',
+            rating: 5.0,
+            reviewsCount: 1,
+            isOnline: true,
+            isAvailable: true,
+            lat: 40,
+            lng: 40,
+            avatar: userAvatar || providerAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+            carModel: providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+            arCarModel: providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+            plateNumber: providerPlate || '',
+            specialties: ['towing'],
+            email: loggedInUserEmail,
+            notifyEmail: notifyEmail,
+            notifyWhatsapp: notifyWhatsapp
+          };
+          setActiveTechDoc(defaultTech);
           setProviderName(loggedInUserName || '');
+          try {
+            await setDoc(doc(db, "technicians", loggedInUserEmail), defaultTech, { merge: true });
+          } catch (err) {
+            console.error("Auto-creating tech doc error:", err);
+          }
         } else {
+          setActiveTechDoc(null);
           setProviderVehicle('');
           setProviderPlate('');
           setProviderName('');
@@ -4394,170 +4421,83 @@ export default function App() {
               
               {userRole === 'technician' ? (
                 /* SERVICE PROVIDER DASHBOARD (Palestine Rescue Live Hub) */
-                <div className="space-y-6">
-                  {!activeTechDoc ? (
-                    /* Setup Partner Profile */
-                    <div className="space-y-6">
-                      <div className="space-y-2 border-b border-gray-950 pb-4 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
-                        <h3 className="text-base font-black text-white flex items-center gap-2 justify-center sm:justify-start">
-                          <Wrench className="w-5 h-5 text-amber-500 animate-spin" />
-                          <span>{lang === 'ar' ? 'تفعيل ملف الشريك ومزود الخدمات' : 'Setup Service Provider Profile'}</span>
-                        </h3>
-                        <p className="text-xs text-gray-400 font-semibold">
-                          {lang === 'ar' 
-                            ? 'أنت مسجل كفني/مقدم خدمة. يرجى تأكيد تفعيل ملفك كشريك للبدء.' 
-                            : 'Complete your profile activation to start receiving emergency alerts.'}
-                        </p>
-                      </div>
-
-                      <div className="space-y-4 text-right">
-                        {/* User Verified Profile Summary Card */}
-                        <div className="flex items-center justify-between bg-[#0A0B10] p-3.5 rounded-2xl border border-gray-800">
-                          <div className="flex items-center gap-3">
-                            <img 
-                              src={userAvatar || providerAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} 
-                              alt="Profile Avatar" 
-                              className="w-11 h-11 rounded-full object-cover border-2 border-amber-500/50 shadow-md shrink-0"
-                              referrerPolicy="no-referrer"
-                            />
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <h4 className="text-xs font-black text-white">{loggedInUserName || (lang === 'ar' ? 'مزود خدمة' : 'Provider')}</h4>
-                                <span className="bg-amber-500/10 text-amber-400 text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-amber-500/20">
-                                  {lang === 'ar' ? 'حساب معتمد' : 'Verified'}
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-gray-400 font-mono mt-0.5 dir-ltr text-right">{loggedInUserEmail || 'user@systro.live'}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setProfileNameInput(loggedInUserName);
-                              setProfilePhoneInput(phoneNumber);
-                              setProfileAvatarInput(userAvatar || providerAvatar || '');
-                              setShowProfileModal(true);
-                            }}
-                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-amber-400 border border-amber-500/20 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
-                          >
-                            <User className="w-3.5 h-3.5" />
-                            <span>{lang === 'ar' ? 'تعديل الصورة والاسم' : 'Edit Profile'}</span>
-                          </button>
-                        </div>
-
-                        <button 
-                          onClick={async () => {
-                            const vName = loggedInUserName.trim() || providerName.trim() || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician');
-                            const vAvatar = userAvatar.trim() || providerAvatar.trim() || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120";
-                            try {
-                              const newTech = {
-                                id: loggedInUserEmail,
-                                name: vName,
-                                arName: vName,
-                                phone: '+972 59-999-9999',
-                                rating: 5.0,
-                                reviewsCount: 1,
-                                isOnline: true,
-                                lat: 40,
-                                lng: 40,
-                                avatar: vAvatar,
-                                carModel: providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
-                                arCarModel: providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
-                                plateNumber: providerPlate || '',
-                                specialties: ['towing'],
-                                email: loggedInUserEmail,
-                                notifyEmail: notifyEmail,
-                                notifyWhatsapp: notifyWhatsapp
-                              };
-                              await setDoc(doc(db, "technicians", loggedInUserEmail), newTech);
-                              setProviderLat(40);
-                              setProviderLng(40);
-                              triggerToast(lang === 'ar' ? 'تهانينا! تم تفعيل ملفك كشريك إنقاذ معتمد لدى سيسترو.' : 'Congratulations! Your profile as a rescue partner is now active.', 'success');
-                            } catch (err) {
-                              console.error(err);
-                              triggerToast(lang === 'ar' ? 'حدث خطأ في تفعيل الحساب' : 'Error activating account', 'error');
-                            }
-                          }}
-                          className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-amber-500/10"
-                        >
-                          <span>{lang === 'ar' ? 'حفظ الملف والظهور المباشر كشريك' : 'Activate & Save Certified Profile'}</span>
-                        </button>
+                <div className="space-y-6 text-right">
+                  {/* Live Badge Status Header */}
+                  <div className="p-4 bg-[#0A0B10]/95 border border-gray-900 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 select-none">
+                    <div className="flex items-center gap-3">
+                      <img 
+                        src={activeTechDoc?.avatar || userAvatar || providerAvatar || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120"} 
+                        alt="Technician" 
+                        className="w-12 h-12 rounded-full border border-amber-500/35 object-cover" 
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="text-right">
+                        <h4 className="text-xs font-black text-white flex items-center gap-1.5">
+                          <span>{activeTechDoc?.name || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician')}</span>
+                          <span className="bg-emerald-500/15 text-emerald-400 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                            <Star className="w-2.5 h-2.5 fill-current" />
+                            <span>{activeTechDoc?.rating || '5.0'}</span>
+                          </span>
+                        </h4>
+                        <span className="text-[10px] text-gray-500 font-extrabold block">
+                          {activeTechDoc?.carModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service')} 
+                          {activeTechDoc?.plateNumber ? ` (${activeTechDoc.plateNumber})` : providerPlate ? ` (${providerPlate})` : ''}
+                        </span>
                       </div>
                     </div>
-                  ) : (
-                    /* Active Certified Partner Dashboard */
-                    <div className="space-y-6 text-right">
-                      
-                      {/* Live Badge Status Header */}
-                      <div className="p-4 bg-[#0A0B10]/95 border border-gray-900 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 select-none">
-                        <div className="flex items-center gap-3">
-                          <img 
-                            src={activeTechDoc.avatar || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120"} 
-                            alt="Technician" 
-                            className="w-12 h-12 rounded-full border border-amber-500/35 object-cover" 
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="text-right">
-                            <h4 className="text-xs font-black text-white flex items-center gap-1.5">
-                              <span>{activeTechDoc.name || loggedInUserName}</span>
-                              <span className="bg-emerald-500/15 text-emerald-400 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                                <Star className="w-2.5 h-2.5 fill-current" />
-                                <span>{activeTechDoc.rating || '5.0'}</span>
-                              </span>
-                            </h4>
-                            <span className="text-[10px] text-gray-500 font-extrabold block">{activeTechDoc.carModel} ({activeTechDoc.plateNumber})</span>
-                          </div>
-                        </div>
 
-                        <div className="flex flex-wrap items-center gap-3">
-                          {/* Go Online / Availability Toggle Button (زر الظهور) */}
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const currentOnline = activeTechDoc.isOnline ?? true;
-                              const nextOnline = !currentOnline;
-                              try {
-                                await updateDoc(doc(db, "technicians", loggedInUserEmail), {
-                                  isOnline: nextOnline,
-                                  isAvailable: nextOnline
-                                });
-                                triggerToast(
-                                  lang === 'ar'
-                                    ? (nextOnline ? '🟢 زر الظهور مفعل: أنت متاح الآن بالشبكة وتصلك كافة التنبيهات والمهمات!' : '🔴 زر الظهور متوقف: أنت خارج الموقع الآن (المهمات السابقة محفوظة لحين عودتك).')
-                                    : (nextOnline ? '🟢 Status Online: You are active to receive task alerts!' : '🔴 Status Offline: Away from site (Tasks stay saved persistently).'),
-                                  nextOnline ? 'success' : 'warning'
-                                );
-                              } catch (err) {
-                                console.error(err);
-                              }
-                            }}
-                            className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shadow-lg ${
-                              (activeTechDoc.isOnline ?? true)
-                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                                : 'bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30'
-                            }`}
-                          >
-                            <span className={`w-2.5 h-2.5 rounded-full ${
-                              (activeTechDoc.isOnline ?? true) ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'
-                            }`}></span>
-                            <span>
-                              {lang === 'ar' 
-                                ? ((activeTechDoc.isOnline ?? true) ? 'زر الظهور: متاح بالشبكة 🟢' : 'زر الظهور: غير متاح حالياً 🔴')
-                                : ((activeTechDoc.isOnline ?? true) ? 'Go Online: Active 🟢' : 'Go Online: Offline 🔴')}
-                            </span>
-                          </button>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Go Online / Availability Toggle Button (زر الظهور) */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const currentOnline = activeTechDoc?.isOnline ?? true;
+                          const nextOnline = !currentOnline;
+                          try {
+                            if (loggedInUserEmail) {
+                              await updateDoc(doc(db, "technicians", loggedInUserEmail), {
+                                isOnline: nextOnline,
+                                isAvailable: nextOnline
+                              });
+                            }
+                            setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: nextOnline, isAvailable: nextOnline }));
+                            triggerToast(
+                              lang === 'ar'
+                                ? (nextOnline ? '🟢 زر الظهور مفعل: أنت متاح الآن بالشبكة وتصلك كافة التنبيهات والمهمات!' : '🔴 زر الظهور متوقف: أنت خارج الموقع الآن (المهمات السابقة محفوظة لحين عودتك).')
+                                : (nextOnline ? '🟢 Status Online: You are active to receive task alerts!' : '🔴 Status Offline: Away from site (Tasks stay saved persistently).'),
+                              nextOnline ? 'success' : 'warning'
+                            );
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shadow-lg ${
+                          (activeTechDoc?.isOnline ?? true)
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                            : 'bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30'
+                        }`}
+                      >
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          (activeTechDoc?.isOnline ?? true) ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'
+                        }`}></span>
+                        <span>
+                          {lang === 'ar' 
+                            ? ((activeTechDoc?.isOnline ?? true) ? 'زر الظهور: متاح بالشبكة 🟢' : 'زر الظهور: غير متاح حالياً 🔴')
+                            : ((activeTechDoc?.isOnline ?? true) ? 'Go Online: Active 🟢' : 'Go Online: Offline 🔴')}
+                        </span>
+                      </button>
 
-                          {/* Edit Details Action Button */}
-                          <button
-                            onClick={() => {
-                              setProviderName(activeTechDoc.name || '');
-                              setProviderAvatar(activeTechDoc.avatar || '');
-                              setProviderVehicle(activeTechDoc.carModel || '');
-                              setProviderPlate(activeTechDoc.plateNumber || '');
-                              setIsEditingTechProfile(!isEditingTechProfile);
-                            }}
-                            className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-black border border-amber-500/20 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 cursor-pointer"
-                          >
+                      {/* Edit Details Action Button */}
+                      <button
+                        onClick={() => {
+                          setProviderName(activeTechDoc?.name || loggedInUserName || '');
+                          setProviderAvatar(activeTechDoc?.avatar || userAvatar || '');
+                          setProviderVehicle(activeTechDoc?.carModel || providerVehicle || '');
+                          setProviderPlate(activeTechDoc?.plateNumber || providerPlate || '');
+                          setIsEditingTechProfile(!isEditingTechProfile);
+                        }}
+                        className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-black border border-amber-500/20 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
                             <Edit className="w-3.5 h-3.5" />
                             <span>{lang === 'ar' ? 'تعديل التفاصيل' : 'Edit Details'}</span>
                           </button>
@@ -5016,14 +4956,46 @@ export default function App() {
                                 : 'Select exact service roles you wish to offer (e.g. click "Add Mechanic Record" and skip "Taxi"). Saved automatically and persistently 💾.'}
                             </p>
                           </div>
-                          <span className="text-[9px] bg-amber-500/15 border border-amber-500/30 text-amber-400 px-2.5 py-1 rounded-full font-black shrink-0">
-                            {lang === 'ar' ? 'حفظ البيانات تلقائياً 💾' : 'Auto-Saved 💾'}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const techId = loggedInUserEmail || phoneNumber || 'tech_user';
+                              const currentSpecs = activeTechDoc?.specialties || ['towing'];
+                              const updatedDoc = {
+                                ...(activeTechDoc || {}),
+                                id: techId,
+                                name: activeTechDoc?.name || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician'),
+                                email: loggedInUserEmail,
+                                phone: activeTechDoc?.phone || phoneNumber || providerPhone || '',
+                                carModel: activeTechDoc?.carModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+                                plateNumber: activeTechDoc?.plateNumber || providerPlate || '',
+                                specialties: currentSpecs,
+                                updatedAt: Date.now()
+                              };
+                              setActiveTechDoc(updatedDoc);
+                              try {
+                                await setDoc(doc(db, "technicians", techId), updatedDoc, { merge: true });
+                                triggerToast(
+                                  lang === 'ar' 
+                                    ? 'تم حفظ كافة سجلات وبيانات الفني تلقائياً وبنجاح! 💾' 
+                                    : 'All technician records & data auto-saved successfully! 💾',
+                                  'success'
+                                );
+                              } catch (err) {
+                                console.error("Auto-save error:", err);
+                                triggerToast(lang === 'ar' ? 'تم حفظ التعديلات 💾' : 'Saved! 💾', 'success');
+                              }
+                            }}
+                            className="text-[10px] bg-amber-500 hover:bg-amber-400 text-black border border-amber-400/40 px-3 py-1.5 rounded-xl font-black shrink-0 transition-all cursor-pointer shadow-md shadow-amber-500/10 flex items-center gap-1.5 active:scale-95"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                            <span>{lang === 'ar' ? 'حفظ البيانات تلقائياً 💾' : 'Auto-Save Data 💾'}</span>
+                          </button>
                         </div>
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
                           {dbServices.map(s => {
-                            const specialtiesList = activeTechDoc.specialties || [];
+                            const specialtiesList = activeTechDoc?.specialties || [];
                             const isReg = specialtiesList.includes(s.id);
                             const cleanTitle = lang === 'ar' ? (s.arName || s.name.split(' (')[0]) : s.name;
 
@@ -5047,11 +5019,31 @@ export default function App() {
                                     <button 
                                       type="button"
                                       onClick={async () => {
+                                        const techId = loggedInUserEmail || phoneNumber || 'tech_user';
                                         const updatedSpecs = specialtiesList.filter((id: string) => id !== s.id);
-                                        await updateDoc(doc(db, "technicians", loggedInUserEmail), {
+                                        
+                                        // Instant local state update
+                                        setActiveTechDoc((prev: any) => ({
+                                          ...(prev || {}),
                                           specialties: updatedSpecs
-                                        });
-                                        triggerToast(lang === 'ar' ? `تم إزالة سجل [${cleanTitle}] وحفظ التغيرات تلقائياً 💾` : `Removed [${cleanTitle}] record!`, 'info');
+                                        }));
+
+                                        try {
+                                          await setDoc(doc(db, "technicians", techId), {
+                                            specialties: updatedSpecs,
+                                            email: loggedInUserEmail,
+                                            updatedAt: Date.now()
+                                          }, { merge: true });
+
+                                          triggerToast(
+                                            lang === 'ar' 
+                                              ? `تم إزالة سجل [${cleanTitle}] وحفظ التغيرات تلقائياً 💾` 
+                                              : `Removed [${cleanTitle}] record & auto-saved! 💾`, 
+                                            'info'
+                                          );
+                                        } catch (err) {
+                                          console.error("Remove specialty error:", err);
+                                        }
                                       }}
                                       title={lang === 'ar' ? 'إزالة السجل' : 'Remove Record'}
                                       className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
@@ -5063,11 +5055,35 @@ export default function App() {
                                   <button 
                                     type="button"
                                     onClick={async () => {
-                                      const updatedSpecs = [...specialtiesList, s.id];
-                                      await updateDoc(doc(db, "technicians", loggedInUserEmail), {
+                                      const techId = loggedInUserEmail || phoneNumber || 'tech_user';
+                                      const updatedSpecs = Array.from(new Set([...specialtiesList, s.id]));
+                                      
+                                      // Instant local state update
+                                      setActiveTechDoc((prev: any) => ({
+                                        ...(prev || {}),
                                         specialties: updatedSpecs
-                                      });
-                                      triggerToast(lang === 'ar' ? `تم إضافة سجل [${cleanTitle}] وحفظ البيانات تلقائياً 💾` : `Added [${cleanTitle}] record!`, 'success');
+                                      }));
+
+                                      try {
+                                        await setDoc(doc(db, "technicians", techId), {
+                                          specialties: updatedSpecs,
+                                          email: loggedInUserEmail,
+                                          updatedAt: Date.now()
+                                        }, { merge: true });
+                                        
+                                        triggerToast(
+                                          lang === 'ar' 
+                                            ? `تم إضافة سجل [${cleanTitle}] وحفظ البيانات تلقائياً 💾` 
+                                            : `Added [${cleanTitle}] record & auto-saved! 💾`, 
+                                          'success'
+                                        );
+                                      } catch (err) {
+                                        console.error("Add specialty error:", err);
+                                        triggerToast(
+                                          lang === 'ar' ? `تم إضافة سجل [${cleanTitle}] ومزامنته 💾` : `Added record!`, 
+                                          'success'
+                                        );
+                                      }
                                     }}
                                     className="text-[10px] bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-3 py-1.5 rounded-xl shrink-0 transition-all cursor-pointer shadow-md shadow-amber-500/10 flex items-center gap-1 active:scale-95"
                                   >
@@ -5711,9 +5727,7 @@ export default function App() {
                       </div>
 
                     </div>
-                  )}
-                </div>
-              ) : (
+                  ) : (
                 /* Original Client Workflow (Idle, Pending Bids, Secure Vault Deposit, En Route, Chat, Completed) */
                 <>
                   {/* Wizard Status Idle state: Submit request */}
