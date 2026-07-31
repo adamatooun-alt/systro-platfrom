@@ -951,7 +951,8 @@ export default function App() {
 
   // Real-time listener for the active technician's profile document linked strictly to loggedInUserEmail
   useEffect(() => {
-    if (!isLoggedIn || !loggedInUserEmail) {
+    const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
+    if (!isLoggedIn || !cleanEmail) {
       setActiveTechDoc(null);
       setProviderVehicle('');
       setProviderPlate('');
@@ -959,7 +960,7 @@ export default function App() {
       setProviderAvatar('');
       return;
     }
-    const docRef = doc(db, "technicians", loggedInUserEmail);
+    const docRef = doc(db, "technicians", cleanEmail);
     const unsub = onSnapshot(docRef, async (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
@@ -977,8 +978,12 @@ export default function App() {
       } else {
         // If technician doc does NOT exist for this email, but role is technician, auto-create it immediately
         if (userRole === 'technician') {
+          const initialSpecs = (activeTechDoc?.specialties && activeTechDoc.specialties.length > 0)
+            ? activeTechDoc.specialties
+            : ['towing'];
+
           const defaultTech = {
-            id: loggedInUserEmail,
+            id: cleanEmail,
             name: loggedInUserName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician'),
             arName: loggedInUserName || 'فني معتمد',
             phone: phoneNumber || providerPhone || '+972 59-999-9999',
@@ -992,15 +997,15 @@ export default function App() {
             carModel: providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
             arCarModel: providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
             plateNumber: providerPlate || '',
-            specialties: ['towing'],
-            email: loggedInUserEmail,
+            specialties: initialSpecs,
+            email: cleanEmail,
             notifyEmail: notifyEmail,
             notifyWhatsapp: notifyWhatsapp
           };
           setActiveTechDoc(defaultTech);
           setProviderName(loggedInUserName || '');
           try {
-            await setDoc(doc(db, "technicians", loggedInUserEmail), defaultTech, { merge: true });
+            await setDoc(doc(db, "technicians", cleanEmail), defaultTech, { merge: true });
           } catch (err) {
             console.error("Auto-creating tech doc error:", err);
           }
@@ -1013,7 +1018,7 @@ export default function App() {
         }
       }
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `technicians/${loggedInUserEmail}`);
+      handleFirestoreError(error, OperationType.GET, `technicians/${cleanEmail}`);
     });
     return () => unsub();
   }, [isLoggedIn, loggedInUserEmail, userRole, loggedInUserName]);
@@ -1113,8 +1118,12 @@ export default function App() {
       snapshot.forEach(docSnap => {
         list.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
       });
-      // Sort by newest first
-      list.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+      // Sort by newest first safely
+      list.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
       setAllRequests(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "requests");
@@ -4138,6 +4147,7 @@ export default function App() {
           isLoggedIn={isLoggedIn}
           loggedInUserName={loggedInUserName}
           loggedInUserEmail={loggedInUserEmail}
+          userRole={userRole}
           setActiveTab={setActiveTab as any}
           triggerToast={triggerToast}
           mapsKey={mapsKey}
@@ -4959,22 +4969,32 @@ export default function App() {
                           <button
                             type="button"
                             onClick={async () => {
-                              const techId = loggedInUserEmail || phoneNumber || 'tech_user';
+                              const cleanTechEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || activeTechDoc?.id || '').trim().toLowerCase();
+                              const targetTechId = cleanTechEmail || (phoneNumber ? `${phoneNumber.replace(/[^0-9]/g, '')}@systro.live` : 'tech_user');
                               const currentSpecs = activeTechDoc?.specialties || ['towing'];
                               const updatedDoc = {
                                 ...(activeTechDoc || {}),
-                                id: techId,
+                                id: targetTechId,
                                 name: activeTechDoc?.name || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician'),
-                                email: loggedInUserEmail,
-                                phone: activeTechDoc?.phone || phoneNumber || providerPhone || '',
+                                arName: activeTechDoc?.arName || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician'),
+                                email: cleanTechEmail || loggedInUserEmail || '',
+                                phone: activeTechDoc?.phone || phoneNumber || providerPhone || '+972 59-999-9999',
                                 carModel: activeTechDoc?.carModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+                                arCarModel: activeTechDoc?.arCarModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
                                 plateNumber: activeTechDoc?.plateNumber || providerPlate || '',
+                                avatar: activeTechDoc?.avatar || userAvatar || providerAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+                                rating: activeTechDoc?.rating || 5.0,
+                                reviewsCount: activeTechDoc?.reviewsCount || 1,
+                                isOnline: activeTechDoc?.isOnline ?? true,
+                                isAvailable: activeTechDoc?.isAvailable ?? true,
+                                notifyEmail: activeTechDoc?.notifyEmail ?? notifyEmail,
+                                notifyWhatsapp: activeTechDoc?.notifyWhatsapp ?? notifyWhatsapp,
                                 specialties: currentSpecs,
                                 updatedAt: Date.now()
                               };
                               setActiveTechDoc(updatedDoc);
                               try {
-                                await setDoc(doc(db, "technicians", techId), updatedDoc, { merge: true });
+                                await setDoc(doc(db, "technicians", targetTechId), updatedDoc, { merge: true });
                                 triggerToast(
                                   lang === 'ar' 
                                     ? 'تم حفظ كافة سجلات وبيانات الفني تلقائياً وبنجاح! 💾' 
@@ -5019,21 +5039,36 @@ export default function App() {
                                     <button 
                                       type="button"
                                       onClick={async () => {
-                                        const techId = loggedInUserEmail || phoneNumber || 'tech_user';
+                                        const cleanTechEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || activeTechDoc?.id || '').trim().toLowerCase();
+                                        const targetTechId = cleanTechEmail || (phoneNumber ? `${phoneNumber.replace(/[^0-9]/g, '')}@systro.live` : 'tech_user');
                                         const updatedSpecs = specialtiesList.filter((id: string) => id !== s.id);
                                         
+                                        const updatedDoc = {
+                                          ...(activeTechDoc || {}),
+                                          id: targetTechId,
+                                          name: activeTechDoc?.name || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician'),
+                                          arName: activeTechDoc?.arName || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician'),
+                                          email: cleanTechEmail || loggedInUserEmail || '',
+                                          phone: activeTechDoc?.phone || phoneNumber || providerPhone || '+972 59-999-9999',
+                                          carModel: activeTechDoc?.carModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+                                          arCarModel: activeTechDoc?.arCarModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+                                          plateNumber: activeTechDoc?.plateNumber || providerPlate || '',
+                                          avatar: activeTechDoc?.avatar || userAvatar || providerAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+                                          rating: activeTechDoc?.rating || 5.0,
+                                          reviewsCount: activeTechDoc?.reviewsCount || 1,
+                                          isOnline: activeTechDoc?.isOnline ?? true,
+                                          isAvailable: activeTechDoc?.isAvailable ?? true,
+                                          notifyEmail: activeTechDoc?.notifyEmail ?? notifyEmail,
+                                          notifyWhatsapp: activeTechDoc?.notifyWhatsapp ?? notifyWhatsapp,
+                                          specialties: updatedSpecs,
+                                          updatedAt: Date.now()
+                                        };
+                                        
                                         // Instant local state update
-                                        setActiveTechDoc((prev: any) => ({
-                                          ...(prev || {}),
-                                          specialties: updatedSpecs
-                                        }));
+                                        setActiveTechDoc(updatedDoc);
 
                                         try {
-                                          await setDoc(doc(db, "technicians", techId), {
-                                            specialties: updatedSpecs,
-                                            email: loggedInUserEmail,
-                                            updatedAt: Date.now()
-                                          }, { merge: true });
+                                          await setDoc(doc(db, "technicians", targetTechId), updatedDoc, { merge: true });
 
                                           triggerToast(
                                             lang === 'ar' 
@@ -5055,21 +5090,36 @@ export default function App() {
                                   <button 
                                     type="button"
                                     onClick={async () => {
-                                      const techId = loggedInUserEmail || phoneNumber || 'tech_user';
+                                      const cleanTechEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || activeTechDoc?.id || '').trim().toLowerCase();
+                                      const targetTechId = cleanTechEmail || (phoneNumber ? `${phoneNumber.replace(/[^0-9]/g, '')}@systro.live` : 'tech_user');
                                       const updatedSpecs = Array.from(new Set([...specialtiesList, s.id]));
                                       
+                                      const updatedDoc = {
+                                        ...(activeTechDoc || {}),
+                                        id: targetTechId,
+                                        name: activeTechDoc?.name || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician'),
+                                        arName: activeTechDoc?.arName || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician'),
+                                        email: cleanTechEmail || loggedInUserEmail || '',
+                                        phone: activeTechDoc?.phone || phoneNumber || providerPhone || '+972 59-999-9999',
+                                        carModel: activeTechDoc?.carModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+                                        arCarModel: activeTechDoc?.arCarModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+                                        plateNumber: activeTechDoc?.plateNumber || providerPlate || '',
+                                        avatar: activeTechDoc?.avatar || userAvatar || providerAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+                                        rating: activeTechDoc?.rating || 5.0,
+                                        reviewsCount: activeTechDoc?.reviewsCount || 1,
+                                        isOnline: activeTechDoc?.isOnline ?? true,
+                                        isAvailable: activeTechDoc?.isAvailable ?? true,
+                                        notifyEmail: activeTechDoc?.notifyEmail ?? notifyEmail,
+                                        notifyWhatsapp: activeTechDoc?.notifyWhatsapp ?? notifyWhatsapp,
+                                        specialties: updatedSpecs,
+                                        updatedAt: Date.now()
+                                      };
+                                      
                                       // Instant local state update
-                                      setActiveTechDoc((prev: any) => ({
-                                        ...(prev || {}),
-                                        specialties: updatedSpecs
-                                      }));
+                                      setActiveTechDoc(updatedDoc);
 
                                       try {
-                                        await setDoc(doc(db, "technicians", techId), {
-                                          specialties: updatedSpecs,
-                                          email: loggedInUserEmail,
-                                          updatedAt: Date.now()
-                                        }, { merge: true });
+                                        await setDoc(doc(db, "technicians", targetTechId), updatedDoc, { merge: true });
                                         
                                         triggerToast(
                                           lang === 'ar' 

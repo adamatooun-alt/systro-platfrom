@@ -178,6 +178,7 @@ interface TaxiTabProps {
   isLoggedIn: boolean;
   loggedInUserName: string;
   loggedInUserEmail: string;
+  userRole?: 'client' | 'technician' | 'guest' | 'admin' | null;
   setActiveTab: (tab: string) => void;
   triggerToast: (text: string, type?: 'success' | 'warning' | 'info' | 'error') => void;
   mapsKey?: string;
@@ -188,6 +189,7 @@ export default function TaxiTab({
   isLoggedIn,
   loggedInUserName,
   loggedInUserEmail,
+  userRole,
   setActiveTab,
   triggerToast,
   mapsKey
@@ -270,7 +272,12 @@ export default function TaxiTab({
   useEffect(() => {
     const currentSessionId = sessionStorage.getItem('systro_session_id') || 'sess_taxi_' + Date.now();
     let q;
-    if (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '') {
+    if (userRole === 'technician') {
+      q = query(
+        collection(db, "requests"),
+        where("serviceType", "==", "taxi")
+      );
+    } else if (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '') {
       q = query(
         collection(db, "requests"),
         where("requestedBy", "==", loggedInUserEmail),
@@ -290,7 +297,11 @@ export default function TaxiTab({
         list.push({ id: docSnap.id, ...docSnap.data() });
       });
 
-      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      list.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
       
       const active = list.find(r => r.status !== 'finished');
 
