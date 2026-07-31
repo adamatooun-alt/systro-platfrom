@@ -1154,18 +1154,30 @@ export default function App() {
     }
   }, [isLoggedIn, loggedInUserEmail, userRole, activeRequestId, allRequests]);
 
+  // Reset notified set when loggedInUserEmail or userRole changes so that a logged-in technician gets notified
+  useEffect(() => {
+    notifiedReqIdsRef.current.clear();
+  }, [loggedInUserEmail, userRole]);
+
   // 1. Real-time dispatch notification alert when a new client request is created across any device
   useEffect(() => {
+    // Only dispatch sound/alerts if logged in as technician OR in technician role
+    const isTech = userRole === 'technician' || (isLoggedIn && activeTechDoc);
+    if (!isTech) return;
+
     const pendingReqs = allRequests.filter(r => r.status === 'pending_bids');
 
     pendingReqs.forEach(req => {
-      // Skip if this request ID was already notified in this session
-      if (notifiedReqIdsRef.current.has(req.id)) return;
+      // Create a technician-specific notification key
+      const notifKey = `${loggedInUserEmail || 'tech'}_${req.id}`;
 
-      // Mark request as notified
-      notifiedReqIdsRef.current.add(req.id);
+      // Skip if this request ID was already notified to this technician in this session
+      if (notifiedReqIdsRef.current.has(notifKey)) return;
 
-      // Trigger smart in-app notification & play siren sound for all connected devices/technicians
+      // Mark request as notified for this technician
+      notifiedReqIdsRef.current.add(notifKey);
+
+      // Trigger smart in-app notification & play siren sound for connected technicians
       const serviceArName = getServiceArName(req.serviceType);
       const serviceEnName = getServiceEnName(req.serviceType);
       
@@ -1210,7 +1222,7 @@ export default function App() {
         }, 2500);
       }
     });
-  }, [allRequests, userRole, activeTechDoc, notifyWhatsapp, notifyEmail, lang, loggedInUserEmail]);
+  }, [allRequests, userRole, activeTechDoc, notifyWhatsapp, notifyEmail, lang, loggedInUserEmail, isLoggedIn]);
 
   // 2. Real-time notification alert when a technician submits a bid (for Clients)
   useEffect(() => {
@@ -1989,8 +2001,10 @@ export default function App() {
 
       // Fetch matching technicians and dispatch real notification alerts (SMTP / WhatsApp)
       const matchedTechs = dbTechnicians.filter(tech => {
-        const hasSpecialty = tech.serviceId === selectedService || tech.specialties?.includes(selectedService);
-        return hasSpecialty && (tech.notifyEmail || tech.notifyWhatsapp);
+        const specs = tech.specialties || [];
+        const hasSpecialty = specs.length === 0 || specs.includes('all') || specs.includes(selectedService) || tech.serviceId === selectedService;
+        const wantsNotify = tech.notifyEmail !== false || tech.notifyWhatsapp !== false;
+        return hasSpecialty && wantsNotify;
       });
 
       if (matchedTechs.length > 0) {
@@ -3165,42 +3179,49 @@ export default function App() {
       return;
     }
 
-    try {
-      const trimmedPhone = profilePhoneInput.trim();
-      const trimmedAvatar = profileAvatarInput.trim();
-      const targetEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim();
+    const trimmedPhone = profilePhoneInput.trim();
+    const trimmedAvatar = profileAvatarInput.trim();
+    const targetEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim();
 
-      // 1. Update local states
-      setLoggedInUserName(trimmedName);
-      setPhoneNumber(trimmedPhone);
-      setUserAvatar(trimmedAvatar);
-      if (targetEmail) {
-        setLoggedInUserEmail(targetEmail);
-      }
+    // 1. Update local states immediately
+    setLoggedInUserName(trimmedName);
+    setPhoneNumber(trimmedPhone);
+    setUserAvatar(trimmedAvatar);
+    if (targetEmail) {
+      setLoggedInUserEmail(targetEmail);
+    }
 
-      if (activeTechDoc || userRole === 'technician') {
-        setProviderName(trimmedName);
-        setProviderPhone(trimmedPhone);
-        setProviderAvatar(trimmedAvatar);
-        setActiveTechDoc(prev => prev ? {
-          ...prev,
-          name: trimmedName,
-          arName: trimmedName,
-          phone: trimmedPhone,
-          avatar: trimmedAvatar
-        } : null);
-      }
+    if (activeTechDoc || userRole === 'technician') {
+      setProviderName(trimmedName);
+      setProviderPhone(trimmedPhone);
+      setProviderAvatar(trimmedAvatar);
+      setActiveTechDoc(prev => prev ? {
+        ...prev,
+        name: trimmedName,
+        arName: trimmedName,
+        phone: trimmedPhone,
+        avatar: trimmedAvatar
+      } : null);
+    }
 
-      // 2. Update sessionStorage
-      sessionStorage.setItem('systro_user_name', trimmedName);
-      sessionStorage.setItem('systro_phone_number', trimmedPhone);
-      sessionStorage.setItem('systro_user_avatar', trimmedAvatar);
-      if (targetEmail) {
-        sessionStorage.setItem('systro_user_email', targetEmail);
-      }
+    // 2. Update sessionStorage immediately
+    sessionStorage.setItem('systro_user_name', trimmedName);
+    sessionStorage.setItem('systro_phone_number', trimmedPhone);
+    sessionStorage.setItem('systro_user_avatar', trimmedAvatar);
+    if (targetEmail) {
+      sessionStorage.setItem('systro_user_email', targetEmail);
+    }
 
-      // 3. Update Firestore users collection strictly linked to email
-      if (targetEmail) {
+    // 3. Immediately close modal, exit profile view, and navigate to home page
+    setShowProfileModal(false);
+    setIsEditingTechProfile(false);
+    setActiveTab('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    triggerToast(lang === 'ar' ? 'تم حفظ التغييرات والعودة إلى الصفحة الرئيسية بنجاح!' : 'Profile saved and returned to home page successfully!', 'success');
+
+    // 4. Background sync to Firestore database
+    if (targetEmail) {
+      try {
         const userDocRef = doc(db, "users", targetEmail);
         await setDoc(userDocRef, {
           email: targetEmail,
@@ -3210,7 +3231,6 @@ export default function App() {
           updatedAt: new Date().toISOString()
         }, { merge: true });
 
-        // 4. Update Firestore technicians collection if document exists or technician role
         const techDocRef = doc(db, "technicians", targetEmail);
         const techSnap = await getDoc(techDocRef);
         if (techSnap.exists()) {
@@ -3223,16 +3243,9 @@ export default function App() {
             avatar: trimmedAvatar
           }, { merge: true });
         }
+      } catch (err) {
+        console.error("Error background saving user profile to Firestore:", err);
       }
-
-      setShowProfileModal(false);
-      setIsEditingTechProfile(false);
-      setActiveTab('home');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      triggerToast(lang === 'ar' ? 'تم حفظ التغييرات والعودة إلى الشاشة الرئيسية!' : 'Profile saved and returned to home screen!', 'success');
-    } catch (err) {
-      console.error("Error saving user profile:", err);
-      triggerToast(lang === 'ar' ? 'حدث خطأ أثناء حفظ التعديلات!' : 'Error saving profile changes!', 'error');
     }
   };
 
@@ -4392,8 +4405,8 @@ export default function App() {
                         </h3>
                         <p className="text-xs text-gray-400 font-semibold">
                           {lang === 'ar' 
-                            ? 'أنت مسجل كفني/مقدم خدمة. يرجى إدخال تفاصيل ملفك والسيارة للبدء.' 
-                            : 'Complete your profile to start receiving emergency alerts.'}
+                            ? 'أنت مسجل كفني/مقدم خدمة. يرجى تأكيد تفعيل ملفك كشريك للبدء.' 
+                            : 'Complete your profile activation to start receiving emergency alerts.'}
                         </p>
                       </div>
 
@@ -4432,38 +4445,10 @@ export default function App() {
                           </button>
                         </div>
 
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'نوع مركبة الصيانة والإنقاذ (مثال: BMW 2024):' : 'Rescue Vehicle/Truck Description:'}</label>
-                          <input 
-                            type="text" 
-                            required
-                            value={providerVehicle}
-                            onChange={(e) => setProviderVehicle(e.target.value)}
-                            placeholder={lang === 'ar' ? 'مثال: ونش سحب مرسيدس 2024' : 'e.g. Ford F-150 Field Repair Unit'} 
-                            className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'رقم لوحة ترخيص المركبة (License Plate):' : 'License Plate Number:'}</label>
-                          <input 
-                            type="text" 
-                            required
-                            value={providerPlate}
-                            onChange={(e) => setProviderPlate(e.target.value)}
-                            placeholder={lang === 'ar' ? 'مثال: 5982614' : 'e.g. 5982614'} 
-                            className="w-full px-4 py-3 bg-[#0A0B10] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                          />
-                        </div>
-
                         <button 
                           onClick={async () => {
                             const vName = loggedInUserName.trim() || providerName.trim() || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician');
                             const vAvatar = userAvatar.trim() || providerAvatar.trim() || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120";
-                            if (!providerVehicle.trim() || !providerPlate.trim()) {
-                              triggerToast(lang === 'ar' ? 'الرجاء تعبئة مواصفات المركبة ورقم اللوحة!' : 'Please fill in the vehicle specs and license plate!', 'warning');
-                              return;
-                            }
                             try {
                               const newTech = {
                                 id: loggedInUserEmail,
@@ -4476,9 +4461,9 @@ export default function App() {
                                 lat: 40,
                                 lng: 40,
                                 avatar: vAvatar,
-                                carModel: providerVehicle,
-                                arCarModel: providerVehicle,
-                                plateNumber: providerPlate,
+                                carModel: providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+                                arCarModel: providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service'),
+                                plateNumber: providerPlate || '',
                                 specialties: ['towing'],
                                 email: loggedInUserEmail,
                                 notifyEmail: notifyEmail,
@@ -4587,13 +4572,49 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* PROMINENT LIVE EMERGENCY ALERTS BANNER FOR TECHNICIAN */}
+                      {allRequests.filter(r => r.status === 'pending_bids').length > 0 && (
+                        <div className="p-4 bg-gradient-to-r from-red-950/90 via-[#1A0A0A] to-[#0A0B10] border-2 border-red-500/80 rounded-3xl space-y-3 shadow-2xl shadow-red-950/50 animate-pulse text-right">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="p-3 rounded-2xl bg-red-500/20 text-red-400 border border-red-500/40 animate-bounce">
+                                <AlertTriangle className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <span className="px-2 py-0.5 bg-red-500 text-black text-[9px] font-black rounded-full uppercase tracking-wider">
+                                  {lang === 'ar' ? 'تنبيه طوارئ جديد على الطريق 🚨' : 'NEW ROAD EMERGENCY ALERT 🚨'}
+                                </span>
+                                <h4 className="text-sm sm:text-base font-black text-white mt-1">
+                                  {lang === 'ar'
+                                    ? `يوجد ${allRequests.filter(r => r.status === 'pending_bids').length} بلاغ طوارئ نشط بانتظار استجابتك وقبولك!`
+                                    : `There are ${allRequests.filter(r => r.status === 'pending_bids').length} active roadside emergencies awaiting your response!`}
+                                </h4>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                playRescueAlertSound();
+                                const targetSection = document.getElementById('technician-rescue-alerts-list');
+                                if (targetSection) {
+                                  targetSection.scrollIntoView({ behavior: 'smooth' });
+                                }
+                              }}
+                              className="px-4 py-2.5 bg-red-500 hover:bg-red-400 text-black font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                            >
+                              <Volume2 className="w-4 h-4" />
+                              <span>{lang === 'ar' ? 'عرض التنبيه والاستجابة الفورية ⚡' : 'View Alert & Respond Now ⚡'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Collapsible Edit Profile Form */}
                       {isEditingTechProfile && (
                         <div className="p-5 bg-gradient-to-br from-[#0F1424] to-[#0A0B10] border border-amber-500/25 rounded-3xl space-y-4 shadow-xl text-right animate-fadeIn">
                           <div className="flex items-center justify-between border-b border-gray-950 pb-3">
                             <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
                               <Settings className="w-4 h-4 animate-spin-slow" />
-                              <span>{lang === 'ar' ? 'تعديل بيانات الفني والسيارة' : 'Modify Technician & Vehicle Details'}</span>
+                              <span>{lang === 'ar' ? 'تعديل بيانات الفني والملف' : 'Modify Technician Profile'}</span>
                             </span>
                             <button onClick={() => setIsEditingTechProfile(false)} className="text-gray-500 hover:text-white transition-colors cursor-pointer">
                               <X className="w-4 h-4" />
@@ -4630,44 +4651,17 @@ export default function App() {
                               </button>
                             </div>
 
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'مواصفات / نوع السيارة:' : 'Rescue Vehicle/Truck Description:'}</label>
-                              <input 
-                                type="text" 
-                                value={providerVehicle} 
-                                onChange={(e) => setProviderVehicle(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-[#050609] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                              />
-                            </div>
-
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'ar' ? 'رقم لوحة السيارة:' : 'License Plate Number:'}</label>
-                              <input 
-                                type="text" 
-                                value={providerPlate} 
-                                onChange={(e) => setProviderPlate(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-[#050609] border border-gray-800 rounded-xl focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors"
-                              />
-                            </div>
-
                             <div className="flex items-center gap-2 pt-2">
                               <button
                                 onClick={async () => {
-                                  if (!providerVehicle.trim() || !providerPlate.trim()) {
-                                    triggerToast(lang === 'ar' ? 'الرجاء تعبئة تفاصيل المركبة ورقم اللوحة!' : 'Please fill in vehicle details!', 'warning');
-                                    return;
-                                  }
                                   try {
                                     await updateDoc(doc(db, "technicians", loggedInUserEmail), {
                                       name: loggedInUserName || activeTechDoc.name,
                                       arName: loggedInUserName || activeTechDoc.arName || activeTechDoc.name,
-                                      avatar: userAvatar || activeTechDoc.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
-                                      carModel: providerVehicle,
-                                      arCarModel: providerVehicle,
-                                      plateNumber: providerPlate
+                                      avatar: userAvatar || activeTechDoc.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"
                                     });
                                     setIsEditingTechProfile(false);
-                                    triggerToast(lang === 'ar' ? 'تم تحديث تفاصيل المركبة بنجاح!' : 'Vehicle details updated successfully!', 'success');
+                                    triggerToast(lang === 'ar' ? 'تم تحديث البيانات بنجاح!' : 'Profile updated successfully!', 'success');
                                   } catch (err) {
                                     console.error(err);
                                     triggerToast(lang === 'ar' ? 'حدث خطأ أثناء تحديث البيانات!' : 'Error updating profile!', 'error');
@@ -5398,7 +5392,7 @@ export default function App() {
                       )}
 
                       {/* Active client requests from road network */}
-                      <div className="space-y-4">
+                      <div id="technician-rescue-alerts-list" className="space-y-4">
                         <h4 className="text-xs font-black text-white uppercase tracking-wider border-b border-gray-950 pb-2 flex items-center justify-between">
                           <span>{lang === 'ar' ? '📡 نداءات استغاثة طارئة نشطة على الطريق:' : '📡 Active Live Rescue Alerts on Road:'}</span>
                           <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2 py-0.5 rounded text-[9px] animate-pulse">
@@ -7286,81 +7280,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Universal Support & Contact Footer - Adam Atoun Contact Details */}
-      <footer className="w-full border-t border-amber-500/20 bg-[#0A0C14] backdrop-blur-md mt-12 py-10 px-4 pb-28 md:pb-12 text-right rtl:text-right ltr:text-left shadow-2xl">
-        <div className="max-w-5xl mx-auto flex flex-col items-center justify-center text-center space-y-6">
-          
-          {/* Header Indicator */}
-          <div className="space-y-2 select-none flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-full text-amber-400 text-xs font-black tracking-wide uppercase shadow-sm">
-              <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
-              <span>
-                {lang === 'ar' ? 'بوابة التواصل والدعم الفني المباشر' : lang === 'he' ? 'שער תמיכה וקשר ישיר' : 'Direct Support & Management'}
-              </span>
-            </div>
-            <h4 className="text-sm md:text-base font-black text-white max-w-lg leading-relaxed">
-              {lang === 'ar' 
-                ? 'لمزيد من الاستفسارات، الشكاوى أو طلب المساعدة التقنية، يمكنك التواصل مباشرة مع الإدارة العامة:' 
-                : lang === 'he' 
-                ? 'לשאלות נוספות, תלונות או תמיכה טכנית, ניתן לפנות ישירות להנהלה הכללית:' 
-                : 'For further inquiries, feedback or technical assistance, contact the General Management directly:'}
-            </h4>
-          </div>
 
-          {/* Contact Badges Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
-            
-            {/* Phone Card */}
-            <a 
-              href="tel:+972538316779"
-              className="group p-4 bg-[#121522] border border-amber-500/20 hover:border-amber-400/50 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
-            >
-              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-110 transition-transform">
-                <Phone className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-xs text-amber-300 font-extrabold block uppercase tracking-wider">
-                  {lang === 'ar' ? 'الاتصال المباشر بـ آدم' : lang === 'he' ? 'חיוג ישיר לאדם' : 'Direct Call Adam'}
-                </span>
-                <span className="text-sm md:text-base font-black text-white group-hover:text-amber-300 transition-colors font-mono tracking-tight block mt-0.5" dir="ltr">
-                  +972 53-831-6779
-                </span>
-              </div>
-            </a>
-
-            {/* Email Card */}
-            <a 
-              href="mailto:adam.atooun@gmail.com"
-              className="group p-4 bg-[#121522] border border-amber-500/20 hover:border-amber-400/50 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
-            >
-              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-110 transition-transform">
-                <Mail className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-xs text-amber-300 font-extrabold block uppercase tracking-wider">
-                  {lang === 'ar' ? 'البريد الإلكتروني للإدارة' : lang === 'he' ? 'אימייל ההנהלה' : 'Management Email'}
-                </span>
-                <span className="text-sm md:text-base font-black text-white group-hover:text-amber-300 transition-colors font-mono truncate block mt-0.5">
-                  adam.atooun@gmail.com
-                </span>
-              </div>
-            </a>
-
-          </div>
-
-          {/* Copyright Section */}
-          <div className="pt-6 border-t border-gray-800/80 w-full text-center space-y-2 select-none">
-            <div className="inline-block px-5 py-2.5 bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-amber-500/10 border border-amber-500/30 rounded-2xl shadow-inner">
-              <span className="text-xs md:text-sm font-black text-amber-300 block tracking-wide">
-                {lang === 'ar' ? '© ٢٠٢٦ سيسترو والضمان المالي 🛡️ جميع الحقوق محفوظة.' : lang === 'he' ? '© 2026 סיסטרו והסדר מאובטח 🛡️ כל הזכויות שמורות.' : '© 2026 Systro & Escrow Secure 🛡️ All Rights Reserved.'}
-              </span>
-              <span className="text-xs font-black text-white block mt-1">
-                {lang === 'ar' ? 'تطوير ودعم تقني تحت إشراف آدم عطون' : lang === 'he' ? 'פיתוח ותמיכה טכנולוגית בפיקוח אדם עטון' : 'Technology support supervised by Adam Atoun'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </footer>
 
       {/* User Profile Edit Modal */}
       {showProfileModal && (
