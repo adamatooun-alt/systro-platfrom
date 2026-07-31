@@ -80,7 +80,8 @@ import {
   Plus,
   PlusCircle,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Smartphone
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -478,6 +479,14 @@ export default function App() {
   const [simulatedOtpCode, setSimulatedOtpCode] = useState('');
   const [showGoogleFallbackModal, setShowGoogleFallbackModal] = useState(false);
   const [showAppleFallbackModal, setShowAppleFallbackModal] = useState(false);
+
+  // Single Active Device Session Lock states
+  const [activeSessionConflict, setActiveSessionConflict] = useState<{
+    email: string;
+    name: string;
+    existingDeviceTime?: number;
+  } | null>(null);
+  const [kickedOutNotice, setKickedOutNotice] = useState<string | null>(null);
 
   const [loggedInUserEmail, setLoggedInUserEmail] = useState(() => {
     return sessionStorage.getItem('systro_user_email') || '';
@@ -1032,6 +1041,52 @@ export default function App() {
       }
     }
   }, [activeTechDoc]);
+
+  // Real-time listener & heartbeat to enforce single active device session lock per email
+  useEffect(() => {
+    const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
+    if (!isLoggedIn || !cleanEmail) return;
+
+    // Periodic heartbeat every 20 seconds to maintain active status
+    const updateHeartbeat = async () => {
+      try {
+        const userDocRef = doc(db, "users", cleanEmail);
+        await setDoc(userDocRef, {
+          activeSessionId: currentSessionId,
+          lastActive: Date.now(),
+          isOnline: true
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Session heartbeat error:", err);
+      }
+    };
+
+    updateHeartbeat();
+    const intervalId = setInterval(updateHeartbeat, 20000);
+
+    // Snapshot listener to catch if another device logs into this email
+    const userDocRef = doc(db, "users", cleanEmail);
+    const unsub = onSnapshot(userDocRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const sidInDb = data.activeSessionId;
+        const isOnlineInDb = data.isOnline !== false;
+
+        if (sidInDb && sidInDb !== currentSessionId && isOnlineInDb) {
+          console.warn(`[Session Conflict] ${cleanEmail} logged in from another device (${sidInDb}). Terminating this session.`);
+          handleLogout();
+          setKickedOutNotice(cleanEmail);
+        }
+      }
+    }, (err) => {
+      console.warn("Session listener snapshot error:", err);
+    });
+
+    return () => {
+      clearInterval(intervalId);
+      unsub();
+    };
+  }, [isLoggedIn, loggedInUserEmail, currentSessionId]);
 
   // Sync technician's location from providerLat/providerLng into Firestore
   useEffect(() => {
@@ -3110,11 +3165,41 @@ export default function App() {
     }
   };
 
-  const handleGoogleSignIn = async (email?: string, name?: string) => {
+  const handleGoogleSignIn = async (email?: string, name?: string, forceOverrideSession: boolean = false) => {
+    const resolvedEmail = (email || `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`).trim().toLowerCase();
+    const resolvedName = name || (lang === 'ar' ? 'مستخدم سيسترو' : lang === 'he' ? 'משתמש סיסטרו' : 'Systro User');
+    
+    // 1. Single active device session check
+    if (!forceOverrideSession) {
+      try {
+        const userDocRef = doc(db, "users", resolvedEmail);
+        const snapshot = await getDoc(userDocRef);
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const existingSid = data.activeSessionId;
+          const lastActive = data.lastActive || 0;
+          const isOnlineInDb = data.isOnline !== false;
+          const now = Date.now();
+
+          // Active session exists on a DIFFERENT device/tab within the last 3 minutes
+          if (existingSid && existingSid !== currentSessionId && isOnlineInDb && (now - lastActive < 3 * 60 * 1000)) {
+            setActiveSessionConflict({
+              email: resolvedEmail,
+              name: resolvedName,
+              existingDeviceTime: lastActive
+            });
+            return; // Abort login pending user confirmation modal
+          }
+        }
+      } catch (err) {
+        console.warn("Concurrent session check error:", err);
+      }
+    }
+
+    setActiveSessionConflict(null);
     setIsLoggedIn(true);
     setShowGoogleFallbackModal(false);
-    const resolvedEmail = email || `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`;
-    const resolvedName = name || (lang === 'ar' ? 'مستخدم سيسترو' : lang === 'he' ? 'משתמש סיסטרו' : 'Systro User');
+    setShowAppleFallbackModal(false);
     
     setLoggedInUserEmail(resolvedEmail);
     setLoggedInUserName(resolvedName);
@@ -3150,14 +3235,27 @@ export default function App() {
           setPhoneNumber('');
           sessionStorage.removeItem('systro_phone_number');
         }
-      } else {
-        // Create initial user document
+
+        // Lock active session ID to this device in Firestore
         await setDoc(userDocRef, {
+          activeSessionId: currentSessionId,
+          lastActive: Date.now(),
+          isOnline: true,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+      } else {
+        // Create initial user document with active session ID lock
+        await setDoc(userDocRef, {
+          id: resolvedEmail,
           email: resolvedEmail,
           name: resolvedName,
           role: null,
           phone: '',
           avatar: '',
+          activeSessionId: currentSessionId,
+          lastActive: Date.now(),
+          isOnline: true,
           createdAt: new Date().toISOString()
         }, { merge: true });
         setUserRole(null);
@@ -3172,7 +3270,19 @@ export default function App() {
     setActiveTab('simulator');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
+    if (cleanEmail) {
+      try {
+        await setDoc(doc(db, "users", cleanEmail), {
+          activeSessionId: null,
+          isOnline: false,
+          lastActive: Date.now()
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Logout Firestore update warning:", err);
+      }
+    }
     setIsLoggedIn(false);
     setUserRole(null);
     setLoggedInUserEmail('');
@@ -3283,24 +3393,128 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <LoginPortal
-        lang={lang}
-        setLang={setLang}
-        toast={toast}
-        enteredName={enteredName}
-        setEnteredName={setEnteredName}
-        enteredEmail={enteredEmail}
-        setEnteredEmail={setEnteredEmail}
-        showGoogleFallbackModal={showGoogleFallbackModal}
-        setShowGoogleFallbackModal={setShowGoogleFallbackModal}
-        showAppleFallbackModal={showAppleFallbackModal}
-        setShowAppleFallbackModal={setShowAppleFallbackModal}
-        handleRealGoogleSignIn={handleRealGoogleSignIn}
-        handleRealAppleSignIn={handleRealAppleSignIn}
-        handleGoogleSignIn={handleGoogleSignIn}
-        triggerToast={triggerToast}
-        t={t}
-      />
+      <>
+        <LoginPortal
+          lang={lang}
+          setLang={setLang}
+          toast={toast}
+          enteredName={enteredName}
+          setEnteredName={setEnteredName}
+          enteredEmail={enteredEmail}
+          setEnteredEmail={setEnteredEmail}
+          showGoogleFallbackModal={showGoogleFallbackModal}
+          setShowGoogleFallbackModal={setShowGoogleFallbackModal}
+          showAppleFallbackModal={showAppleFallbackModal}
+          setShowAppleFallbackModal={setShowAppleFallbackModal}
+          handleRealGoogleSignIn={handleRealGoogleSignIn}
+          handleRealAppleSignIn={handleRealAppleSignIn}
+          handleGoogleSignIn={handleGoogleSignIn}
+          triggerToast={triggerToast}
+          t={t}
+        />
+
+        {/* Concurrent Device Session Block Modal (Prevents simultaneous email logins on multiple phones) */}
+        {activeSessionConflict && (
+          <div className="fixed inset-0 z-[999999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-[#0A0D14] border-2 border-red-500/50 rounded-3xl max-w-md w-full p-6 text-right space-y-5 shadow-2xl shadow-red-950/60 relative overflow-hidden">
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-red-500/10 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
+                  <Smartphone className="w-6 h-6 text-red-400 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">
+                    {lang === 'ar' ? '⛔ الحساب مفتوح ونشط على هاتف آخر!' : '⛔ Account Active on Another Device!'}
+                  </h3>
+                  <p className="text-[11px] font-bold text-red-400/90 mt-0.5">
+                    {lang === 'ar' ? 'تم كشف جلسة نشطة على جهاز آخر لنفس الإيميل' : 'Active session detected on another device'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-[#05070C] p-4 rounded-2xl border border-gray-800/80 text-xs font-semibold leading-relaxed text-gray-300">
+                <p>
+                  {lang === 'ar'
+                    ? `البريد الإلكتروني (${activeSessionConflict.email}) مسجّل دخوله حالياً ونشط على هاتف أو جهاز آخر.`
+                    : `The email (${activeSessionConflict.email}) is currently logged in and active on another device.`}
+                </p>
+                <p className="text-amber-400 font-bold">
+                  {lang === 'ar'
+                    ? '🔒 حمايةً لأمان حسابك وموثوقية البيانات، يمنع النظام تشغيل نفس الحساب على جهازين في وقت واحد.'
+                    : '🔒 To maintain security and data integrity, operating the same account on multiple devices simultaneously is restricted.'}
+                </p>
+                <p className="text-gray-400 text-[11px]">
+                  {lang === 'ar'
+                    ? 'يمكنك إنهاء الجلسة على الهاتف الآخر وتسجيل الدخول هنا فوراً بالنقر على الزر أدناه:'
+                    : 'You can terminate the active session on the other device and log in here immediately:'}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleGoogleSignIn(activeSessionConflict.email, activeSessionConflict.name, true)}
+                  className="w-full py-3.5 px-4 bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-red-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <LogOut className="w-4 h-4 rotate-180" />
+                  <span>{lang === 'ar' ? 'إنهاء الجلسة على الجهاز الآخر وتسجيل الدخول هنا 🚪📱' : 'End Session on Other Device & Sign In Here 🚪📱'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSessionConflict(null)}
+                  className="w-full py-2.5 px-4 bg-[#111622] hover:bg-[#1A202C] text-gray-400 hover:text-white font-bold text-xs rounded-xl border border-gray-800 transition-all cursor-pointer text-center"
+                >
+                  {lang === 'ar' ? 'إلغاء ❌' : 'Cancel ❌'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Kicked Out Notice Modal */}
+        {kickedOutNotice && (
+          <div className="fixed inset-0 z-[999999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-[#0A0D14] border-2 border-amber-500/50 rounded-3xl max-w-md w-full p-6 text-right space-y-5 shadow-2xl shadow-amber-950/60 relative overflow-hidden">
+              <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-6 h-6 text-amber-400 animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">
+                    {lang === 'ar' ? '⚠️ تم تسجيل الدخول إلى حسابك من هاتف آخر!' : '⚠️ Account Signed In on Another Device!'}
+                  </h3>
+                  <p className="text-[11px] font-bold text-amber-400/90 mt-0.5">
+                    {lang === 'ar' ? 'تنبيه أمني وإغلاق تلقائي للجلسة' : 'Security Notice - Session Terminated'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-[#05070C] p-4 rounded-2xl border border-gray-800/80 text-xs font-semibold leading-relaxed text-gray-300">
+                <p>
+                  {lang === 'ar'
+                    ? `تم فتح وتأكيد تسجيل الدخول بحسابك (${kickedOutNotice}) من هاتف أو جهاز آخر.`
+                    : `Your account (${kickedOutNotice}) was accessed and signed in from another device.`}
+                </p>
+                <p className="text-amber-400 font-bold">
+                  {lang === 'ar'
+                    ? 'حفاظاً على سلامة بياناتك ومنع التضارب، تم إنهاء الجلسة على هذا الجهاز تلقائياً.'
+                    : 'To protect your data and prevent conflict, the session on this device has been closed.'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setKickedOutNotice(null)}
+                className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-2xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer text-center active:scale-95"
+              >
+                {lang === 'ar' ? 'حسناً، فهمت 🔒' : 'Understood 🔒'}
+              </button>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -7800,6 +8014,48 @@ export default function App() {
         isOpen={isSentinelOpen} 
         onClose={() => setIsSentinelOpen(false)} 
       />
+
+      {/* Kicked Out Notice Modal */}
+      {kickedOutNotice && (
+        <div className="fixed inset-0 z-[999999] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#0A0D14] border-2 border-amber-500/50 rounded-3xl max-w-md w-full p-6 text-right space-y-5 shadow-2xl shadow-amber-950/60 relative overflow-hidden">
+            <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-6 h-6 text-amber-400 animate-bounce" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white">
+                  {lang === 'ar' ? '⚠️ تم تسجيل الدخول إلى حسابك من هاتف آخر!' : '⚠️ Account Signed In on Another Device!'}
+                </h3>
+                <p className="text-[11px] font-bold text-amber-400/90 mt-0.5">
+                  {lang === 'ar' ? 'تنبيه أمني وإغلاق تلقائي للجلسة' : 'Security Notice - Session Terminated'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 bg-[#05070C] p-4 rounded-2xl border border-gray-800/80 text-xs font-semibold leading-relaxed text-gray-300">
+              <p>
+                {lang === 'ar'
+                  ? `تم فتح وتأكيد تسجيل الدخول بحسابك (${kickedOutNotice}) من هاتف أو جهاز آخر.`
+                  : `Your account (${kickedOutNotice}) was accessed and signed in from another device.`}
+              </p>
+              <p className="text-amber-400 font-bold">
+                {lang === 'ar'
+                  ? 'حفاظاً على سلامة بياناتك ومنع التضارب، تم إنهاء الجلسة على هذا الجهاز تلقائياً.'
+                  : 'To protect your data and prevent conflict, the session on this device has been closed.'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setKickedOutNotice(null)}
+              className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-2xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer text-center active:scale-95"
+            >
+              {lang === 'ar' ? 'حسناً، فهمت 🔒' : 'Understood 🔒'}
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
