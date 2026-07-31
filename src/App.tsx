@@ -4783,7 +4783,7 @@ export default function App() {
                         </div>
 
                         {/* Quick Stats Grid linked to loggedInUserEmail */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
                           <div className="p-3 bg-[#05060A] border border-gray-900 rounded-2xl">
                             <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'عروض الأسعار المقدمة' : 'Submitted Bids'}</span>
                             <span className="text-sm font-black text-amber-400 font-mono">
@@ -4800,12 +4800,6 @@ export default function App() {
                             <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'المهمات المكتملة' : 'Completed Rescues'}</span>
                             <span className="text-sm font-black text-emerald-400 font-mono">
                               {allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && r.status === 'completed').length}
-                            </span>
-                          </div>
-                          <div className="p-3 bg-[#05060A] border border-gray-900 rounded-2xl">
-                            <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'طلبات التخصصات' : 'Custom Trade Requests'}</span>
-                            <span className="text-sm font-black text-purple-400 font-mono">
-                              {pendingServices.filter(s => s.requestedBy === loggedInUserEmail).length}
                             </span>
                           </div>
                         </div>
