@@ -1156,68 +1156,61 @@ export default function App() {
 
   // 1. Real-time dispatch notification alert when a new client request is created across any device
   useEffect(() => {
-    // Check if user is acting as technician or has an active technician profile
-    const isTech = userRole === 'technician' || activeTechDoc !== null;
-
     const pendingReqs = allRequests.filter(r => r.status === 'pending_bids');
 
     pendingReqs.forEach(req => {
       // Skip if this request ID was already notified in this session
       if (notifiedReqIdsRef.current.has(req.id)) return;
 
-      // Skip if this request was created by the currently logged-in user on this same phone/session
-      const isMyOwnRequest = (loggedInUserEmail && req.requestedBy === loggedInUserEmail) || (req.sessionId === currentSessionId);
+      // Mark request as notified
+      notifiedReqIdsRef.current.add(req.id);
 
-      if (!isMyOwnRequest) {
-        // Mark request as notified
-        notifiedReqIdsRef.current.add(req.id);
+      // Trigger smart in-app notification & play siren sound for all connected devices/technicians
+      const serviceArName = getServiceArName(req.serviceType);
+      const serviceEnName = getServiceEnName(req.serviceType);
+      
+      triggerNotification(
+        'new_request',
+        '🚨 نداء استغاثة عاجل جديد!',
+        '🚨 Emergency Rescue Alert!',
+        `مطلوب فني فوراً لـ [${serviceArName}] بقيمة [${req.approximatePrice || 150} ₪] بموقعك!`,
+        `Urgent dispatch for [${serviceEnName}] at [${req.approximatePrice || 150} ₪] nearby!`,
+        req.id
+      );
 
-        if (isTech) {
-          // Trigger smart in-app notification & play siren sound
-          const serviceArName = getServiceArName(req.serviceType);
-          const serviceEnName = getServiceEnName(req.serviceType);
-          triggerNotification(
-            'new_request',
-            '🚨 نداء استغاثة عاجل جديد!',
-            '🚨 Emergency Rescue Alert!',
-            `مطلوب فني فوراً لـ [${serviceArName}] بقيمة [${req.approximatePrice || 150} ₪] بموقعك!`,
-            `Urgent dispatch for [${serviceEnName}] at [${req.approximatePrice || 150} ₪] nearby!`,
-            req.id
-          );
+      // Play Siren Sound
+      playRescueAlertSound();
 
-          // Toast alert
+      // Toast alert
+      triggerToast(
+        lang === 'ar'
+          ? `🚨 بلاغ طوارئ جديد على الطريق: [${serviceArName}] من العميل [${req.clientName}]`
+          : `🚨 New Emergency Alert: [${serviceEnName}] from [${req.clientName}]`,
+        'warning'
+      );
+
+      if (notifyWhatsapp) {
+        setTimeout(() => {
           triggerToast(
             lang === 'ar'
-              ? `🚨 بلاغ طوارئ جديد على الطريق: [${serviceArName}] من العميل [${req.clientName}]`
-              : `🚨 New Emergency Alert: [${serviceEnName}] from [${req.clientName}]`,
-            'warning'
+              ? `📱 إشعار WhatsApp: تم توجيه إشعار الاستغاثة من [${req.clientName}] إلى شبكة الفنيين!`
+              : `📱 WhatsApp Alert: Breakdown rescue alert from [${req.clientName}] dispatched to technicians!`,
+            'success'
           );
-
-          // Simulated WhatsApp & Email alerts
-          if (notifyWhatsapp) {
-            setTimeout(() => {
-              triggerToast(
-                lang === 'ar'
-                  ? `📱 إشعار WhatsApp: تم توجيه إشعار الاستغاثة من [${req.clientName}] إلى هاتفك المسجل!`
-                  : `📱 WhatsApp Alert: Breakdown rescue alert from [${req.clientName}] dispatched to your phone!`,
-                'success'
-              );
-            }, 1000);
-          }
-          if (notifyEmail) {
-            setTimeout(() => {
-              triggerToast(
-                lang === 'ar'
-                  ? `📧 البريد الإلكتروني: تم إرسال تفاصيل المهمة إلى بريدك ${loggedInUserEmail}!`
-                  : `📧 Email Alert: Task details sent to ${loggedInUserEmail}!`,
-                'info'
-              );
-            }, 2500);
-          }
-        }
+        }, 1000);
+      }
+      if (notifyEmail && loggedInUserEmail) {
+        setTimeout(() => {
+          triggerToast(
+            lang === 'ar'
+              ? `📧 البريد الإلكتروني: تم إرسال تفاصيل المهمة إلى شبكة الفنيين!`
+              : `📧 Email Alert: Task details sent to technician network!`,
+            'info'
+          );
+        }, 2500);
       }
     });
-  }, [allRequests, userRole, activeTechDoc, notifyWhatsapp, notifyEmail, lang, loggedInUserEmail, currentSessionId]);
+  }, [allRequests, userRole, activeTechDoc, notifyWhatsapp, notifyEmail, lang, loggedInUserEmail]);
 
   // 2. Real-time notification alert when a technician submits a bid (for Clients)
   useEffect(() => {
@@ -4025,6 +4018,34 @@ export default function App() {
         </div>
       </header>
 
+      {/* Real-time Global Emergency Rescue Bar (Visible when any client posts an alert) */}
+      {allRequests.filter(r => r.status === 'pending_bids').length > 0 && (
+        <div className="bg-gradient-to-r from-red-600 via-amber-600 to-red-600 text-white px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 text-xs font-black animate-pulse select-none z-30 sticky top-20 border-b border-red-500/40">
+          <div className="flex items-center gap-2 max-w-4xl truncate">
+            <span className="bg-white text-red-600 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black shrink-0 animate-bounce shadow">
+              🚨 {lang === 'ar' ? 'إنذار استغاثة حي' : 'LIVE DISPATCH'}
+            </span>
+            <span className="truncate">
+              {lang === 'ar' 
+                ? `يوجد (${allRequests.filter(r => r.status === 'pending_bids').length}) نداء استغاثة طارئ نشط حالياً بانتظار استجابة الفنيين!` 
+                : `There are (${allRequests.filter(r => r.status === 'pending_bids').length}) active emergency alerts waiting for technician response!`}
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              setUserRole('technician');
+              setActiveTab('simulator');
+              triggerToast(lang === 'ar' ? 'تم تحويلك لبوابة الفنيين لتلبية وتأكيد الطلب فوراً!' : 'Switched to Technician portal to accept task!', 'success');
+            }}
+            className="px-3 py-1 bg-black text-amber-400 hover:bg-gray-900 border border-amber-400/50 rounded-lg text-[10px] font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow"
+          >
+            <Wrench className="w-3.5 h-3.5 text-amber-400" />
+            <span>{lang === 'ar' ? 'تلبية المهمة الآن 🛠️' : 'Accept Task Now 🛠️'}</span>
+          </button>
+        </div>
+      )}
+
       {/* CORE HERO LANDING VIEW (Home) */}
       {activeTab === 'home' && (
         <HomeTab
@@ -4503,7 +4524,44 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                          {/* Go Online / Availability Toggle Button (زر الظهور) */}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const currentOnline = activeTechDoc.isOnline ?? true;
+                              const nextOnline = !currentOnline;
+                              try {
+                                await updateDoc(doc(db, "technicians", loggedInUserEmail), {
+                                  isOnline: nextOnline,
+                                  isAvailable: nextOnline
+                                });
+                                triggerToast(
+                                  lang === 'ar'
+                                    ? (nextOnline ? '🟢 زر الظهور مفعل: أنت متاح الآن بالشبكة وتصلك كافة التنبيهات والمهمات!' : '🔴 زر الظهور متوقف: أنت خارج الموقع الآن (المهمات السابقة محفوظة لحين عودتك).')
+                                    : (nextOnline ? '🟢 Status Online: You are active to receive task alerts!' : '🔴 Status Offline: Away from site (Tasks stay saved persistently).'),
+                                  nextOnline ? 'success' : 'warning'
+                                );
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shadow-lg ${
+                              (activeTechDoc.isOnline ?? true)
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                                : 'bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30'
+                            }`}
+                          >
+                            <span className={`w-2.5 h-2.5 rounded-full ${
+                              (activeTechDoc.isOnline ?? true) ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'
+                            }`}></span>
+                            <span>
+                              {lang === 'ar' 
+                                ? ((activeTechDoc.isOnline ?? true) ? 'زر الظهور: متاح بالشبكة 🟢' : 'زر الظهور: غير متاح حالياً 🔴')
+                                : ((activeTechDoc.isOnline ?? true) ? 'Go Online: Active 🟢' : 'Go Online: Offline 🔴')}
+                            </span>
+                          </button>
+
                           {/* Edit Details Action Button */}
                           <button
                             onClick={() => {
@@ -4950,40 +5008,77 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Registering specialties ("يا نقدم خدمات تكتبلهم شو خدماتهم بكل قائمة نكتب إضافة سجل") */}
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-black text-white uppercase tracking-wider border-b border-gray-950 pb-2">
-                          {lang === 'ar' ? '🛠️ تخصصاتي وخدماتي النشطة بالشبكة:' : '🛠️ Active Specialties & Registers:'}
-                        </h4>
+                      {/* Registering specialties ("قائمة إضافة السجلات التي تريد الخدمة فيها") */}
+                      <div className="space-y-3.5 p-4 bg-[#0A0B10] border border-amber-500/20 rounded-2xl shadow-inner select-none">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
+                          <div className="text-right">
+                            <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-amber-500" />
+                              <span>{lang === 'ar' ? '📋 قائمة إضافة سجلات الخدمات (حدد الخدمات التي ترغب بتقديمها):' : '📋 Service Registers List (Select Your Service Trades):'}</span>
+                            </h4>
+                            <p className="text-[10px] text-gray-400 font-semibold mt-1 leading-relaxed">
+                              {lang === 'ar' 
+                                ? 'مثال: إذا كنت تريد العمل كميكانيكي ولكن لا تريد أن تكون تكسي، اضغط على (إضافة سجل ميكانيكي) ولا تضغط على (تكسي). يتم حفظ التفضيلات تلقائياً ودائماً 💾.'
+                                : 'Select exact service roles you wish to offer (e.g. click "Add Mechanic Record" and skip "Taxi"). Saved automatically and persistently 💾.'}
+                            </p>
+                          </div>
+                          <span className="text-[9px] bg-amber-500/15 border border-amber-500/30 text-amber-400 px-2.5 py-1 rounded-full font-black shrink-0">
+                            {lang === 'ar' ? 'حفظ البيانات تلقائياً 💾' : 'Auto-Saved 💾'}
+                          </span>
+                        </div>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
                           {dbServices.map(s => {
                             const specialtiesList = activeTechDoc.specialties || [];
                             const isReg = specialtiesList.includes(s.id);
+                            const cleanTitle = lang === 'ar' ? (s.arName || s.name.split(' (')[0]) : s.name;
+
                             return (
-                              <div key={s.id} className="p-3 bg-[#0A0B10] border border-gray-900 rounded-xl flex items-center justify-between gap-2">
-                                <div className="space-y-0.5 min-w-0 text-right">
-                                  <span className="text-xs font-bold text-white block truncate">{lang === 'ar' ? s.name.split(' (')[0] : s.name}</span>
-                                  <span className="text-[9px] text-gray-500 font-semibold block truncate">{lang === 'ar' ? s.description : s.description}</span>
+                              <div key={s.id} className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all text-right ${
+                                isReg 
+                                  ? 'bg-[#0E1726] border-emerald-500/40 shadow-md shadow-emerald-950/20' 
+                                  : 'bg-[#05060A] border-gray-900 hover:border-amber-500/30'
+                              }`}>
+                                <div className="space-y-0.5 min-w-0 text-right flex-1">
+                                  <span className="text-xs font-black text-white block truncate">{cleanTitle}</span>
+                                  <span className="text-[9px] text-gray-400 font-semibold block truncate">{lang === 'ar' ? (s.arDescription || s.description) : s.description}</span>
                                 </div>
 
                                 {isReg ? (
-                                  <span className="text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold px-2 py-1 rounded-lg shrink-0 flex items-center gap-1">
-                                    <Check className="w-3 h-3" />
-                                    <span>{lang === 'ar' ? 'نشط' : 'Active'}</span>
-                                  </span>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="text-[10px] bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black px-2.5 py-1 rounded-xl flex items-center gap-1">
+                                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span>{lang === 'ar' ? `سجل ${cleanTitle} نشط` : 'Record Active'}</span>
+                                    </span>
+                                    <button 
+                                      type="button"
+                                      onClick={async () => {
+                                        const updatedSpecs = specialtiesList.filter((id: string) => id !== s.id);
+                                        await updateDoc(doc(db, "technicians", loggedInUserEmail), {
+                                          specialties: updatedSpecs
+                                        });
+                                        triggerToast(lang === 'ar' ? `تم إزالة سجل [${cleanTitle}] وحفظ التغيرات تلقائياً 💾` : `Removed [${cleanTitle}] record!`, 'info');
+                                      }}
+                                      title={lang === 'ar' ? 'إزالة السجل' : 'Remove Record'}
+                                      className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
                                 ) : (
                                   <button 
+                                    type="button"
                                     onClick={async () => {
                                       const updatedSpecs = [...specialtiesList, s.id];
                                       await updateDoc(doc(db, "technicians", loggedInUserEmail), {
                                         specialties: updatedSpecs
                                       });
-                                      triggerToast(lang === 'ar' ? `تم إضافتك بنجاح لقائمة خدمات: ${s.name}` : `Successfully added to ${s.name} service logs!`, 'success');
+                                      triggerToast(lang === 'ar' ? `تم إضافة سجل [${cleanTitle}] وحفظ البيانات تلقائياً 💾` : `Added [${cleanTitle}] record!`, 'success');
                                     }}
-                                    className="text-[10px] bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-2.5 py-1.5 rounded-lg shrink-0 transition-all cursor-pointer"
+                                    className="text-[10px] bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-3 py-1.5 rounded-xl shrink-0 transition-all cursor-pointer shadow-md shadow-amber-500/10 flex items-center gap-1 active:scale-95"
                                   >
-                                    {lang === 'ar' ? 'إضافة سجل ➕' : 'Add Record ➕'}
+                                    <PlusCircle className="w-3.5 h-3.5" />
+                                    <span>{lang === 'ar' ? `إضافة سجل ${cleanTitle} ➕` : `Add ${cleanTitle} Record ➕`}</span>
                                   </button>
                                 )}
                               </div>
@@ -5342,22 +5437,91 @@ export default function App() {
                                       </span>
                                     </div>
 
-                                    <button 
-                                      onClick={() => {
-                                        if (isSelected) {
-                                          setSelectedBidRequest(null);
-                                        } else {
-                                          setSelectedBidRequest(req);
-                                          setCustomBidPrice(String(req.approximatePrice || 150));
-                                          // Set pinnedLocation temporarily so technician can see where the client is on their map!
-                                          setPinnedLocation({ lat: req.locationLat, lng: req.locationLng });
-                                          triggerToast(lang === 'ar' ? 'تم تحديد موقع العميل على الخريطة!' : 'Client breakdown pinned on live map!', 'info');
-                                        }
-                                      }}
-                                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[10px] rounded-lg transition-all cursor-pointer"
-                                    >
-                                      {isSelected ? (lang === 'ar' ? 'إغلاق' : 'Close') : (lang === 'ar' ? 'معاينة وتقديم عرض 🛠️' : 'View & Bid 🛠️')}
-                                    </button>
+                                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                      {/* Direct Task Accept Button */}
+                                      <button 
+                                        onClick={async () => {
+                                          const techEmail = loggedInUserEmail || 'tech@systro.live';
+                                          const techName = loggedInUserName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician');
+                                          const techAvatar = providerAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120';
+                                          const acceptPrice = Number(req.approximatePrice || 150);
+
+                                          try {
+                                            const bidId = 'bid-' + Math.random().toString(36).substring(2, 9);
+                                            const newBidObj = {
+                                              id: bidId,
+                                              requestId: req.id,
+                                              technicianId: techEmail,
+                                              technicianName: techName,
+                                              technicianArName: techName,
+                                              phone: activeTechDoc?.phone || phoneNumber || '+972 59-999-9999',
+                                              price: acceptPrice,
+                                              etaMinutes: 15,
+                                              rating: activeTechDoc?.rating || 5.0,
+                                              avatar: techAvatar,
+                                              carModel: activeTechDoc?.carModel || 'مركبة إنقاذ طوارئ',
+                                              plateNumber: activeTechDoc?.plateNumber || '7-4321-99'
+                                            };
+                                            await setDoc(doc(db, "bids", bidId), newBidObj);
+
+                                            // Update Firestore request: status becomes 'en_route', locking it to this tech!
+                                            await updateDoc(doc(db, "requests", req.id), {
+                                              status: 'en_route',
+                                              selectedTechnicianId: techEmail,
+                                              escrowAmount: acceptPrice
+                                            });
+
+                                            // Send automated system chat message
+                                            const chatMsgId = `sys-accept-${Date.now()}`;
+                                            await setDoc(doc(db, "chats", chatMsgId), {
+                                              id: chatMsgId,
+                                              requestId: req.id,
+                                              sender: 'system',
+                                              text: lang === 'ar' 
+                                                ? `⚡ قام الفني [${techName}] بقبول وتلبية استغاثتك فوراً! وهو الآن في طريقه إليك 🚚` 
+                                                : `⚡ Technician [${techName}] accepted your rescue request immediately! En route to your location 🚚`,
+                                              timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+                                              createdTime: Date.now()
+                                            });
+
+                                            setActiveRequestId(req.id);
+                                            setSelectedBid(newBidObj);
+                                            setSelectedBidRequest(null);
+
+                                            triggerToast(
+                                              lang === 'ar' 
+                                                ? `✅ تم قبول وتلبية المهمة فوراً! تم إغلاق الطلب وتحديث الحالة إلى (جاري التحرك 🚚) واختفائه من بقية الفنيين!` 
+                                                : `✅ Task accepted! Locked and en route, removed from other technicians!`,
+                                              'success'
+                                            );
+                                          } catch (err) {
+                                            console.error("Error accepting task:", err);
+                                            triggerToast(lang === 'ar' ? 'حدث خطأ في قبول المهمة' : 'Error accepting task', 'error');
+                                          }
+                                        }}
+                                        className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-[10px] rounded-lg transition-all cursor-pointer shadow-md flex items-center gap-1 active:scale-95"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        <span>{lang === 'ar' ? '⚡ قبول وتلبية المهمة فوراً' : '⚡ Accept Task Now'}</span>
+                                      </button>
+
+                                      <button 
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setSelectedBidRequest(null);
+                                          } else {
+                                            setSelectedBidRequest(req);
+                                            setCustomBidPrice(String(req.approximatePrice || 150));
+                                            // Set pinnedLocation temporarily so technician can see where the client is on their map!
+                                            setPinnedLocation({ lat: req.locationLat, lng: req.locationLng });
+                                            triggerToast(lang === 'ar' ? 'تم تحديد موقع العميل على الخريطة!' : 'Client breakdown pinned on live map!', 'info');
+                                          }
+                                        }}
+                                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[10px] rounded-lg transition-all cursor-pointer"
+                                      >
+                                        {isSelected ? (lang === 'ar' ? 'إغلاق' : 'Close') : (lang === 'ar' ? 'تقديم عرض 🛠️' : 'Bid 🛠️')}
+                                      </button>
+                                    </div>
                                   </div>
 
                                   {/* Bid Form Expansion inside alert card */}
@@ -5827,45 +5991,45 @@ export default function App() {
                       </p>
 
                       {/* Vault Card layout identical to Image 3 */}
-                      <div className="bg-[#0F1424] border border-gray-850 p-6 rounded-2xl space-y-6 relative overflow-hidden">
+                      <div className="bg-[#0F1424] border border-gray-700 p-6 rounded-2xl space-y-6 relative overflow-hidden">
                         <div className="absolute top-4 right-4">
-                          <span className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          <span className="bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
                             {lang === 'ar' ? 'في انتظار الحجز' : 'PENDING SECURING'}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-3 border-b border-gray-850 pb-4">
-                          <div className="p-2 bg-amber-500/10 text-amber-500 rounded-xl">
-                            <Coins className="w-5 h-5" />
+                        <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
+                          <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30">
+                            <Coins className="w-6 h-6" />
                           </div>
                           <div>
-                            <h4 className="text-sm font-black text-white">{t.vaultTitle}</h4>
-                            <span className="text-[10px] text-gray-500 font-bold block">{t.vaultSub}</span>
+                            <h4 className="text-base font-black text-white">{t.vaultTitle}</h4>
+                            <span className="text-xs text-amber-300 font-extrabold block mt-0.5">{t.vaultSub}</span>
                           </div>
                         </div>
 
                         {/* Escrow grid breakdown info - stack on mobile, grid on desktop */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="p-3.5 bg-[#0A0B10] border border-gray-900 rounded-xl text-center space-y-1">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase block">{t.vaultPartnerTech}</span>
-                            <span className="text-xs font-black text-white block truncate">{lang === 'ar' ? selectedBid.technicianArName : selectedBid.technicianName}</span>
+                          <div className="p-3.5 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1">
+                            <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultPartnerTech}</span>
+                            <span className="text-sm font-black text-white block truncate">{lang === 'ar' ? selectedBid.technicianArName : selectedBid.technicianName}</span>
                           </div>
 
-                          <div className="p-3.5 bg-[#0A0B10] border border-gray-900 rounded-xl text-center space-y-1">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase block">{t.vaultCommission}</span>
-                            <span className="text-xs font-black text-amber-500 font-mono block">20% (30 ₪)</span>
+                          <div className="p-3.5 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1">
+                            <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultCommission}</span>
+                            <span className="text-sm font-black text-amber-400 font-mono block">20% (30 ₪)</span>
                           </div>
 
-                          <div className="p-3.5 bg-[#0A0B10] border border-gray-900 rounded-xl text-center space-y-1">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase block">{t.vaultNetEarnings}</span>
-                            <span className="text-xs font-black text-emerald-400 font-mono block">120 ₪</span>
+                          <div className="p-3.5 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1">
+                            <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultNetEarnings}</span>
+                            <span className="text-sm font-black text-emerald-400 font-mono block">120 ₪</span>
                           </div>
                         </div>
 
                         {/* Overall payment info */}
-                        <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-gray-850">
-                          <span className="text-gray-400">{t.vaultResValue}:</span>
-                          <span className="text-xl font-black text-amber-500 font-mono">{selectedBid.price} ₪</span>
+                        <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-gray-800">
+                          <span className="text-slate-200 font-black">{t.vaultResValue}:</span>
+                          <span className="text-2xl font-black text-amber-400 font-mono">{selectedBid.price} ₪</span>
                         </div>
                       </div>
 
@@ -6701,170 +6865,6 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Active Escrow Holdings list */}
-            <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-4">
-              <h3 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-3 flex items-center gap-2">
-                <Coins className="w-5 h-5 text-amber-500" />
-                <span>{t.adminActiveEscrows}</span>
-              </h3>
-
-              {escrows.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-10 font-semibold">
-                  {t.adminNoEscrows}
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {escrows.map(esc => (
-                    <div key={esc.id} className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between text-xs">
-                      <div className="space-y-1 text-right">
-                        <div className="font-bold text-slate-800">{esc.serviceType}</div>
-                        <div className="text-[10px] text-slate-500 font-medium">
-                          {lang === 'ar' ? `العميل: ${esc.clientName} | الفني: ${esc.techName}` : `Client: ${esc.clientName} | Tech: ${esc.techName}`}
-                        </div>
-                        <div className="text-slate-500 font-mono text-[9px]">ID: {esc.id}</div>
-                      </div>
-                      <div className="text-left space-y-1">
-                        <div className="font-mono text-amber-600 font-extrabold">{esc.amount} ₪</div>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                          esc.status === 'escrowed' ? 'bg-amber-100 text-amber-700' :
-                          esc.status === 'released' ? 'bg-emerald-100 text-emerald-700' :
-                          esc.status === 'refunded' ? 'bg-blue-100 text-blue-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {esc.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Registered Users Section */}
-            <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-4">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-3">
-                <h3 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                  <Users className="w-5 h-5 text-amber-500" />
-                  <span>{lang === 'ar' ? 'المستخدمين المسجلين بالشبكة' : lang === 'he' ? 'משתמשים רשומים ברשת' : 'Registered Users Network'}</span>
-                </h3>
-                <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-bold">
-                  {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : lang === 'he' ? `סה"כ: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
-                </span>
-              </div>
-
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input 
-                  type="text"
-                  placeholder={lang === 'ar' ? 'بحث بالاسم، الإيميل أو الهاتف...' : lang === 'he' ? 'חפش לפי שם, אימייל או טלפון...' : 'Search by name, email or phone...'}
-                  value={adminUserSearch}
-                  onChange={(e) => setAdminUserSearch(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-xs text-slate-800 text-right"
-                />
-                <select
-                  value={adminUserRoleFilter}
-                  onChange={(e) => setAdminUserRoleFilter(e.target.value as any)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-xs text-slate-800 text-right"
-                >
-                  <option value="all">{lang === 'ar' ? 'جميع الأدوار' : 'All Roles'}</option>
-                  <option value="client">{lang === 'ar' ? 'العملاء' : 'Clients'}</option>
-                  <option value="technician">{lang === 'ar' ? 'الفنيين' : 'Technicians'}</option>
-                  <option value="unassigned">{lang === 'ar' ? 'غير معين' : 'Unassigned'}</option>
-                </select>
-              </div>
-
-              <div className="max-h-[350px] overflow-y-auto space-y-3 pr-1">
-                {registeredUsers.filter(u => {
-                  const matchesSearch = 
-                    u.name?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
-                    u.email?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
-                    (u.phone && u.phone.toLowerCase().includes(adminUserSearch.toLowerCase()));
-                  
-                  if (!matchesSearch) return false;
-                  if (adminUserRoleFilter === 'all') return true;
-                  if (adminUserRoleFilter === 'client') return u.role === 'client';
-                  if (adminUserRoleFilter === 'technician') return u.role === 'technician';
-                  if (adminUserRoleFilter === 'unassigned') return !u.role;
-                  return true;
-                }).length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-10 font-semibold">
-                    {lang === 'ar' ? 'لا يوجد أي مستخدمين يطابقون خيارات البحث حالياً!' : lang === 'he' ? 'אין משתמשים רשומים התואמים את החיפוש!' : 'No registered users match search!'}
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {registeredUsers.filter(u => {
-                      const matchesSearch = 
-                        u.name?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
-                        u.email?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
-                        (u.phone && u.phone.toLowerCase().includes(adminUserSearch.toLowerCase()));
-                      
-                      if (!matchesSearch) return false;
-                      if (adminUserRoleFilter === 'all') return true;
-                      if (adminUserRoleFilter === 'client') return u.role === 'client';
-                      if (adminUserRoleFilter === 'technician') return u.role === 'technician';
-                      if (adminUserRoleFilter === 'unassigned') return !u.role;
-                      return true;
-                    }).map(u => (
-                      <div key={u.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between gap-3 text-right">
-                        <div className="space-y-1 text-right">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                              u.role === 'client' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                              u.role === 'technician' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                              'bg-slate-200 text-slate-600'
-                            }`}>
-                              {u.role === 'client' ? (lang === 'ar' ? 'عميل' : lang === 'he' ? 'לקוח' : 'Client') :
-                               u.role === 'technician' ? (lang === 'ar' ? 'فني فزعة' : lang === 'he' ? 'טכנאי' : 'Technician') :
-                               (lang === 'ar' ? 'ضيف' : lang === 'he' ? 'אורח' : 'Guest')}
-                            </span>
-                            <h4 className="text-xs font-black text-slate-800">{u.name || 'Anonymous'}</h4>
-                          </div>
-                          <p className="text-[10px] font-mono text-slate-500 truncate">{u.email}</p>
-                          {u.phone && (
-                            <p className="text-[10px] text-slate-600 font-bold">{u.phone}</p>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={async () => {
-                              await setDoc(doc(db, "users", u.id), { role: u.role === 'client' ? null : 'client' }, { merge: true });
-                              triggerToast(
-                                lang === 'ar' ? 'تم تحديث دور المستخدم!' : lang === 'he' ? 'תפקיד משתמש עודכן!' : 'User role updated!',
-                                'success'
-                              );
-                            }}
-                            className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[9px] transition-colors border cursor-pointer ${
-                              u.role === 'client' 
-                                ? 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300' 
-                                : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'
-                            }`}
-                          >
-                            {u.role === 'client' ? (lang === 'ar' ? 'إلغاء العميل' : lang === 'he' ? 'בטל לקוח' : 'Revoke Client') : (lang === 'ar' ? 'تعيين كعميل' : lang === 'he' ? 'קבע כלקוח' : 'Set Client')}
-                          </button>
-                          <button 
-                            onClick={async () => {
-                              await setDoc(doc(db, "users", u.id), { role: u.role === 'technician' ? null : 'technician' }, { merge: true });
-                              triggerToast(
-                                lang === 'ar' ? 'تم تحديث دور المستخدم!' : lang === 'he' ? 'תפקיד משתמש עודכן!' : 'User role updated!',
-                                'success'
-                              );
-                            }}
-                            className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[9px] transition-colors border cursor-pointer ${
-                              u.role === 'technician' 
-                                ? 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300' 
-                                : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'
-                            }`}
-                          >
-                            {u.role === 'technician' ? (lang === 'ar' ? 'إلغاء الفني' : lang === 'he' ? 'בטל טכנאי' : 'Revoke Tech') : (lang === 'ar' ? 'تعيين كفني' : lang === 'he' ? 'קבע כטכנאי' : 'Set Tech')}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
 
             {/* Proposed Custom Services Review Section */}
             <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4">
@@ -7001,10 +7001,135 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {/* Registered Users Section */}
+            <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                <h3 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Users className="w-5 h-5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'المستخدمين المسجلين بالشبكة' : lang === 'he' ? 'משתמשים רשומים ברשת' : 'Registered Users Network'}</span>
+                </h3>
+                <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-bold">
+                  {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : lang === 'he' ? `סה"כ: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
+                </span>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input 
+                  type="text"
+                  placeholder={lang === 'ar' ? 'بحث بالاسم، الإيميل أو الهاتف...' : lang === 'he' ? 'חפش לפי שם, אימייל או טלפון...' : 'Search by name, email or phone...'}
+                  value={adminUserSearch}
+                  onChange={(e) => setAdminUserSearch(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-xs text-slate-800 text-right"
+                />
+                <select
+                  value={adminUserRoleFilter}
+                  onChange={(e) => setAdminUserRoleFilter(e.target.value as any)}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-amber-500 text-xs text-slate-800 text-right"
+                >
+                  <option value="all">{lang === 'ar' ? 'جميع الأدوار' : 'All Roles'}</option>
+                  <option value="client">{lang === 'ar' ? 'العملاء' : 'Clients'}</option>
+                  <option value="technician">{lang === 'ar' ? 'الفنيين' : 'Technicians'}</option>
+                  <option value="unassigned">{lang === 'ar' ? 'غير معين' : 'Unassigned'}</option>
+                </select>
+              </div>
+
+              <div className="max-h-[350px] overflow-y-auto space-y-3 pr-1">
+                {registeredUsers.filter(u => {
+                  const matchesSearch = 
+                    u.name?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                    u.email?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                    (u.phone && u.phone.toLowerCase().includes(adminUserSearch.toLowerCase()));
+                  
+                  if (!matchesSearch) return false;
+                  if (adminUserRoleFilter === 'all') return true;
+                  if (adminUserRoleFilter === 'client') return u.role === 'client';
+                  if (adminUserRoleFilter === 'technician') return u.role === 'technician';
+                  if (adminUserRoleFilter === 'unassigned') return !u.role;
+                  return true;
+                }).length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-10 font-semibold">
+                    {lang === 'ar' ? 'لا يوجد أي مستخدمين يطابقون خيارات البحث حالياً!' : lang === 'he' ? 'אין משתמשים רשומים התואמים את החיפוש!' : 'No registered users match search!'}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {registeredUsers.filter(u => {
+                      const matchesSearch = 
+                        u.name?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                        u.email?.toLowerCase().includes(adminUserSearch.toLowerCase()) ||
+                        (u.phone && u.phone.toLowerCase().includes(adminUserSearch.toLowerCase()));
+                      
+                      if (!matchesSearch) return false;
+                      if (adminUserRoleFilter === 'all') return true;
+                      if (adminUserRoleFilter === 'client') return u.role === 'client';
+                      if (adminUserRoleFilter === 'technician') return u.role === 'technician';
+                      if (adminUserRoleFilter === 'unassigned') return !u.role;
+                      return true;
+                    }).map(u => (
+                      <div key={u.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between gap-3 text-right">
+                        <div className="space-y-1 text-right">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                              u.role === 'client' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                              u.role === 'technician' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                              'bg-slate-200 text-slate-600'
+                            }`}>
+                              {u.role === 'client' ? (lang === 'ar' ? 'عميل' : lang === 'he' ? 'לקוח' : 'Client') :
+                               u.role === 'technician' ? (lang === 'ar' ? 'فني فزعة' : lang === 'he' ? 'טכנאי' : 'Technician') :
+                               (lang === 'ar' ? 'ضيف' : lang === 'he' ? 'אורח' : 'Guest')}
+                            </span>
+                            <h4 className="text-xs font-black text-slate-800">{u.name || 'Anonymous'}</h4>
+                          </div>
+                          <p className="text-[10px] font-mono text-slate-500 truncate">{u.email}</p>
+                          {u.phone && (
+                            <p className="text-[10px] text-slate-600 font-bold">{u.phone}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={async () => {
+                              await setDoc(doc(db, "users", u.id), { role: u.role === 'client' ? null : 'client' }, { merge: true });
+                              triggerToast(
+                                lang === 'ar' ? 'تم تحديث دور المستخدم!' : lang === 'he' ? 'תפקיד משתמש עודכן!' : 'User role updated!',
+                                'success'
+                              );
+                            }}
+                            className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[9px] transition-colors border cursor-pointer ${
+                              u.role === 'client' 
+                                ? 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300' 
+                                : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {u.role === 'client' ? (lang === 'ar' ? 'إلغاء العميل' : lang === 'he' ? 'בטל לקוח' : 'Revoke Client') : (lang === 'ar' ? 'تعيين كعميل' : lang === 'he' ? 'קבע כלקוח' : 'Set Client')}
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              await setDoc(doc(db, "users", u.id), { role: u.role === 'technician' ? null : 'technician' }, { merge: true });
+                              triggerToast(
+                                lang === 'ar' ? 'تم تحديث دور المستخدم!' : lang === 'he' ? 'תפקיד משתמש עודכן!' : 'User role updated!',
+                                'success'
+                              );
+                            }}
+                            className={`flex-1 py-1.5 px-2 rounded-lg font-bold text-[9px] transition-colors border cursor-pointer ${
+                              u.role === 'technician' 
+                                ? 'bg-amber-100 hover:bg-amber-200 text-amber-700 border-amber-300' 
+                                : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {u.role === 'technician' ? (lang === 'ar' ? 'إلغاء الفني' : lang === 'he' ? 'בטל טכנאי' : 'Revoke Tech') : (lang === 'ar' ? 'تعيين كفني' : lang === 'he' ? 'قבע كفني' : 'Set Tech')}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-                    ) : (
-                      <div className="max-w-md mx-auto my-16 p-8 bg-[#0F1424] border border-gray-800 rounded-3xl shadow-2xl text-center space-y-6 animate-fade-in select-none">
+        ) : (
+          <div className="max-w-md mx-auto my-16 p-8 bg-[#0F1424] border border-gray-800 rounded-3xl shadow-2xl text-center space-y-6 animate-fade-in select-none">
                         <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-amber-500/5">
                           <Lock className="w-7 h-7" />
                         </div>
@@ -7150,28 +7275,92 @@ export default function App() {
                   };
                   await setDoc(doc(db, "pending_services", newServiceId), newPending);
                   setShowCustomServiceModal(false);
-                  setCustomServiceNameAr('');
-                  setCustomServiceNameEn('');
-                  setCustomServiceDescAr('');
-                  setCustomServiceDescEn('');
-                  setCustomServicePrice('150');
-                  triggerToast(
-                    lang === 'ar' 
-                      ? 'تم إرسال اقتراح الخدمة المخصصة للمسؤول آدم عطون للموافقة عليها ونشرها بالشبكة قريباً!' 
-                      : lang === 'he'
-                      ? 'הצעת השירות נשלחה למנהל אדם עתון לאישור ופרסום ברשת בקרוב!'
-                      : 'Custom service proposal submitted to administrator Adam Atoun for review!', 
-                    'success'
-                  );
+                  triggerToast(lang === 'ar' ? 'تم إرسال الاقتراح للإدارة بنجاح!' : 'Proposal submitted successfully!', 'success');
                 }}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black rounded-xl text-xs transition-colors cursor-pointer"
+                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl shadow-lg transition-all cursor-pointer mt-2"
               >
-                {lang === 'ar' ? 'إرسال الخدمة المخصصة للمراجعة والموافقة' : lang === 'he' ? 'שלח שירות מותאם אישית לאישור' : 'Submit Custom Service for Approval'}
+                {lang === 'ar' ? 'إرسال الاقتراح للإدارة 🚀' : lang === 'he' ? 'שלח הצעה 🚀' : 'Submit Proposal 🚀'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Universal Support & Contact Footer - Adam Atoun Contact Details */}
+      <footer className="w-full border-t border-amber-500/20 bg-[#0A0C14] backdrop-blur-md mt-12 py-10 px-4 pb-28 md:pb-12 text-right rtl:text-right ltr:text-left shadow-2xl">
+        <div className="max-w-5xl mx-auto flex flex-col items-center justify-center text-center space-y-6">
+          
+          {/* Header Indicator */}
+          <div className="space-y-2 select-none flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-full text-amber-400 text-xs font-black tracking-wide uppercase shadow-sm">
+              <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
+              <span>
+                {lang === 'ar' ? 'بوابة التواصل والدعم الفني المباشر' : lang === 'he' ? 'שער תמיכה וקשר ישיר' : 'Direct Support & Management'}
+              </span>
+            </div>
+            <h4 className="text-sm md:text-base font-black text-white max-w-lg leading-relaxed">
+              {lang === 'ar' 
+                ? 'لمزيد من الاستفسارات، الشكاوى أو طلب المساعدة التقنية، يمكنك التواصل مباشرة مع الإدارة العامة:' 
+                : lang === 'he' 
+                ? 'לשאלות נוספות, תלונות או תמיכה טכנית, ניתן לפנות ישירות להנהלה הכללית:' 
+                : 'For further inquiries, feedback or technical assistance, contact the General Management directly:'}
+            </h4>
+          </div>
+
+          {/* Contact Badges Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
+            
+            {/* Phone Card */}
+            <a 
+              href="tel:+972538316779"
+              className="group p-4 bg-[#121522] border border-amber-500/20 hover:border-amber-400/50 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
+            >
+              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-110 transition-transform">
+                <Phone className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs text-amber-300 font-extrabold block uppercase tracking-wider">
+                  {lang === 'ar' ? 'الاتصال المباشر بـ آدم' : lang === 'he' ? 'חיוג ישיר לאדם' : 'Direct Call Adam'}
+                </span>
+                <span className="text-sm md:text-base font-black text-white group-hover:text-amber-300 transition-colors font-mono tracking-tight block mt-0.5" dir="ltr">
+                  +972 53-831-6779
+                </span>
+              </div>
+            </a>
+
+            {/* Email Card */}
+            <a 
+              href="mailto:adam.atooun@gmail.com"
+              className="group p-4 bg-[#121522] border border-amber-500/20 hover:border-amber-400/50 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
+            >
+              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-110 transition-transform">
+                <Mail className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs text-amber-300 font-extrabold block uppercase tracking-wider">
+                  {lang === 'ar' ? 'البريد الإلكتروني للإدارة' : lang === 'he' ? 'אימייל ההנהלה' : 'Management Email'}
+                </span>
+                <span className="text-sm md:text-base font-black text-white group-hover:text-amber-300 transition-colors font-mono truncate block mt-0.5">
+                  adam.atooun@gmail.com
+                </span>
+              </div>
+            </a>
+
+          </div>
+
+          {/* Copyright Section */}
+          <div className="pt-6 border-t border-gray-800/80 w-full text-center space-y-2 select-none">
+            <div className="inline-block px-5 py-2.5 bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-amber-500/10 border border-amber-500/30 rounded-2xl shadow-inner">
+              <span className="text-xs md:text-sm font-black text-amber-300 block tracking-wide">
+                {lang === 'ar' ? '© ٢٠٢٦ سيسترو والضمان المالي 🛡️ جميع الحقوق محفوظة.' : lang === 'he' ? '© 2026 סיסטרו והסדר מאובטח 🛡️ כל הזכויות שמורות.' : '© 2026 Systro & Escrow Secure 🛡️ All Rights Reserved.'}
+              </span>
+              <span className="text-xs font-black text-white block mt-1">
+                {lang === 'ar' ? 'تطوير ودعم تقني تحت إشراف آدم عطون' : lang === 'he' ? 'פיתוח ותמיכה טכנולוגית בפיקוח אדם עטון' : 'Technology support supervised by Adam Atoun'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {/* User Profile Edit Modal */}
       {showProfileModal && (
@@ -7225,16 +7414,21 @@ export default function App() {
                     {lang === 'ar' ? 'اختر صورة شخصية جاهزة:' : lang === 'he' ? 'בחר תמונת פרופיל:' : 'Choose Preset Avatar:'}
                   </span>
                   <div className="flex items-center justify-center gap-2 pt-1">
-                    {avatarPresets.map((preset, idx) => (
+                    {[
+                      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120',
+                      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120',
+                      'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=120',
+                      'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?auto=format&fit=crop&q=80&w=120'
+                    ].map((avUrl, i) => (
                       <button
-                        key={idx}
+                        key={i}
                         type="button"
-                        onClick={() => setProfileAvatarInput(preset)}
-                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border-2 transition-all cursor-pointer ${
-                          profileAvatarInput === preset ? 'border-amber-500 scale-110 shadow-md ring-2 ring-amber-500/30' : 'border-gray-700 opacity-60 hover:opacity-100'
+                        onClick={() => setProfileAvatarInput(avUrl)}
+                        className={`w-9 h-9 rounded-full overflow-hidden border-2 cursor-pointer transition-all ${
+                          profileAvatarInput === avUrl ? 'border-amber-500 scale-110 shadow-md shadow-amber-500/20' : 'border-gray-800 hover:border-gray-600'
                         }`}
                       >
-                        <img src={preset} alt="preset" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img src={avUrl} alt={`Avatar ${i}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </button>
                     ))}
                   </div>
@@ -7454,18 +7648,18 @@ export default function App() {
       )}
 
       {/* Universal Support & Contact Footer - Adam Atoun Contact Details */}
-      <footer className="w-full border-t border-gray-800/40 bg-[#07080D]/50 backdrop-blur-md mt-12 py-10 px-4 pb-28 md:pb-12 text-right rtl:text-right ltr:text-left">
+      <footer className="w-full border-t border-amber-500/20 bg-[#0A0C14] backdrop-blur-md mt-12 py-10 px-4 pb-28 md:pb-12 text-right rtl:text-right ltr:text-left shadow-2xl">
         <div className="max-w-5xl mx-auto flex flex-col items-center justify-center text-center space-y-6">
           
           {/* Header Indicator */}
           <div className="space-y-2 select-none flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-500 text-[10px] font-black tracking-wide uppercase">
-              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-full text-amber-400 text-xs font-black tracking-wide uppercase shadow-sm">
+              <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
               <span>
                 {lang === 'ar' ? 'بوابة التواصل والدعم الفني المباشر' : lang === 'he' ? 'שער תמיכה וקשר ישיר' : 'Direct Support & Management'}
               </span>
             </div>
-            <h4 className="text-sm font-black text-white/90 max-w-lg leading-relaxed">
+            <h4 className="text-sm md:text-base font-black text-white max-w-lg leading-relaxed">
               {lang === 'ar' 
                 ? 'لمزيد من الاستفسارات، الشكاوى أو طلب المساعدة التقنية، يمكنك التواصل مباشرة مع الإدارة العامة:' 
                 : lang === 'he' 
@@ -7480,16 +7674,16 @@ export default function App() {
             {/* Phone Card */}
             <a 
               href="tel:+972538316779"
-              className="group p-4 bg-[#0F111A]/80 border border-gray-800/80 hover:border-amber-500/30 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/5 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
+              className="group p-4 bg-[#121522] border border-amber-500/20 hover:border-amber-400/50 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
             >
-              <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-110 transition-transform">
                 <Phone className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider">
+                <span className="text-xs text-amber-300 font-extrabold block uppercase tracking-wider">
                   {lang === 'ar' ? 'الاتصال المباشر بـ آدم' : lang === 'he' ? 'חיוג ישיר לאדם' : 'Direct Call Adam'}
                 </span>
-                <span className="text-sm font-black text-white group-hover:text-amber-400 transition-colors font-mono tracking-tight block mt-0.5" dir="ltr">
+                <span className="text-sm md:text-base font-black text-white group-hover:text-amber-300 transition-colors font-mono tracking-tight block mt-0.5" dir="ltr">
                   +972 53-831-6779
                 </span>
               </div>
@@ -7498,16 +7692,16 @@ export default function App() {
             {/* Email Card */}
             <a 
               href="mailto:adam.atooun@gmail.com"
-              className="group p-4 bg-[#0F111A]/80 border border-gray-800/80 hover:border-amber-500/30 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/5 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
+              className="group p-4 bg-[#121522] border border-amber-500/20 hover:border-amber-400/50 rounded-2xl flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 hover:-translate-y-0.5 text-right rtl:text-right ltr:text-left cursor-pointer"
             >
-              <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-110 transition-transform">
                 <Mail className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] text-gray-500 font-bold block uppercase tracking-wider">
+                <span className="text-xs text-amber-300 font-extrabold block uppercase tracking-wider">
                   {lang === 'ar' ? 'البريد الإلكتروني للإدارة' : lang === 'he' ? 'אימייל ההנהלה' : 'Management Email'}
                 </span>
-                <span className="text-sm font-black text-white group-hover:text-amber-400 transition-colors font-mono truncate block mt-0.5">
+                <span className="text-sm md:text-base font-black text-white group-hover:text-amber-300 transition-colors font-mono truncate block mt-0.5">
                   adam.atooun@gmail.com
                 </span>
               </div>
@@ -7516,13 +7710,15 @@ export default function App() {
           </div>
 
           {/* Copyright Section */}
-          <div className="pt-4 border-t border-gray-800/40 w-full text-center space-y-1 select-none">
-            <span className="text-[9px] font-mono tracking-widest text-gray-500 block uppercase">
-              {lang === 'ar' ? '© ٢٠٢٦ سيسترو والضمان المالي 🛡️ جميع الحقوق محفوظة.' : lang === 'he' ? '© 2026 סיסטרו והסדר מאובטח 🛡️ כל הזכויות שמורות.' : '© 2026 Systro & Escrow Secure 🛡️ All Rights Reserved.'}
-            </span>
-            <span className="text-[10px] text-gray-500 font-bold block">
-              {lang === 'ar' ? 'تطوير ودعم تقني تحت إشراف آدم عطون' : lang === 'he' ? 'פיתוח ותמיכה טכנולוגית בפיקוח אדם עטון' : 'Technology support supervised by Adam Atoun'}
-            </span>
+          <div className="pt-6 border-t border-gray-800/80 w-full text-center space-y-2 select-none">
+            <div className="inline-block px-5 py-2.5 bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-amber-500/10 border border-amber-500/30 rounded-2xl shadow-inner">
+              <span className="text-xs md:text-sm font-black text-amber-300 block tracking-wide">
+                {lang === 'ar' ? '© ٢٠٢٦ سيسترو والضمان المالي 🛡️ جميع الحقوق محفوظة.' : lang === 'he' ? '© 2026 סיסטרו והסדר מאובטח 🛡️ כל הזכויות שמורות.' : '© 2026 Systro & Escrow Secure 🛡️ All Rights Reserved.'}
+              </span>
+              <span className="text-xs font-black text-white block mt-1">
+                {lang === 'ar' ? 'تطوير ودعم تقني تحت إشراف آدم عطون' : lang === 'he' ? 'פיתוח ותמיכה טכנולוגית בפיקוח אדם עטון' : 'Technology support supervised by Adam Atoun'}
+              </span>
+            </div>
           </div>
 
         </div>

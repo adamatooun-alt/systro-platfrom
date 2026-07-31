@@ -18,18 +18,26 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  Filter
+  Filter,
+  User,
+  MapPin,
+  CreditCard,
+  FileText,
+  Clock,
+  Eye,
+  AlertCircle,
+  Coins
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { Product } from '../types';
+import { Product, StoreOrder, StoreOrderItem } from '../types';
 
 interface StoreTabProps {
   lang: 'ar' | 'en' | 'he';
   t: any;
   userRole: 'client' | 'technician' | null;
   isAdminUnlocked: boolean;
-  triggerToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  triggerToast: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   onNavigateToAdmin?: () => void;
   phoneNumber?: string;
   clientName?: string;
@@ -122,7 +130,27 @@ export const StoreTab: React.FC<StoreTabProps> = ({
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [selectedProductDetail, setSelectedProductDetail] = useState<Product | null>(null);
+
+  // Checkout & Personal Info Modal State
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState<boolean>(false);
+  const [custName, setCustName] = useState<string>(clientName || '');
+  const [custPhone, setCustPhone] = useState<string>(phoneNumber || '');
+  const [custAddress, setCustAddress] = useState<string>('');
+  const [custPaymentMethod, setCustPaymentMethod] = useState<'cash' | 'card' | 'escrow'>('cash');
+  const [custNotes, setCustNotes] = useState<string>('');
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
+  const [lastSubmittedOrder, setLastSubmittedOrder] = useState<StoreOrder | null>(null);
   const [orderSuccessModal, setOrderSuccessModal] = useState<boolean>(false);
+
+  // Customer Orders History State
+  const [isMyOrdersOpen, setIsMyOrdersOpen] = useState<boolean>(false);
+  const [allOrders, setAllOrders] = useState<StoreOrder[]>([]);
+
+  // Keep customer name & phone synced if updated
+  useEffect(() => {
+    if (clientName && !custName) setCustName(clientName);
+    if (phoneNumber && !custPhone) setCustPhone(phoneNumber);
+  }, [clientName, phoneNumber]);
 
   // Sync real-time products from Firestore
   useEffect(() => {
@@ -134,7 +162,6 @@ export const StoreTab: React.FC<StoreTabProps> = ({
       });
 
       if (list.length === 0) {
-        // Seed default products to Firestore if empty
         DEFAULT_PRODUCTS.forEach(async (p) => {
           try {
             await setDoc(doc(db, 'products', p.id), p);
@@ -144,18 +171,34 @@ export const StoreTab: React.FC<StoreTabProps> = ({
         });
         if (isMounted) setProducts(DEFAULT_PRODUCTS);
       } else {
-        // Sort newest first
         list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         if (isMounted) setProducts(list);
       }
       if (isMounted) setLoading(false);
     }, (error) => {
       console.error('Products subscription error:', error);
-      // Fallback to defaults
       if (isMounted) {
         setProducts(DEFAULT_PRODUCTS);
         setLoading(false);
       }
+    });
+
+    return () => {
+      isMounted = false;
+      unsub();
+    };
+  }, []);
+
+  // Sync all store orders from Firestore
+  useEffect(() => {
+    let isMounted = true;
+    const unsub = onSnapshot(collection(db, 'store_orders'), (snapshot) => {
+      const ordersList: StoreOrder[] = [];
+      snapshot.forEach((doc) => {
+        ordersList.push({ id: doc.id, ...doc.data() } as StoreOrder);
+      });
+      ordersList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      if (isMounted) setAllOrders(ordersList);
     });
 
     return () => {
@@ -224,7 +267,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
   const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Restore default 5 products to Firestore
+  // Restore default products
   const handleRestoreDefaultProducts = async () => {
     try {
       setLoading(true);
@@ -233,7 +276,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
       }
       setProducts(DEFAULT_PRODUCTS);
       triggerToast(
-        lang === 'ar' ? 'تمت إضافة الـ 5 منتجات الافتراضية بنجاح إلى المتجر! 🛍️' : 'Added 5 default products to store! 🛍️',
+        lang === 'ar' ? 'تمت استعادة المنتجات الافتراضية بنجاح إلى المتجر! 🛍️' : 'Restored default products! 🛍️',
         'success'
       );
     } catch (err) {
@@ -248,22 +291,122 @@ export const StoreTab: React.FC<StoreTabProps> = ({
     }
   };
 
-  // Submit order via WhatsApp or Phone
-  const handleCheckoutWhatsApp = () => {
+  // Submit complete order with customer personal details
+  const handleConfirmOrderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (cart.length === 0) return;
-    const itemsListText = cart
-      .map(item => `• ${item.product.arTitle || item.product.title} (x${item.quantity}) - ${item.product.price * item.quantity} ₪`)
-      .join('\n');
+    if (!custName.trim() || !custPhone.trim() || !custAddress.trim()) {
+      triggerToast(
+        lang === 'ar' ? 'يرجى إدخال اسمك، رقم الهاتف، وعنوان التوصيل كاملاً!' : 'Please fill in name, phone, and delivery address!',
+        'warning'
+      );
+      return;
+    }
 
-    const orderText = lang === 'ar'
-      ? `مرحباً سيسترو 🛒، أرغب في طلب المنتجات التالية من المتجر:\n\n${itemsListText}\n\nإجمالي المبلغ: ${cartTotal} ₪\nاسم العميل: ${clientName || 'عميل سيسترو'}\nرقم الهاتف: ${phoneNumber || 'غير مدخل'}`
-      : `Hello Systro 🛒, I would like to order the following products from the store:\n\n${itemsListText}\n\nTotal: ${cartTotal} ₪\nName: ${clientName || 'Customer'}\nPhone: ${phoneNumber || 'N/A'}`;
+    setIsSubmittingOrder(true);
+    try {
+      const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+      const orderItems: StoreOrderItem[] = cart.map(item => ({
+        id: item.product.id,
+        title: item.product.title,
+        arTitle: item.product.arTitle || item.product.title,
+        price: item.product.price,
+        quantity: item.quantity,
+        image: item.product.image
+      }));
 
-    const encoded = encodeURIComponent(orderText);
-    window.open(`https://wa.me/972599999999?text=${encoded}`, '_blank');
-    setCart([]);
-    setIsCartOpen(false);
-    setOrderSuccessModal(true);
+      const newOrder: StoreOrder = {
+        id: orderId,
+        customerName: custName.trim(),
+        customerPhone: custPhone.trim(),
+        customerAddress: custAddress.trim(),
+        paymentMethod: custPaymentMethod,
+        notes: custNotes.trim(),
+        items: orderItems,
+        totalAmount: cartTotal,
+        status: 'pending',
+        createdAt: Date.now(),
+        createdAtFormatted: new Date().toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' })
+      };
+
+      // Save order directly to Firestore
+      await setDoc(doc(db, 'store_orders', orderId), newOrder);
+
+      // Save order reference ID in user's browser localStorage
+      try {
+        const storedIds = JSON.parse(localStorage.getItem('systro_user_orders') || '[]');
+        localStorage.setItem('systro_user_orders', JSON.stringify([orderId, ...storedIds]));
+      } catch (err) {
+        console.error('Local storage order save error:', err);
+      }
+
+      setLastSubmittedOrder(newOrder);
+
+      // Format WhatsApp message
+      const itemsListText = cart
+        .map(item => `• ${item.product.arTitle || item.product.title} (الكمية: ${item.quantity}) - ${item.product.price * item.quantity} ₪`)
+        .join('\n');
+
+      const paymentLabel = custPaymentMethod === 'cash' 
+        ? (lang === 'ar' ? 'نقداً عند الاستلام 💵' : 'Cash on Delivery 💵')
+        : custPaymentMethod === 'card'
+        ? (lang === 'ar' ? 'بطاقة ائتمان / فيزا 💳' : 'Credit Card 💳')
+        : (lang === 'ar' ? 'محفظة الأمان المالي Escrow Vault 🔒' : 'Escrow Vault 🔒');
+
+      const orderText = lang === 'ar'
+        ? `🛒 *طلب جديد من متجر سيسترو (رقم الطلب: #${orderId})*\n\n👤 *تفاصيل المشتري الشخصية:*\nالاسم: ${custName}\nرقم الهاتف: ${custPhone}\nالعنوان والمدينة: ${custAddress}\nطريقة الدفع: ${paymentLabel}\n${custNotes ? `ملاحظات: ${custNotes}\n` : ''}\n📦 *تفاصيل المنتجات المطلوبة:*\n${itemsListText}\n\n💰 *إجمالي المبلغ:* ${cartTotal} ₪\n\nيرجى تأكيد الطلب وبدء الشحن والتوصيل!`
+        : `🛒 *New Order from Systro Store (#${orderId})*\n\n👤 *Customer Details:*\nName: ${custName}\nPhone: ${custPhone}\nAddress: ${custAddress}\nPayment: ${paymentLabel}\n${custNotes ? `Notes: ${custNotes}\n` : ''}\n📦 *Items:*\n${itemsListText}\n\n💰 *Total:* ${cartTotal} ₪`;
+
+      const encoded = encodeURIComponent(orderText);
+      window.open(`https://wa.me/972599999999?text=${encoded}`, '_blank');
+
+      // Clear Cart & Close Modals
+      setCart([]);
+      setIsCartOpen(false);
+      setIsCheckoutModalOpen(false);
+      setOrderSuccessModal(true);
+
+      triggerToast(
+        lang === 'ar' ? 'تم تسجيل الطلب وحفظ البيانات بنجاح وهو قيد المراجعة الآن! 📦' : 'Order saved & sent for processing! 📦',
+        'success'
+      );
+    } catch (err) {
+      console.error('Order submission error:', err);
+      triggerToast(lang === 'ar' ? 'حدث خطأ أثناء حفظ الطلب!' : 'Failed to place order!', 'error');
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
+  // Helper status badge styling & text
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'processing':
+        return {
+          label: lang === 'ar' ? 'جاري التحضير والشحن 🔵' : 'Processing 🔵',
+          bg: 'bg-blue-500/10 text-blue-600 border-blue-500/30'
+        };
+      case 'shipped':
+        return {
+          label: lang === 'ar' ? 'تم الشحن للتوصيل 🚚' : 'Out for Delivery 🚚',
+          bg: 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+        };
+      case 'delivered':
+        return {
+          label: lang === 'ar' ? 'تم التسليم بنجاح 🟢' : 'Delivered 🟢',
+          bg: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+        };
+      case 'cancelled':
+        return {
+          label: lang === 'ar' ? 'ملغي 🔴' : 'Cancelled 🔴',
+          bg: 'bg-red-500/10 text-red-600 border-red-500/30'
+        };
+      default:
+        return {
+          label: lang === 'ar' ? 'قيد المراجعة والتدقيق 🟡' : 'Pending 🟡',
+          bg: 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+        };
+    }
   };
 
   return (
@@ -288,7 +431,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
             </p>
           </div>
 
-          {/* Cart Counter & Admin Management Shortcut */}
+          {/* Buttons: Cart, My Orders, Admin Manage */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             {/* Cart Trigger Button */}
             <button
@@ -304,6 +447,20 @@ export const StoreTab: React.FC<StoreTabProps> = ({
               )}
             </button>
 
+            {/* My Orders Button */}
+            <button
+              onClick={() => setIsMyOrdersOpen(true)}
+              className="px-4 py-3.5 bg-slate-800/90 hover:bg-slate-800 text-white border border-slate-700 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
+            >
+              <Package className="w-4 h-4 text-amber-400" />
+              <span>{lang === 'ar' ? 'طلباتي وسجل الشراء 📦' : 'My Orders 📦'}</span>
+              {allOrders.length > 0 && (
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full text-[10px] font-mono">
+                  {allOrders.length}
+                </span>
+              )}
+            </button>
+
             {/* Admin Manage Store Shortcut */}
             {isAdminUnlocked && onNavigateToAdmin && (
               <button
@@ -311,7 +468,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
                 className="px-4 py-3.5 bg-slate-800/80 hover:bg-slate-800 text-amber-300 border border-amber-500/30 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
               >
                 <Plus className="w-4 h-4 text-amber-400" />
-                <span>{lang === 'ar' ? 'إدارة المنتجات في اللوحة ⚙️' : 'Manage Products in Admin ⚙️'}</span>
+                <span>{lang === 'ar' ? 'إدارة المنتجات باللوحة ⚙️' : 'Manage Products ⚙️'}</span>
               </button>
             )}
           </div>
@@ -333,7 +490,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
           </div>
           <div className="flex items-center gap-2.5">
             <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{lang === 'ar' ? 'طلب مباشر عبر واتساب' : 'Direct WhatsApp Order'}</span>
+            <span>{lang === 'ar' ? 'طلب مباشر وحفظ التفاصيل' : 'Direct Saved Ordering'}</span>
           </div>
         </div>
       </div>
@@ -395,7 +552,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
         </div>
       </div>
 
-      {/* Loading Skeleton */}
+      {/* Loading Skeleton or Products Grid */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -436,7 +593,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
               onClick={handleRestoreDefaultProducts}
               className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 text-slate-950 font-black rounded-xl text-xs hover:bg-amber-400 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
             >
-              {lang === 'ar' ? 'استعادة الـ 5 منتجات الافتراضية 🛍️' : 'Restore 5 Default Products 🛍️'}
+              {lang === 'ar' ? 'استعادة المنتجات الافتراضية 🛍️' : 'Restore Default Products 🛍️'}
             </button>
           </div>
         </div>
@@ -487,7 +644,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
 
                 {/* Card Content Body */}
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-right rtl:text-right ltr:text-left">
                     <h3 className="font-black text-slate-900 text-base leading-snug group-hover:text-amber-600 transition-colors line-clamp-2">
                       {title}
                     </h3>
@@ -500,7 +657,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
 
                   {/* Price & Add to Cart Footer */}
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col text-right rtl:text-right ltr:text-left">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                         {lang === 'ar' ? 'السعر الاصلي' : 'Price'}
                       </span>
@@ -528,7 +685,6 @@ export const StoreTab: React.FC<StoreTabProps> = ({
       {selectedProductDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 animate-scale-up space-y-0 text-right rtl:text-right ltr:text-left">
-            {/* Header Image */}
             <div className="relative h-64 bg-slate-100">
               <img
                 src={selectedProductDetail.image}
@@ -543,7 +699,6 @@ export const StoreTab: React.FC<StoreTabProps> = ({
               </button>
             </div>
 
-            {/* Content Details */}
             <div className="p-6 space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <h2 className="text-lg font-black text-slate-900 leading-tight">
@@ -563,7 +718,6 @@ export const StoreTab: React.FC<StoreTabProps> = ({
                 <span className="text-emerald-600">{lang === 'ar' ? 'متوفر للتوصيل الفوري' : 'Available for Instant Delivery'}</span>
               </div>
 
-              {/* Modal Actions */}
               <div className="pt-4 flex gap-3">
                 <button
                   onClick={() => {
@@ -662,7 +816,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
               )}
             </div>
 
-            {/* Footer Summary & Order Actions */}
+            {/* Footer Summary & Proceed to Personal Details Checkout */}
             {cart.length > 0 && (
               <div className="pt-4 border-t border-slate-100 space-y-4">
                 <div className="flex items-center justify-between text-sm font-black">
@@ -670,36 +824,372 @@ export const StoreTab: React.FC<StoreTabProps> = ({
                   <span className="text-xl font-mono text-slate-950 font-black">{cartTotal} ₪</span>
                 </div>
 
-                <div className="space-y-2">
-                  <button
-                    onClick={handleCheckoutWhatsApp}
-                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>{lang === 'ar' ? 'تأكيد الطلب مباشرة عبر واتساب 📲' : 'Confirm Order via WhatsApp 📲'}</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    setIsCartOpen(false);
+                    setIsCheckoutModalOpen(true);
+                  }}
+                  className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                  <span>{lang === 'ar' ? 'إدخال التفاصيل الشخصية وتأكيد الطلب 📝' : 'Enter Details & Place Order 📝'}</span>
+                </button>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Success Modal */}
+      {/* Checkout Form Modal (Customer Details & Order Breakdown) */}
+      {isCheckoutModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 space-y-6 text-right rtl:text-right ltr:text-left">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-500/10 text-amber-500 rounded-xl">
+                  <User className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    {lang === 'ar' ? 'تفاصيل المشتري والعنوان للتوصيل 📝' : 'Customer & Shipping Details 📝'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-semibold">
+                    {lang === 'ar' ? 'يرجى إدخال تفاصيلك لتسجيل الطلب وإرفاقه بملفك الكامل.' : 'Please provide your name, contact phone & delivery location.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCheckoutModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleConfirmOrderSubmit} className="space-y-4">
+              
+              {/* Customer Name */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'اسم المشتري الكامل *' : 'Full Customer Name *'}</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={custName}
+                  onChange={(e) => setCustName(e.target.value)}
+                  placeholder={lang === 'ar' ? 'مثال: أحمد عبد الله' : 'e.g. John Doe'}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              {/* Customer Phone */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'رقم الهاتف والواتساب للتواصل *' : 'Phone / WhatsApp *'}</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={custPhone}
+                  onChange={(e) => setCustPhone(e.target.value)}
+                  placeholder="059xxxxxxx / +972..."
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              {/* Delivery Address */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'المدينة والعنوان بالتفصيل والتوصيل *' : 'City & Delivery Address *'}</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={custAddress}
+                  onChange={(e) => setCustAddress(e.target.value)}
+                  placeholder={lang === 'ar' ? 'مثال: رام الله - شارع الإرسال - عمارة الأمل' : 'City, Street name, building number...'}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className="space-y-2 pt-1">
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'طريقة التسديد والدفع' : 'Payment Method'}</span>
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setCustPaymentMethod('cash')}
+                    className={`p-3 rounded-xl border text-center font-bold transition-all cursor-pointer ${
+                      custPaymentMethod === 'cash'
+                        ? 'bg-amber-500/10 border-amber-500 text-amber-700 font-black'
+                        : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    💵 {lang === 'ar' ? 'الدفع نقداً عند الاستلام' : 'Cash on Delivery'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCustPaymentMethod('card')}
+                    className={`p-3 rounded-xl border text-center font-bold transition-all cursor-pointer ${
+                      custPaymentMethod === 'card'
+                        ? 'bg-amber-500/10 border-amber-500 text-amber-700 font-black'
+                        : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    💳 {lang === 'ar' ? 'بطاقة ائتمان / فيزا' : 'Credit Card'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCustPaymentMethod('escrow')}
+                    className={`p-3 rounded-xl border text-center font-bold transition-all cursor-pointer ${
+                      custPaymentMethod === 'escrow'
+                        ? 'bg-amber-500/10 border-amber-500 text-amber-700 font-black'
+                        : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    🔒 {lang === 'ar' ? 'محفظة Escrow' : 'Escrow Vault'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Delivery / Installation Notes */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'ملاحظات إضافية أو طلب تركيب فني (اختياري)' : 'Delivery / Installation Notes'}</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={custNotes}
+                  onChange={(e) => setCustNotes(e.target.value)}
+                  placeholder={lang === 'ar' ? 'مثال: أود التركيب بواسطة فني بطاريات معتمد عند الوصول...' : 'Additional instructions...'}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none resize-none"
+                />
+              </div>
+
+              {/* Summary Items Table */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <div className="flex justify-between items-center text-xs font-black text-slate-800">
+                  <span>{lang === 'ar' ? 'ملخص المنتجات المطلوبة:' : 'Items Summary:'}</span>
+                  <span className="text-amber-600 font-mono font-black">{cartTotal} ₪</span>
+                </div>
+
+                <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                  {cart.map(({ product, quantity }) => (
+                    <div key={product.id} className="flex items-center justify-between text-xs text-slate-700">
+                      <div className="flex items-center gap-2 truncate">
+                        <img src={product.image} alt={product.title} className="w-8 h-8 rounded-lg object-cover bg-slate-200 shrink-0" />
+                        <span className="font-bold truncate">{lang === 'ar' ? (product.arTitle || product.title) : product.title}</span>
+                        <span className="text-slate-400 font-mono">x{quantity}</span>
+                      </div>
+                      <span className="font-mono font-bold shrink-0">{product.price * quantity} ₪</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={isSubmittingOrder}
+                  className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{isSubmittingOrder ? (lang === 'ar' ? 'جاري التسجيل...' : 'Submitting...') : (lang === 'ar' ? 'إرسال وتأكيد الطلب كاملاً 🚀' : 'Confirm & Place Order 🚀')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCheckoutModalOpen(false)}
+                  className="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Orders History Modal (طلباتي في المتجر) */}
+      {isMyOrdersOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 p-6 space-y-6 text-right rtl:text-right ltr:text-left">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl">
+                  <Package className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    {lang === 'ar' ? 'سجل طلباتك في متجر سيسترو 📦' : 'My Store Orders History 📦'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-semibold">
+                    {lang === 'ar' ? 'متابعة حالة الطلبات، التفاصيل الشخصية وقائمة المنتجات المطلوبة.' : 'Track order status, personal details, and item breakdowns.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMyOrdersOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* List of Orders */}
+            {allOrders.length === 0 ? (
+              <div className="py-16 text-center space-y-3">
+                <Package className="w-12 h-12 text-slate-300 mx-auto" />
+                <p className="text-xs font-bold text-slate-400">
+                  {lang === 'ar' ? 'لا توجد طلبات مسجلة بالمتجر حتى الآن.' : 'No store orders found yet.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {allOrders.map((ord) => {
+                  const badge = getStatusBadge(ord.status);
+
+                  return (
+                    <div
+                      key={ord.id}
+                      className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 hover:border-amber-400/80 transition-all shadow-sm"
+                    >
+                      {/* Top Bar: Order ID, Date, Status */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 bg-slate-900 text-amber-400 font-mono font-extrabold text-xs rounded-lg">
+                            #{ord.id}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-bold">
+                            {ord.createdAtFormatted || new Date(ord.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <span className={`px-3 py-1 rounded-full text-xs font-black border ${badge.bg}`}>
+                          {badge.label}
+                        </span>
+                      </div>
+
+                      {/* Customer Info Card */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white p-3.5 rounded-xl border border-slate-100">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'المشتري:' : 'Customer:'}</span>
+                          <span className="font-extrabold text-slate-900">{ord.customerName}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'رقم التواصل:' : 'Phone:'}</span>
+                          <span className="font-mono font-bold text-slate-900">{ord.customerPhone}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'العنوان:' : 'Address:'}</span>
+                          <span className="font-bold text-slate-900 truncate block">{ord.customerAddress}</span>
+                        </div>
+                      </div>
+
+                      {/* Items List */}
+                      <div className="space-y-2">
+                        <span className="text-[11px] font-black text-slate-700 block">{lang === 'ar' ? 'المنتجات والمعدات المطلوبة:' : 'Ordered Items:'}</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {ord.items?.map((item, idx) => (
+                            <div key={idx} className="p-2 bg-white rounded-xl border border-slate-100 flex items-center gap-2 text-xs">
+                              <img src={item.image} alt={item.title} className="w-10 h-10 rounded-lg object-cover bg-slate-100 shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-extrabold text-slate-900 truncate">{item.arTitle || item.title}</div>
+                                <div className="text-[10px] text-slate-500 font-mono">
+                                  {item.price} ₪ × {item.quantity} = <span className="font-black text-amber-600">{item.price * item.quantity} ₪</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Total & Action Footer */}
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs font-black">
+                        <div>
+                          <span className="text-slate-500">{lang === 'ar' ? 'المبلغ الإجمالي:' : 'Total:'} </span>
+                          <span className="text-amber-600 font-mono text-base font-black">{ord.totalAmount} ₪</span>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            const msg = encodeURIComponent(`مرحباً خدمة العملاء، أود الاستفسار عن طلبي رقم #${ord.id}`);
+                            window.open(`https://wa.me/972599999999?text=${msg}`, '_blank');
+                          }}
+                          className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl border border-emerald-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>{lang === 'ar' ? 'استفسار واتساب' : 'Inquire'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Success Confirmation Modal */}
       {orderSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 border border-slate-200 shadow-2xl animate-scale-up">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center space-y-4 border border-slate-200 shadow-2xl animate-scale-up text-right rtl:text-right ltr:text-left">
             <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-10 h-10 animate-bounce" />
             </div>
-            <h3 className="text-lg font-black text-slate-900">
-              {lang === 'ar' ? 'تم إرسال الطلب بنجاح!' : 'Order Sent Successfully!'}
-            </h3>
-            <p className="text-xs text-slate-600 font-semibold leading-relaxed">
+            
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-black text-slate-900">
+                {lang === 'ar' ? 'تم تسليم الطلب وحفظ البيانات بنجاح! 🎉' : 'Order Placed Successfully! 🎉'}
+              </h3>
+              {lastSubmittedOrder && (
+                <span className="inline-block px-3 py-1 bg-amber-500/10 text-amber-700 font-mono font-black text-xs rounded-full border border-amber-500/20">
+                  رقم الطلب: #{lastSubmittedOrder.id}
+                </span>
+              )}
+            </div>
+
+            {lastSubmittedOrder && (
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-700 space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-bold text-slate-500">{lang === 'ar' ? 'اسم المشتري:' : 'Customer:'}</span>
+                  <span className="font-black text-slate-900">{lastSubmittedOrder.customerName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-bold text-slate-500">{lang === 'ar' ? 'العنوان والتوصيل:' : 'Address:'}</span>
+                  <span className="font-black text-slate-900 truncate max-w-[200px]">{lastSubmittedOrder.customerAddress}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-bold text-slate-500">{lang === 'ar' ? 'إجمالي المبلغ:' : 'Total:'}</span>
+                  <span className="font-black text-amber-600 font-mono">{lastSubmittedOrder.totalAmount} ₪</span>
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-600 font-semibold leading-relaxed text-center">
               {lang === 'ar'
-                ? 'تم فتح المحادثة عبر واتساب مع فريق خدمة عملاء سيسترو لمتابعة التوصيل والتركيب فوراً.'
-                : 'WhatsApp chat opened with Systro support team to complete delivery & installation.'}
+                ? 'تم فتح المحادثة المباشرة عبر واتساب لإكمال الشحن والتوصيل، ويمكنك متابعة حالة الطلب دائماً في خانة "طلباتي".'
+                : 'WhatsApp chat opened for delivery confirmation. You can track this anytime in "My Orders".'}
             </p>
+
             <button
               onClick={() => setOrderSuccessModal(false)}
               className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl transition-all cursor-pointer"

@@ -22,11 +22,18 @@ import {
   ShoppingBag,
   Package,
   Tag,
-  DollarSign
+  DollarSign,
+  Edit3,
+  Clock,
+  MapPin,
+  CreditCard,
+  FileText,
+  Eye,
+  Filter
 } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, setDoc, collection, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { Product } from '../types';
+import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc } from 'firebase/firestore';
+import { Product, StoreOrder, StoreOrderStatus } from '../types';
 
 interface AdminPanelProps {
   lang: string;
@@ -86,14 +93,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [adminUserSearch, setAdminUserSearch] = useState('');
   const [adminUserRoleFilter, setAdminUserRoleFilter] = useState<'all' | 'client' | 'technician' | 'unassigned'>('all');
 
-  // Store Management State
+  // Store Product Management State
   const [products, setProducts] = useState<Product[]>([]);
+  const [productSearch, setProductSearch] = useState('');
   const [newProdTitle, setNewProdTitle] = useState('');
   const [newProdPrice, setNewProdPrice] = useState<number>(150);
   const [newProdImage, setNewProdImage] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('معدات طوارئ');
   const [newProdDescription, setNewProdDescription] = useState('');
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+
+  // Edit Product Modal State
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editPrice, setEditPrice] = useState<number>(0);
+  const [editCategory, setEditCategory] = useState('');
+  const [editImage, setEditImage] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editInStock, setEditInStock] = useState<boolean>(true);
+  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
+
+  // Store Incoming Orders Management State
+  const [storeOrders, setStoreOrders] = useState<StoreOrder[]>([]);
+  const [storeOrderSearch, setStoreOrderSearch] = useState('');
+  const [storeOrderStatusFilter, setStoreOrderStatusFilter] = useState<string>('all');
 
   // Sync products list from Firestore in Admin
   useEffect(() => {
@@ -108,6 +131,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     return () => unsub();
   }, []);
 
+  // Sync store orders list from Firestore in Admin
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'store_orders'), (snapshot) => {
+      const list: StoreOrder[] = [];
+      snapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() } as StoreOrder);
+      });
+      list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      setStoreOrders(list);
+    });
+    return () => unsub();
+  }, []);
+
+  // Add Product Handler
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProdTitle.trim() || newProdPrice <= 0) {
@@ -154,6 +191,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // Start Editing Product
+  const startEditingProduct = (p: Product) => {
+    setEditingProduct(p);
+    setEditTitle(p.arTitle || p.title);
+    setEditPrice(p.price);
+    setEditCategory(p.arCategory || p.category || 'معدات طوارئ');
+    setEditImage(p.image || '');
+    setEditDescription(p.arDescription || p.description || '');
+    setEditInStock(p.inStock !== false);
+  };
+
+  // Save Product Edits
+  const handleSaveProductEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    if (!editTitle.trim() || editPrice <= 0) {
+      triggerToast(lang === 'ar' ? 'يرجى إدخال البيانات بشكل صحيح!' : 'Please enter valid details!', 'warning');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      await setDoc(doc(db, 'products', editingProduct.id), {
+        title: editTitle.trim(),
+        arTitle: editTitle.trim(),
+        price: Number(editPrice),
+        image: editImage.trim() || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&q=80',
+        description: editDescription.trim(),
+        arDescription: editDescription.trim(),
+        category: editCategory,
+        arCategory: editCategory,
+        inStock: editInStock
+      }, { merge: true });
+
+      triggerToast(
+        lang === 'ar' ? `تم تحديث المنتج "${editTitle}" بنجاح! ✏️` : `Product "${editTitle}" updated! ✏️`,
+        'success'
+      );
+      setEditingProduct(null);
+    } catch (err) {
+      console.error('Error updating product:', err);
+      triggerToast(lang === 'ar' ? 'حدث خطأ أثناء تعديل المنتج!' : 'Failed to update product!', 'error');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // Delete Product Handler
   const handleDeleteProduct = async (id: string, title: string) => {
     if (!window.confirm(lang === 'ar' ? `هل أنت تأكد من إزالة المنتج "${title}" من المتجر؟` : `Are you sure you want to remove "${title}"?`)) {
       return;
@@ -170,21 +255,68 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // Update Store Order Status Handler
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: StoreOrderStatus) => {
+    try {
+      await updateDoc(doc(db, 'store_orders', orderId), {
+        status: newStatus
+      });
+      triggerToast(
+        lang === 'ar' ? `تم تغيير حالة الطلب #${orderId} بنجاح! 🔄` : `Order status updated for #${orderId}! 🔄`,
+        'success'
+      );
+    } catch (err) {
+      console.error('Error updating order status:', err);
+      triggerToast(lang === 'ar' ? 'فشل تحديث حالة الطلب!' : 'Failed to update status!', 'error');
+    }
+  };
+
+  // Delete Store Order Handler
+  const handleDeleteStoreOrder = async (orderId: string) => {
+    if (!window.confirm(lang === 'ar' ? `هل أنت تأكد من إزالة الطلب رقم #${orderId} نهائياً؟` : `Delete order #${orderId}?`)) return;
+    try {
+      await deleteDoc(doc(db, 'store_orders', orderId));
+      triggerToast(
+        lang === 'ar' ? 'تمت إزالة الطلب من القائمة 🗑️' : 'Order deleted 🗑️',
+        'info'
+      );
+    } catch (err) {
+      console.error('Error deleting order:', err);
+      triggerToast(lang === 'ar' ? 'فشل حذف الطلب!' : 'Failed to delete order!', 'error');
+    }
+  };
+
+  // Filtered Store Orders
+  const filteredStoreOrders = storeOrders.filter(ord => {
+    const searchLower = storeOrderSearch.toLowerCase();
+    const matchesSearch = 
+      ord.id.toLowerCase().includes(searchLower) ||
+      ord.customerName.toLowerCase().includes(searchLower) ||
+      ord.customerPhone.toLowerCase().includes(searchLower) ||
+      ord.customerAddress.toLowerCase().includes(searchLower);
+
+    const matchesStatus = storeOrderStatusFilter === 'all' || ord.status === storeOrderStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Calculate Order Statistics
+  const pendingOrdersCount = storeOrders.filter(o => o.status === 'pending').length;
+  const totalStoreRevenue = storeOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 animate-fade-in space-y-8 bg-slate-50 text-slate-900 rounded-3xl border border-slate-200 shadow-2xl my-6">
       
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 border-b border-slate-200 pb-6 text-slate-900">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-200 pb-6 text-slate-900">
         <div className="space-y-2 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
           <div className="flex flex-col sm:flex-row items-center gap-3 justify-center sm:justify-start">
             <h2 className="text-2xl font-black text-slate-900">{t.adminTitle || (lang === 'ar' ? 'بوابة الإدارة والرقابة المالية لـ سيسترو' : 'Systro Admin Portal')}</h2>
-            {/* Verified Domain Badge - Relocated to Administration Portal */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs font-bold shrink-0 shadow-sm select-none">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>
               <span>{lang === 'ar' ? `نطاق موثق: ${customDomain}` : `Verified Domain: ${customDomain}`}</span>
             </div>
           </div>
-          <p className="text-xs text-slate-500 font-semibold">{lang === 'ar' ? 'فصل وتحكيم المنازعات المالية والودائع المعلقة لحل الخلافات بين العملاء والفنيين.' : 'Arbitrate active disputes, refund clients, or dispatch technician escrow payouts manually.'}</p>
+          <p className="text-xs text-slate-500 font-semibold">{lang === 'ar' ? 'إدارة كاملة للمتجر، تعديل المنتجات، متابعة الطلبات الواردة، والرقابة على الودائع والمستخدمين.' : 'Manage store products, incoming customer orders, active disputes, and system security.'}</p>
         </div>
         <button 
           onClick={() => {
@@ -250,19 +382,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         />
       )}
 
-      {/* Store Products Control Panel - لوحة تحكم وإدارة المتجر والمنتجات */}
+      {/* ========================================================= */}
+      {/* 1. STORE PRODUCTS CONTROL PANEL (إدارة وتعديل منتجات المتجر) */}
+      {/* ========================================================= */}
       <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-6 text-slate-900">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div className="space-y-1 text-right rtl:text-right ltr:text-left">
             <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-amber-500" />
-              <span>{lang === 'ar' ? 'لوحة إدارة المنتجات والمعدات بالمتجر 🛒' : 'Store Products & Equipment Control Panel 🛒'}</span>
+              <span>{lang === 'ar' ? 'لوحة إدارة وتعديل منتجات المتجر 🛒' : 'Store Products Management Panel 🛒'}</span>
             </h3>
             <p className="text-xs text-slate-500 font-semibold">
-              {lang === 'ar' ? 'إضافة قطع غيار، بطاريات ومعدات جديدة أو إزالة المنتجات الحالية المتاحة في المتجر مباشرة.' : 'Add new auto parts, batteries, or emergency tools, or delete existing products in real-time.'}
+              {lang === 'ar' ? 'إضافة قطع غيار جديدة، تعديل الأسعار والتفاصيل والصور، أو إزالة منتج مع تحكم كامل بالمخزون.' : 'Add, edit details/price/images, or delete store products in real-time.'}
             </p>
           </div>
-          <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-700 text-xs font-black rounded-full shrink-0">
+          <span className="px-3.5 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-700 text-xs font-black rounded-full shrink-0">
             {lang === 'ar' ? `إجمالي المنتجات: ${products.length}` : `Total Products: ${products.length}`}
           </span>
         </div>
@@ -366,52 +500,400 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </form>
 
         {/* Existing Products List Table/Grid */}
-        <div className="space-y-3 text-right rtl:text-right ltr:text-left">
-          <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
-            {lang === 'ar' ? 'المنتجات المعروضة حالياً بالمتجر (يمكن إزالة أي منتج بضغطة زر):' : 'Currently Available Products:'}
-          </h4>
+        <div className="space-y-4 text-right rtl:text-right ltr:text-left">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
+              {lang === 'ar' ? 'المنتجات المعروضة حالياً بالمتجر (انقر لتعديل أي عنصر أو حذفه):' : 'Currently Available Products:'}
+            </h4>
+
+            {/* Filter Search */}
+            <div className="relative w-full sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder={lang === 'ar' ? 'بحث بالمنتجات...' : 'Search products...'}
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                className="w-full pl-3 pr-9 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none"
+              />
+            </div>
+          </div>
 
           {products.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-6 font-semibold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <p className="text-xs text-slate-400 text-center py-8 font-semibold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
               {lang === 'ar' ? 'لا توجد منتجات مسجلة بالمتجر حالياً.' : 'No products currently registered in store.'}
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {products.map((p) => (
-                <div
-                  key={p.id}
-                  className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3 relative group"
-                >
-                  <img
-                    src={p.image || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&q=80'}
-                    alt={p.title}
-                    className="w-14 h-14 rounded-xl object-cover shrink-0 bg-slate-200"
-                  />
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="text-xs font-black text-slate-900 truncate">
-                      {p.arTitle || p.title}
+              {products
+                .filter(p => (p.arTitle || p.title).toLowerCase().includes(productSearch.toLowerCase()))
+                .map((p) => (
+                  <div
+                    key={p.id}
+                    className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3 relative group hover:border-amber-400 transition-all shadow-sm"
+                  >
+                    <img
+                      src={p.image || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&q=80'}
+                      alt={p.title}
+                      className="w-14 h-14 rounded-xl object-cover shrink-0 bg-slate-200"
+                    />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="text-xs font-black text-slate-900 truncate">
+                        {p.arTitle || p.title}
+                      </div>
+                      <div className="text-xs font-extrabold text-amber-600 font-mono">
+                        {p.price} ₪
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+                        <span>{p.arCategory || p.category}</span>
+                        <span>•</span>
+                        <span className={p.inStock !== false ? 'text-emerald-600' : 'text-red-500'}>
+                          {p.inStock !== false ? 'متوفر' : 'غير متوفر'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-xs font-extrabold text-amber-600 font-mono">
-                      {p.price} ₪
-                    </div>
-                    <div className="text-[10px] font-bold text-slate-400">
-                      {p.arCategory || p.category}
+
+                    {/* Action Buttons: Edit & Delete */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => startEditingProduct(p)}
+                        title={lang === 'ar' ? 'تعديل تفاصيل المنتج' : 'Edit product details'}
+                        className="p-2 text-amber-600 hover:text-white hover:bg-amber-500 rounded-xl transition-all cursor-pointer"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProduct(p.id, p.arTitle || p.title)}
+                        title={lang === 'ar' ? 'إزالة المنتج من المتجر' : 'Delete product from store'}
+                        className="p-2 text-red-500 hover:text-white hover:bg-red-500 rounded-xl transition-all cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDeleteProduct(p.id, p.arTitle || p.title)}
-                    title={lang === 'ar' ? 'إزالة المنتج من المتجر' : 'Delete product from store'}
-                    className="p-2 text-red-500 hover:text-white hover:bg-red-500 rounded-xl transition-all cursor-pointer shrink-0"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
       </div>
 
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl border border-slate-200 text-right rtl:text-right ltr:text-left">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-amber-500" />
+                <h3 className="text-base font-black text-slate-900">
+                  {lang === 'ar' ? 'تعديل بيانات المنتج بالمتجر ✏️' : 'Edit Store Product Details ✏️'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProductEdit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700">{lang === 'ar' ? 'اسم المنتج *' : 'Product Name *'}</label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-700">{lang === 'ar' ? 'السعر (شيقل ₪) *' : 'Price (ILS ₪) *'}</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(Number(e.target.value))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-700">{lang === 'ar' ? 'الفئة' : 'Category'}</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                  >
+                    <option value="معدات طوارئ">معدات طوارئ</option>
+                    <option value="بطاريات">بطاريات</option>
+                    <option value="صيانة إطارات">صيانة إطارات</option>
+                    <option value="أدوات فحص">أدوات فحص</option>
+                    <option value="زيوت وفلاتر">زيوت وفلاتر</option>
+                    <option value="إكسسوارات">إكسسوارات</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700">{lang === 'ar' ? 'رابط الصورة' : 'Image URL'}</label>
+                <input
+                  type="url"
+                  value={editImage}
+                  onChange={(e) => setEditImage(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700">{lang === 'ar' ? 'الوصف والتفاصيل' : 'Description'}</label>
+                <textarea
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                />
+              </div>
+
+              {/* Stock Status Toggle */}
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold">
+                <span>{lang === 'ar' ? 'حالة التوفر بالمخزن:' : 'Stock Availability:'}</span>
+                <button
+                  type="button"
+                  onClick={() => setEditInStock(!editInStock)}
+                  className={`px-4 py-1.5 rounded-full font-black text-xs transition-all cursor-pointer ${
+                    editInStock ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
+                  }`}
+                >
+                  {editInStock ? (lang === 'ar' ? 'متوفر 🟢' : 'In Stock 🟢') : (lang === 'ar' ? 'غير متوفر 🔴' : 'Out of Stock 🔴')}
+                </button>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isSavingEdit ? (lang === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (lang === 'ar' ? 'حفظ التعديلات 💾' : 'Save Changes 💾')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 2. STORE INCOMING ORDERS MANAGEMENT (لوحة طلبات المتجر الواردة) */}
+      {/* ========================================================= */}
+      <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-6 text-slate-900">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="space-y-1 text-right rtl:text-right ltr:text-left">
+            <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+              <Package className="w-5 h-5 text-amber-500" />
+              <span>{lang === 'ar' ? 'لوحة متابعة طلبات المتجر الواردة والتفاصيل الشخصية 📦' : 'Store Orders & Customer Details Panel 📦'}</span>
+            </h3>
+            <p className="text-xs text-slate-500 font-semibold">
+              {lang === 'ar' ? 'متابعة تفاصيل المشتري، العناوين، المنتجات المطلوبة، وتحديث حالة الشحن والتسليم مباشر.' : 'Monitor buyer contact info, delivery address, items list, and update order status.'}
+            </p>
+          </div>
+
+          {/* Stats Badges */}
+          <div className="flex flex-wrap items-center gap-2 text-xs font-black">
+            <span className="px-3 py-1.5 bg-slate-900 text-amber-400 rounded-xl font-mono">
+              {lang === 'ar' ? `إجمالي الطلبات: ${storeOrders.length}` : `Total Orders: ${storeOrders.length}`}
+            </span>
+            <span className="px-3 py-1.5 bg-amber-500/10 text-amber-700 border border-amber-500/20 rounded-xl font-mono">
+              {lang === 'ar' ? `قيد المعالجة: ${pendingOrdersCount}` : `Pending: ${pendingOrdersCount}`}
+            </span>
+            <span className="px-3 py-1.5 bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 rounded-xl font-mono">
+              {lang === 'ar' ? `المبيعات: ${totalStoreRevenue} ₪` : `Revenue: ${totalStoreRevenue} ₪`}
+            </span>
+          </div>
+        </div>
+
+        {/* Search & Status Filter Bar */}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={storeOrderSearch}
+              onChange={(e) => setStoreOrderSearch(e.target.value)}
+              placeholder={lang === 'ar' ? 'بحث باسم المشتري، رقم الهاتف، رقم الطلب، أو المدينة...' : 'Search customer name, phone, order ID, or address...'}
+              className="w-full pr-9 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1 text-xs">
+            {[
+              { id: 'all', label: lang === 'ar' ? 'الكل 📦' : 'All' },
+              { id: 'pending', label: lang === 'ar' ? 'قيد المراجعة 🟡' : 'Pending' },
+              { id: 'processing', label: lang === 'ar' ? 'جاري التحضير 🔵' : 'Processing' },
+              { id: 'shipped', label: lang === 'ar' ? 'تم الشحن 🚚' : 'Shipped' },
+              { id: 'delivered', label: lang === 'ar' ? 'تم التسليم 🟢' : 'Delivered' },
+              { id: 'cancelled', label: lang === 'ar' ? 'ملغي 🔴' : 'Cancelled' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setStoreOrderStatusFilter(tab.id)}
+                className={`px-3 py-2 rounded-xl font-extrabold shrink-0 cursor-pointer transition-all ${
+                  storeOrderStatusFilter === tab.id
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Orders Cards List */}
+        {filteredStoreOrders.length === 0 ? (
+          <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+            <Package className="w-10 h-10 text-slate-300 mx-auto" />
+            <p className="text-xs font-bold text-slate-400">
+              {lang === 'ar' ? 'لا توجد طلبات متجر مسجلة حالياً تطابق الفرز والبحث.' : 'No store orders found matching criteria.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredStoreOrders.map((ord) => {
+              const paymentLabel = ord.paymentMethod === 'cash' 
+                ? (lang === 'ar' ? 'نقداً عند الاستلام 💵' : 'Cash on Delivery 💵')
+                : ord.paymentMethod === 'card'
+                ? (lang === 'ar' ? 'بطاقة ائتمان 💳' : 'Credit Card 💳')
+                : (lang === 'ar' ? 'محفظة Escrow 🔒' : 'Escrow Vault 🔒');
+
+              return (
+                <div
+                  key={ord.id}
+                  className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 hover:border-amber-400 transition-all shadow-sm text-right rtl:text-right ltr:text-left"
+                >
+                  {/* Top Bar */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 bg-slate-900 text-amber-400 font-mono font-black text-xs rounded-lg">
+                        #{ord.id}
+                      </span>
+                      <span className="text-xs text-slate-500 font-bold">
+                        {ord.createdAtFormatted || new Date(ord.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Status Update Dropdown/Buttons */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-slate-500">{lang === 'ar' ? 'تحديث الحالة:' : 'Status:'}</span>
+                      <select
+                        value={ord.status}
+                        onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value as StoreOrderStatus)}
+                        className="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-extrabold text-slate-800 outline-none cursor-pointer focus:ring-2 focus:ring-amber-500"
+                      >
+                        <option value="pending">🟡 {lang === 'ar' ? 'قيد المراجعة (Pending)' : 'Pending'}</option>
+                        <option value="processing">🔵 {lang === 'ar' ? 'جاري التحضير (Processing)' : 'Processing'}</option>
+                        <option value="shipped">🚚 {lang === 'ar' ? 'تم الشحن والتوصيل (Shipped)' : 'Shipped'}</option>
+                        <option value="delivered">🟢 {lang === 'ar' ? 'تم التسليم بنجاح (Delivered)' : 'Delivered'}</option>
+                        <option value="cancelled">🔴 {lang === 'ar' ? 'إلغاء الطلب (Cancelled)' : 'Cancelled'}</option>
+                      </select>
+
+                      <button
+                        onClick={() => handleDeleteStoreOrder(ord.id)}
+                        title={lang === 'ar' ? 'حذف الطلب نهائياً' : 'Delete order'}
+                        className="p-2 text-red-500 hover:text-white hover:bg-red-500 rounded-xl transition-all cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Customer Personal Info Card */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-slate-200 text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'اسم المشتري:' : 'Customer Name:'}</span>
+                      <span className="font-extrabold text-slate-900 text-sm">{ord.customerName}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'الهاتف والواتساب:' : 'Phone & WhatsApp:'}</span>
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <span className="font-mono font-black text-slate-900">{ord.customerPhone}</span>
+                        <a
+                          href={`https://wa.me/${ord.customerPhone.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold rounded-lg transition-all"
+                        >
+                          واتساب 💬
+                        </a>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'عنوان التوصيل:' : 'Delivery Address:'}</span>
+                      <span className="font-bold text-slate-800">{ord.customerAddress}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'طريقة التسديد:' : 'Payment:'}</span>
+                      <span className="font-extrabold text-amber-700">{paymentLabel}</span>
+                    </div>
+
+                    {ord.notes && (
+                      <div className="md:col-span-4 pt-2 border-t border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'ملاحظات العميل والتوصيل:' : 'Customer Notes:'}</span>
+                        <p className="text-slate-700 font-semibold text-xs bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+                          {ord.notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Items Breakdown Table */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-black text-slate-800 block">{lang === 'ar' ? 'قائمة المنتجات والمعدات المطلوبة:' : 'Ordered Items:'}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                      {ord.items?.map((item, idx) => (
+                        <div key={idx} className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center gap-2.5 text-xs">
+                          <img src={item.image} alt={item.title} className="w-11 h-11 rounded-lg object-cover bg-slate-100 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-extrabold text-slate-900 truncate">{item.arTitle || item.title}</div>
+                            <div className="text-[10px] text-slate-500 font-mono pt-0.5">
+                              {item.price} ₪ × {item.quantity} = <span className="font-black text-amber-600">{item.price * item.quantity} ₪</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Footer Total */}
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-xs font-black">
+                    <span className="text-slate-600">{lang === 'ar' ? 'المبلغ الإجمالي المطلق للطلب:' : 'Total Amount:'}</span>
+                    <span className="text-lg font-mono text-amber-600 font-black">{ord.totalAmount} ₪</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================= */}
+      {/* 3. DISPUTES & ESCROW HOLDINGS */}
+      {/* ========================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Active Escrow Holdings list */}

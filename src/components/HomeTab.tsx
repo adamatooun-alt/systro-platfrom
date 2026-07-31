@@ -359,96 +359,96 @@ export default function HomeTab({
               {t.finTitle}
             </h3>
 
-            <p className="text-sm md:text-base text-gray-400 leading-relaxed font-medium">
+            <p className="text-sm md:text-base text-slate-200 leading-relaxed font-semibold">
               {t.finDesc}
             </p>
 
             {/* Sub features list */}
             <div className="space-y-4">
               {/* Customer Protection */}
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#0F1424]/40 border border-gray-900 hover:border-gray-800 transition-colors">
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-xl mt-1">
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#0F1424] border border-gray-800 hover:border-gray-700 transition-colors shadow-sm">
+                <div className="p-3 bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl mt-1 shrink-0">
                   <ThumbsUp className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">{t.custProtectionTitle}</h4>
-                  <p className="text-xs text-gray-400 leading-relaxed font-medium">{t.custProtectionDesc}</p>
+                  <h4 className="text-sm font-extrabold text-white">{t.custProtectionTitle}</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed font-semibold">{t.custProtectionDesc}</p>
                 </div>
               </div>
 
               {/* Technician Protection */}
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#0F1424]/40 border border-gray-900 hover:border-gray-800 transition-colors">
-                <div className="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-500 rounded-xl mt-1">
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#0F1424] border border-gray-800 hover:border-gray-700 transition-colors shadow-sm">
+                <div className="p-3 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-xl mt-1 shrink-0">
                   <Lock className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white">{t.techRightTitle}</h4>
-                  <p className="text-xs text-gray-400 leading-relaxed font-medium">{t.techRightDesc}</p>
+                  <h4 className="text-sm font-extrabold text-white">{t.techRightTitle}</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed font-semibold">{t.techRightDesc}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Right Escrow Vault graphical model card (Image 3) */}
-          <div className="lg:col-span-7 bg-[#111827]/70 border border-gray-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative">
+          <div className="lg:col-span-7 bg-[#111827] border border-gray-700/80 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative text-right rtl:text-right ltr:text-left">
             <div className="absolute -top-3 left-6">
-              <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+              <span className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
                 {t.vaultSecureBadge}
               </span>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <h4 className="text-base md:text-lg font-black text-white">{t.vaultTitle}</h4>
-                <p className="text-xs text-gray-400 font-medium">{t.vaultSub}</p>
+                <h4 className="text-lg md:text-xl font-black text-white drop-shadow-sm">{t.vaultTitle}</h4>
+                <p className="text-xs md:text-sm text-amber-300 font-extrabold mt-1 leading-relaxed">{t.vaultSub}</p>
               </div>
-              <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-2xl border border-emerald-500/20">
-                <ShieldCheck className="w-6 h-6 animate-pulse" />
+              <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30 shrink-0">
+                <ShieldCheck className="w-7 h-7 animate-pulse" />
               </div>
             </div>
 
             <hr className="border-gray-800" />
 
             {/* Vault Locked holding simulation display */}
-            <div className="p-5 bg-[#0F1424] border border-gray-800 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="p-5 bg-[#0B0F19] border border-gray-700 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-inner">
               <div className="space-y-1">
-                <span className="text-[10px] text-gray-400 font-bold block uppercase tracking-wider">{t.vaultResValue}</span>
-                <span className="text-2xl font-black text-white font-mono">150 ₪ <span className="text-xs text-gray-400 font-bold font-sans">({lang === 'ar' ? 'شيكل' : lang === 'he' ? 'שקל' : 'Shekel'})</span></span>
+                <span className="text-xs text-slate-300 font-black block uppercase tracking-wider">{t.vaultResValue}</span>
+                <span className="text-3xl font-black text-amber-400 font-mono drop-shadow">150 ₪ <span className="text-xs text-slate-200 font-extrabold font-sans">({lang === 'ar' ? 'شيكل' : lang === 'he' ? 'שקל' : 'Shekel'})</span></span>
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                <span className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-extrabold px-3 py-1 rounded-full uppercase">
+                <span className="bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-black px-3.5 py-1.5 rounded-full uppercase shadow-sm">
                   {t.vaultReservedBadge}
                 </span>
-                <span className="text-xs text-gray-400 font-semibold">{t.vaultAwaiting}</span>
+                <span className="text-xs text-slate-200 font-black">{t.vaultAwaiting}</span>
               </div>
             </div>
 
             {/* 3 columns list detailing payouts - Stack on mobile, grid on desktop */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Partner Technician details */}
-              <div className="p-4 bg-[#0A0B10] border border-gray-950 rounded-xl text-center space-y-1">
-                <span className="text-[9px] font-bold text-gray-500 uppercase block">{t.vaultPartnerTech}</span>
-                <span className="text-xs md:text-sm font-black text-white block truncate">رائد مسعود</span>
+              <div className="p-4 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1.5">
+                <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultPartnerTech}</span>
+                <span className="text-sm font-black text-white block truncate">رائد مسعود</span>
               </div>
 
               {/* Systro Commission */}
-              <div className="p-4 bg-[#0A0B10] border border-gray-950 rounded-xl text-center space-y-1">
-                <span className="text-[9px] font-bold text-gray-500 uppercase block">{t.vaultCommission}</span>
-                <span className="text-xs md:text-sm font-black text-amber-500 font-mono block">20% (30 ₪)</span>
+              <div className="p-4 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1.5">
+                <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultCommission}</span>
+                <span className="text-sm font-black text-amber-400 font-mono block">20% (30 ₪)</span>
               </div>
 
               {/* Net Profit */}
-              <div className="p-4 bg-[#0A0B10] border border-gray-950 rounded-xl text-center space-y-1">
-                <span className="text-[9px] font-bold text-gray-500 uppercase block">{t.vaultNetEarnings}</span>
-                <span className="text-xs md:text-sm font-black text-emerald-400 font-mono block">120 ₪</span>
+              <div className="p-4 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1.5">
+                <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultNetEarnings}</span>
+                <span className="text-sm font-black text-emerald-400 font-mono block">120 ₪</span>
               </div>
             </div>
 
             {/* Bulbed mechanism guide */}
-            <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl flex gap-3 text-xs leading-relaxed text-gray-300 font-medium">
-              <Lightbulb className="w-5 h-5 text-amber-500 shrink-0 mt-0.5 animate-bounce" />
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex gap-3 text-xs leading-relaxed text-slate-100 font-bold">
+              <Lightbulb className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-bounce" />
               <p>
-                <span className="font-extrabold text-amber-500">{t.vaultMechanismTitle}: </span>
+                <span className="font-extrabold text-amber-400">{t.vaultMechanismTitle}: </span>
                 {t.vaultMechanismDesc}
               </p>
             </div>
@@ -671,31 +671,31 @@ export default function HomeTab({
       </section>
 
       {/* FOOTER SECTION (Image 1 layout) */}
-      <footer className="bg-[#0A0B10] border-t border-gray-900 py-16 px-4 md:px-8 select-none">
-        <div className="max-w-7xl mx-auto space-y-12">
+      <footer className="bg-[#0A0B10] border-t border-gray-800 py-12 px-4 md:px-8 select-none">
+        <div className="max-w-7xl mx-auto space-y-8">
           
           {/* Primary Footer Block */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8 border-b border-gray-900 pb-12">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 border-b border-gray-800 pb-8">
             
             {/* Brand and Description */}
             <div className="text-center md:text-right rtl:md:text-right ltr:md:text-left space-y-3">
               <div className="flex items-center justify-center md:justify-start gap-3">
-                <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                  <ShieldCheck className="w-5 h-5 text-amber-500" />
+                <div className="p-2.5 bg-amber-500/15 border border-amber-500/30 rounded-xl">
+                  <ShieldCheck className="w-5 h-5 text-amber-400" />
                 </div>
                 <h4 className="text-lg font-black text-white">
-                  {t.logoTitle} <span className="text-amber-500">{t.logoRescue}</span>
+                  {t.logoTitle} <span className="text-amber-400">{t.logoRescue}</span>
                 </h4>
               </div>
-              <p className="text-xs text-gray-500 font-bold max-w-md">
+              <p className="text-xs md:text-sm text-gray-300 font-bold max-w-md">
                 {t.logoSub} — {t.slogan}
               </p>
             </div>
 
             {/* Navigation lists */}
-            <div className="flex flex-wrap items-center justify-center gap-6 text-xs font-bold text-gray-400">
-              <button onClick={() => setActiveTab('home')} className="hover:text-amber-500 transition-colors cursor-pointer">{t.home}</button>
-              <button onClick={() => setActiveTab('services')} className="hover:text-amber-500 transition-colors cursor-pointer">{t.services}</button>
+            <div className="flex flex-wrap items-center justify-center gap-6 text-xs md:text-sm font-bold text-gray-200">
+              <button onClick={() => setActiveTab('home')} className="hover:text-amber-400 transition-colors cursor-pointer">{t.home}</button>
+              <button onClick={() => setActiveTab('services')} className="hover:text-amber-400 transition-colors cursor-pointer">{t.services}</button>
               <button 
                 onClick={() => {
                   setActiveTab('simulator');
@@ -708,7 +708,7 @@ export default function HomeTab({
                     'success'
                   );
                 }} 
-                className="hover:text-amber-500 transition-colors cursor-pointer"
+                className="hover:text-amber-400 transition-colors cursor-pointer"
               >
                 {t.simulator}
               </button>
@@ -717,7 +717,7 @@ export default function HomeTab({
           </div>
 
           {/* Bottom Copyright & admin access gateway pill button */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-xs font-semibold text-gray-500">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-xs md:text-sm font-black text-amber-300">
             <p>
               {lang === 'ar' 
                 ? 'جميع الحقوق محفوظة سيسترو 2026 ©' 
@@ -731,7 +731,7 @@ export default function HomeTab({
               {/* Pill Gate */}
               <button 
                 onClick={() => setActiveTab('admin')}
-                className="px-5 py-2.5 bg-[#111827] hover:bg-[#1F2937] border border-gray-800 text-gray-400 hover:text-white transition-all rounded-full flex items-center gap-2 cursor-pointer"
+                className="px-5 py-2.5 bg-[#121625] hover:bg-[#1A2035] border border-amber-500/30 text-amber-400 hover:text-white transition-all rounded-full flex items-center gap-2 cursor-pointer font-bold shadow-sm"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>{t.adminGateway}</span>

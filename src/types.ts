@@ -135,3 +135,29 @@ export interface Product {
   createdAt?: number;
 }
 
+export interface StoreOrderItem {
+  id: string;
+  title: string;
+  arTitle?: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
+export type StoreOrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+
+export interface StoreOrder {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  paymentMethod: 'cash' | 'card' | 'escrow';
+  notes?: string;
+  items: StoreOrderItem[];
+  totalAmount: number;
+  status: StoreOrderStatus;
+  createdAt: number;
+  createdAtFormatted?: string;
+  userEmail?: string;
+}
+
