@@ -1230,8 +1230,16 @@ export default function App() {
     if ((userRole === 'client' || userRole === null) && allRequests.length > 0) {
       if (activeRequestId) {
         const existing = allRequests.find(r => r.id === activeRequestId);
-        if (!existing || existing.status === 'completed') {
+        const belongsToMe = (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '')
+          ? (existing?.requestedBy === loggedInUserEmail)
+          : (existing?.sessionId === currentSessionId && (!existing?.requestedBy || existing?.requestedBy === ''));
+
+        if (!existing || existing.status === 'completed' || !belongsToMe) {
           setActiveRequestId(null);
+          setSelectedBid(null);
+          setIncomingBids([]);
+          setChatMessages([]);
+          sessionStorage.removeItem('systro_active_request_id');
         }
         return;
       }
@@ -1243,7 +1251,7 @@ export default function App() {
           return r.requestedBy === loggedInUserEmail;
         }
         
-        return r.sessionId === currentSessionId;
+        return r.sessionId === currentSessionId && (!r.requestedBy || r.requestedBy === '');
       });
 
       if (activeUserRequest) {
@@ -1257,8 +1265,14 @@ export default function App() {
     if (isLoggedIn && loggedInUserEmail && userRole === 'technician' && allRequests.length > 0) {
       if (activeRequestId) {
         const existing = allRequests.find(r => r.id === activeRequestId);
-        if (!existing || existing.status === 'completed') {
+        const belongsToTech = existing?.selectedTechnicianId === loggedInUserEmail;
+
+        if (!existing || existing.status === 'completed' || !belongsToTech) {
           setActiveRequestId(null);
+          setSelectedBid(null);
+          setIncomingBids([]);
+          setChatMessages([]);
+          sessionStorage.removeItem('systro_active_request_id');
         }
         return;
       }
@@ -3295,6 +3309,15 @@ export default function App() {
     setIsLoggedIn(true);
     setShowGoogleFallbackModal(false);
     setShowAppleFallbackModal(false);
+    
+    // Clear previous active request and bid states to guarantee clean account context
+    setActiveRequestId(null);
+    setSelectedBid(null);
+    setIncomingBids([]);
+    setChatMessages([]);
+    setPinnedLocation(null);
+    setProblemDescription('');
+    sessionStorage.removeItem('systro_active_request_id');
     
     setLoggedInUserEmail(resolvedEmail);
     setLoggedInUserName(resolvedName);
@@ -6013,7 +6036,9 @@ export default function App() {
                         ) : (
                           <div className="space-y-3 font-sans">
                             {allRequests.filter(r => r.status === 'pending_bids').map(req => {
-                              const isMyOwnRequest = (isLoggedIn && loggedInUserEmail && req.requestedBy === loggedInUserEmail) || req.sessionId === currentSessionId;
+                              const isMyOwnRequest = (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '') 
+                                ? (req.requestedBy === loggedInUserEmail) 
+                                : (req.sessionId === currentSessionId && (!req.requestedBy || req.requestedBy === ''));
                               const isSelected = selectedBidRequest?.id === req.id;
 
                               return (
