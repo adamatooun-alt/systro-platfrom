@@ -172,10 +172,12 @@ const cleanInput = (val: string): string => {
 const getOrCreateSessionId = (): string => {
   try {
     if (typeof window !== 'undefined') {
-      if (!window.name || !window.name.startsWith('systro_tab_')) {
-        window.name = 'systro_tab_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+      let sid = sessionStorage.getItem('systro_unique_device_session');
+      if (!sid) {
+        sid = 'dev_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+        sessionStorage.setItem('systro_unique_device_session', sid);
       }
-      return window.name;
+      return sid;
     }
     return 'sess_' + Date.now();
   } catch (e) {
@@ -1048,8 +1050,29 @@ export default function App() {
     const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
     if (!isLoggedIn || !cleanEmail) return;
 
-    // Periodic heartbeat every 15 seconds to maintain active status (WITHOUT changing activeSessionId)
+    // Periodic heartbeat every 3 seconds to maintain active status and check server lock status
     const updateHeartbeat = async () => {
+      // 1. Check server-side active device session lock
+      try {
+        const resp = await fetch('/api/user-session/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail, sessionId: currentSessionId })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.kickedOut || data.active === false) {
+            console.warn(`[Server Lock] ${cleanEmail} logged in from another device. Terminating session on this device.`);
+            handleLogout(true);
+            setKickedOutNotice(cleanEmail);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Server session heartbeat warning:", err);
+      }
+
+      // 2. Update Firestore heartbeat
       try {
         const userDocRef = doc(db, "users", cleanEmail);
         await setDoc(userDocRef, {
@@ -1057,14 +1080,31 @@ export default function App() {
           isOnline: true
         }, { merge: true });
       } catch (err) {
-        console.warn("Session heartbeat error:", err);
+        // ignore offline warnings
       }
     };
 
     updateHeartbeat();
-    const intervalId = setInterval(updateHeartbeat, 15000);
+    const intervalId = setInterval(updateHeartbeat, 3000); // 3-second heartbeat
 
-    // Snapshot listener to catch if another device logs into this email
+    // BroadcastChannel listener for instant cross-tab session eviction
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('systro_session_lock');
+        bc.onmessage = (event) => {
+          if (event.data && event.data.type === 'LOGIN_OVERRIDE' && event.data.email === cleanEmail) {
+            if (event.data.sessionId !== currentSessionId) {
+              console.warn(`[BroadcastChannel Lock] ${cleanEmail} logged in from another tab/device.`);
+              handleLogout(true);
+              setKickedOutNotice(cleanEmail);
+            }
+          }
+        };
+      }
+    } catch (e) {}
+
+    // Snapshot listener to catch if another device logs into this email in Firestore
     const userDocRef = doc(db, "users", cleanEmail);
     const unsub = onSnapshot(userDocRef, (snap) => {
       if (snap.exists()) {
@@ -1073,8 +1113,8 @@ export default function App() {
         const isOnlineInDb = data.isOnline !== false;
 
         if (sidInDb && sidInDb !== currentSessionId && isOnlineInDb) {
-          console.warn(`[Session Conflict] ${cleanEmail} logged in from another device (${sidInDb}). Terminating this session.`);
-          handleLogout(true); // Pass true so it does NOT clear activeSessionId in Firestore!
+          console.warn(`[Firestore Lock] ${cleanEmail} logged in from another device (${sidInDb}). Terminating this session.`);
+          handleLogout(true);
           setKickedOutNotice(cleanEmail);
         }
       }
@@ -1084,6 +1124,7 @@ export default function App() {
 
     return () => {
       clearInterval(intervalId);
+      if (bc) bc.close();
       unsub();
     };
   }, [isLoggedIn, loggedInUserEmail, currentSessionId]);
@@ -3149,29 +3190,62 @@ export default function App() {
     // 1. Single active device session check
     if (!forceOverrideSession) {
       try {
-        const userDocRef = doc(db, "users", resolvedEmail);
-        const snapshot = await getDoc(userDocRef);
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          const existingSid = data.activeSessionId;
-          const lastActive = data.lastActive || 0;
-          const isOnlineInDb = data.isOnline !== false;
-          const now = Date.now();
+        const serverCheck = await fetch('/api/user-session/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: resolvedEmail,
+            sessionId: currentSessionId,
+            forceOverride: false,
+            deviceName: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Device'
+          })
+        });
 
-          // Active session exists on a DIFFERENT device/tab within the last 3 minutes
-          if (existingSid && existingSid !== currentSessionId && isOnlineInDb && (now - lastActive < 3 * 60 * 1000)) {
+        if (serverCheck.ok) {
+          const resJson = await serverCheck.json();
+          if (resJson.conflict) {
             setActiveSessionConflict({
               email: resolvedEmail,
               name: resolvedName,
-              existingDeviceTime: lastActive
+              existingDeviceTime: resJson.lastActive || Date.now()
             });
             return; // Abort login pending user confirmation modal
           }
         }
       } catch (err) {
-        console.warn("Concurrent session check error:", err);
+        console.warn("Server session conflict check error:", err);
       }
     }
+
+    // Register active session with server
+    try {
+      await fetch('/api/user-session/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: resolvedEmail,
+          sessionId: currentSessionId,
+          forceOverride: true,
+          deviceName: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Device'
+        })
+      });
+    } catch (e) {
+      console.warn("Server session login error:", e);
+    }
+
+    // Broadcast override event to other tabs on same device/browser
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('systro_session_lock');
+        bc.postMessage({
+          type: 'LOGIN_OVERRIDE',
+          email: resolvedEmail,
+          sessionId: currentSessionId,
+          timestamp: Date.now()
+        });
+        bc.close();
+      }
+    } catch (e) {}
 
     setActiveSessionConflict(null);
     setIsLoggedIn(true);
@@ -3251,6 +3325,15 @@ export default function App() {
     const isKickedOut = typeof isKickedOutParam === 'boolean' ? isKickedOutParam : false;
     const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
 
+    // Clear server session endpoint
+    if (cleanEmail && !isKickedOut) {
+      fetch('/api/user-session/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, sessionId: currentSessionId })
+      }).catch(() => {});
+    }
+
     // Reset React state & Session Storage INSTANTLY without awaiting Firestore
     setIsLoggedIn(false);
     setUserRole(null);
@@ -3280,8 +3363,8 @@ export default function App() {
     sessionStorage.removeItem('systro_phone_number');
     sessionStorage.removeItem('systro_user_avatar');
     sessionStorage.removeItem('systro_active_request_id');
-    const newSid = 'sess_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
-    sessionStorage.setItem('systro_session_id', newSid);
+    const newSid = 'dev_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+    sessionStorage.setItem('systro_unique_device_session', newSid);
 
     // Update Firestore asynchronously in background without delaying user UI logout
     if (cleanEmail && !isKickedOut) {

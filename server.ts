@@ -6,6 +6,13 @@ import nodemailer from 'nodemailer';
 // In-memory OTP store (expires in 10 minutes)
 const otpStore = new Map<string, { code: string; expiresAt: number }>();
 
+// Global in-memory single active device session store per user account
+const activeUserSessions = new Map<string, {
+  sessionId: string;
+  lastActive: number;
+  deviceName?: string;
+}>();
+
 async function sendVerificationEmail(email: string, code: string): Promise<boolean> {
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT;
@@ -176,6 +183,79 @@ async function startServer() {
 
     // Success! Clear OTP code from memory store
     otpStore.delete(normalizedEmail);
+    res.json({ success: true });
+  });
+
+  // Single Active Device Session API Endpoints
+  app.post('/api/user-session/login', (req, res) => {
+    const { email, sessionId, forceOverride, deviceName } = req.body;
+    if (!email || !sessionId) {
+      res.status(400).json({ error: 'email and sessionId are required' });
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = activeUserSessions.get(cleanEmail);
+    const now = Date.now();
+
+    if (existing && existing.sessionId !== sessionId && (now - existing.lastActive < 45000)) {
+      if (!forceOverride) {
+        res.json({
+          success: false,
+          conflict: true,
+          existingSessionId: existing.sessionId,
+          lastActive: existing.lastActive,
+          deviceName: existing.deviceName || 'Other Device'
+        });
+        return;
+      }
+    }
+
+    activeUserSessions.set(cleanEmail, {
+      sessionId,
+      lastActive: now,
+      deviceName: deviceName || 'Device'
+    });
+
+    res.json({ success: true, activeSessionId: sessionId });
+  });
+
+  app.post('/api/user-session/heartbeat', (req, res) => {
+    const { email, sessionId } = req.body;
+    if (!email || !sessionId) {
+      res.status(400).json({ error: 'email and sessionId are required' });
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = activeUserSessions.get(cleanEmail);
+    const now = Date.now();
+
+    if (!existing) {
+      activeUserSessions.set(cleanEmail, { sessionId, lastActive: now });
+      res.json({ active: true });
+      return;
+    }
+
+    if (existing.sessionId !== sessionId) {
+      res.json({ active: false, kickedOut: true, currentActiveSessionId: existing.sessionId });
+      return;
+    }
+
+    existing.lastActive = now;
+    activeUserSessions.set(cleanEmail, existing);
+    res.json({ active: true });
+  });
+
+  app.post('/api/user-session/logout', (req, res) => {
+    const { email, sessionId } = req.body;
+    if (email) {
+      const cleanEmail = email.trim().toLowerCase();
+      const existing = activeUserSessions.get(cleanEmail);
+      if (existing && (!sessionId || existing.sessionId === sessionId)) {
+        activeUserSessions.delete(cleanEmail);
+      }
+    }
     res.json({ success: true });
   });
 
