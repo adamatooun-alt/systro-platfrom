@@ -203,7 +203,7 @@ export default function LoginPortal({
         sessionStorage.setItem('systro_saved_google_name', trimmedName);
 
         setShowGoogleFallbackModal(false);
-        await handleGoogleSignIn(trimmedEmail, trimmedName, false);
+        await handleGoogleSignIn(trimmedEmail, trimmedName, true);
         triggerToast(
           lang === 'ar' 
             ? `تم التحقق من حسابك وتأكيده بنجاح! 🔐` 
@@ -827,14 +827,14 @@ export default function LoginPortal({
                         const response = await fetch('/api/verify-otp', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email: appleEmail.trim(), otp: appleOtpCode.trim() })
+                          body: JSON.stringify({ email: appleEmail.trim(), code: appleOtpCode.trim() })
                         });
                         const data = await response.json();
                         if (response.ok && data.success) {
                           if (handleRealAppleSignIn) {
                             await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
                           } else {
-                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User');
+                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', true);
                             if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
                           }
                           triggerToast(

@@ -154,14 +154,16 @@ async function startServer() {
 
   // POST endpoint to verify OTP
   app.post('/api/verify-otp', (req, res) => {
-    const { email, code } = req.body;
-    if (!email || !code) {
+    const { email, code, otp } = req.body;
+    const rawCode = code || otp;
+
+    if (!email || !rawCode) {
       res.status(400).json({ error: 'Email and verification code are required' });
       return;
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const enteredCode = code.trim();
+    const enteredCode = String(rawCode).trim();
 
     const saved = otpStore.get(normalizedEmail);
 

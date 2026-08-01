@@ -3156,7 +3156,7 @@ export default function App() {
           ? enteredName.trim() 
           : (lang === 'ar' ? `عميل سيسترو #${Math.floor(1000 + Math.random() * 9000)}` : `Systro Client #${Math.floor(1000 + Math.random() * 9000)}`);
         
-        await handleGoogleSignIn(enteredEmail.trim(), finalName);
+        await handleGoogleSignIn(enteredEmail.trim(), finalName, true);
         
         // Clean up inputs
         setOtpCodeInput('');
