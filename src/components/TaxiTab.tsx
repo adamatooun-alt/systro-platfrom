@@ -271,25 +271,10 @@ export default function TaxiTab({
   // Sync state from Firestore active request
   useEffect(() => {
     const currentSessionId = sessionStorage.getItem('systro_session_id') || 'sess_taxi_' + Date.now();
-    let q;
-    if (userRole === 'technician') {
-      q = query(
-        collection(db, "requests"),
-        where("serviceType", "==", "taxi")
-      );
-    } else if (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '') {
-      q = query(
-        collection(db, "requests"),
-        where("requestedBy", "==", loggedInUserEmail),
-        where("serviceType", "==", "taxi")
-      );
-    } else {
-      q = query(
-        collection(db, "requests"),
-        where("sessionId", "==", currentSessionId),
-        where("serviceType", "==", "taxi")
-      );
-    }
+    const q = query(
+      collection(db, "requests"),
+      where("serviceType", "==", "taxi")
+    );
 
     const unsub = onSnapshot(q, (snapshot) => {
       const list: any[] = [];
@@ -303,7 +288,16 @@ export default function TaxiTab({
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
       
-      const active = list.find(r => r.status !== 'finished');
+      const active = list.find(r => {
+        if (r.status === 'finished' || r.status === 'completed') return false;
+        if (userRole === 'technician') {
+          return r.selectedTechnicianId === loggedInUserEmail;
+        }
+        if (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '') {
+          return r.requestedBy === loggedInUserEmail;
+        }
+        return r.sessionId === currentSessionId;
+      });
 
       if (active) {
         setActiveRequest(active);

@@ -5940,6 +5940,161 @@ export default function App() {
                         <Activity className="w-5 h-5 animate-pulse" />
                         <span>{t.simSubmitRequest}</span>
                       </button>
+
+                      {/* LIVE NETWORK ACTIVE REQUESTS & EMERGENCY FEED (FOR ALL REGISTERED ACCOUNTS) */}
+                      <div id="rescue-alerts-community-list" className="mt-8 pt-6 border-t border-gray-900 space-y-4 text-right rtl:text-right ltr:text-left">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-950 pb-3">
+                          <div>
+                            <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+                              <span>{lang === 'ar' ? '📡 نداءات الاستغاثة وطلبات الطريق النشطة حالياً على الشبكة:' : '📡 Live Active Emergency & Roadside Requests Feed:'}</span>
+                            </h4>
+                            <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                              {lang === 'ar' 
+                                ? 'يمكن لأي حساب مسجل الاطلاع على كافة الطلبات الباحثة عن مساعدة وإغفائها أو تلبية الخدمة فوراً:' 
+                                : 'Any registered account can view active open requests from other drivers and assist immediately:'}
+                            </p>
+                          </div>
+                          <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2.5 py-1 rounded-full text-[10px] font-black shrink-0 self-start sm:self-auto animate-pulse">
+                            {allRequests.filter(r => r.status === 'pending_bids').length} {lang === 'ar' ? 'بلاغات نشطة' : 'Active Alerts'}
+                          </span>
+                        </div>
+
+                        {allRequests.filter(r => r.status === 'pending_bids').length === 0 ? (
+                          <div className="p-6 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl">
+                            <span className="text-xs text-gray-500 font-bold block">
+                              {lang === 'ar' ? 'لا توجد بلاغات طوارئ نشطة حالياً. جميع المركبات تسير بأمان! 👍' : 'No active roadside emergencies. All vehicles are safe! 👍'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 font-sans">
+                            {allRequests.filter(r => r.status === 'pending_bids').map(req => {
+                              const isMyOwnRequest = (isLoggedIn && loggedInUserEmail && req.requestedBy === loggedInUserEmail) || req.sessionId === currentSessionId;
+                              const isSelected = selectedBidRequest?.id === req.id;
+
+                              return (
+                                <div key={req.id} className={`p-4 rounded-2xl border transition-all ${isMyOwnRequest ? 'bg-amber-500/5 border-amber-500/40' : isSelected ? 'bg-[#0F1424] border-amber-500 shadow-md' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800'}`}>
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="text-right rtl:text-right ltr:text-left space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded inline-block uppercase ${isMyOwnRequest ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse'}`}>
+                                          {isMyOwnRequest ? (lang === 'ar' ? '📍 طلبك الخاص الباحث عن مساعدة' : '📍 Your Active Request') : (lang === 'ar' ? '🚨 بلاغ استغاثة طارئ' : '🚨 Emergency Request')}
+                                        </span>
+                                      </div>
+                                      <h5 className="text-xs font-black text-white flex items-center gap-1.5">
+                                        <span>{req.clientName || (lang === 'ar' ? 'سائق باحث عن مساعدة' : 'Stranded Driver')}</span>
+                                        {req.requestedBy && <span className="text-[9px] text-gray-500 font-mono">({req.requestedBy})</span>}
+                                      </h5>
+                                      <span className="text-[10px] text-gray-400 font-bold block">
+                                        {lang === 'ar' ? 'الخدمة المطلوبة:' : 'Requested service:'} <span className="text-amber-500 font-extrabold">{req.serviceType === 'taxi' ? (lang === 'ar' ? '🚕 توصيل تكسي خاص و VIP' : '🚕 Special VIP Taxi Ride') : req.serviceType}</span>
+                                      </span>
+                                      {req.serviceType === 'taxi' && (
+                                        <div className="mt-1 text-[10px] text-gray-400 font-semibold space-y-0.5 text-right bg-black/40 p-2 rounded-lg border border-gray-900">
+                                          <div>📍 {lang === 'ar' ? 'موقع الاستلام:' : 'Pickup:'} <span className="text-white font-bold">{req.pickupLocation || req.locationName || 'موقعي الحالي'}</span></div>
+                                          <div>🏁 {lang === 'ar' ? 'وجهة التوصيل:' : 'Dropoff:'} <span className="text-white font-bold">{req.dropoffLocation || 'غير محدد'}</span></div>
+                                        </div>
+                                      )}
+                                      <span className="text-[10px] text-amber-400 font-extrabold block mt-1 flex items-center justify-start gap-1">
+                                        <span>💰</span>
+                                        <span>{lang === 'ar' ? `السعر التقريبي المقترح: ${req.approximatePrice || 150} ₪` : `Client Approx Price: ${req.approximatePrice || 150} ₪`}</span>
+                                      </span>
+                                    </div>
+
+                                    {!isMyOwnRequest && (
+                                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                        {/* Direct Task Accept / Rescue Button for Any Registered Account */}
+                                        <button 
+                                          onClick={async () => {
+                                            const techEmail = loggedInUserEmail || 'helper@systro.live';
+                                            const techName = loggedInUserName || (lang === 'ar' ? 'مسعف ومستجيب معتمد' : 'Verified Responder');
+                                            const techAvatar = userAvatar || providerAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120';
+                                            const acceptPrice = Number(req.approximatePrice || 150);
+
+                                            try {
+                                              const bidId = 'bid-' + Math.random().toString(36).substring(2, 9);
+                                              const newBidObj = {
+                                                id: bidId,
+                                                requestId: req.id,
+                                                technicianId: techEmail,
+                                                technicianName: techName,
+                                                technicianArName: techName,
+                                                phone: phoneNumber || activeTechDoc?.phone || '+972 59-999-9999',
+                                                price: acceptPrice,
+                                                etaMinutes: 15,
+                                                rating: 5.0,
+                                                avatar: techAvatar,
+                                                carModel: 'مركبة إغاثة واستجابة',
+                                                plateNumber: '7-4321-99'
+                                              };
+                                              await setDoc(doc(db, "bids", bidId), newBidObj);
+
+                                              // Update Firestore request: status becomes 'en_route', locking it to this responder!
+                                              await updateDoc(doc(db, "requests", req.id), {
+                                                status: 'en_route',
+                                                selectedTechnicianId: techEmail,
+                                                escrowAmount: acceptPrice
+                                              });
+
+                                              // Send automated system chat message
+                                              const chatMsgId = `sys-accept-${Date.now()}`;
+                                              await setDoc(doc(db, "chats", chatMsgId), {
+                                                id: chatMsgId,
+                                                requestId: req.id,
+                                                sender: 'system',
+                                                text: lang === 'ar' 
+                                                  ? `⚡ قام المستخدم [${techName}] بقبول وتلبية استغاثتك فوراً! وهو الآن في طريقه إليك 🚚` 
+                                                  : `⚡ Helper [${techName}] accepted your rescue request immediately! En route to your location 🚚`,
+                                                timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+                                                createdTime: Date.now()
+                                              });
+
+                                              setUserRole('technician');
+                                              setActiveRequestId(req.id);
+                                              setSelectedBid(newBidObj);
+                                              setSelectedBidRequest(null);
+
+                                              triggerToast(
+                                                lang === 'ar' 
+                                                  ? `✅ تم قبول وتلبية المهمة بنجاح! تم تحديث الحالة لـ (جاري التحرك 🚚) وفتح الخريطة والمحادثة!` 
+                                                  : `✅ Task accepted! En route to client location with live map & chat!`,
+                                                'success'
+                                              );
+                                            } catch (err) {
+                                              console.error("Error accepting task:", err);
+                                              triggerToast(lang === 'ar' ? 'حدث خطأ في قبول المهمة' : 'Error accepting task', 'error');
+                                            }
+                                          }}
+                                          className="px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5 active:scale-95"
+                                        >
+                                          <CheckCircle2 className="w-4 h-4" />
+                                          <span>{lang === 'ar' ? '⚡ قبول وتلبية الطلب فوراً' : '⚡ Accept & Fulfill Request'}</span>
+                                        </button>
+
+                                        <button 
+                                          onClick={() => {
+                                            setUserRole('technician');
+                                            if (isSelected) {
+                                              setSelectedBidRequest(null);
+                                            } else {
+                                              setSelectedBidRequest(req);
+                                              setCustomBidPrice(String(req.approximatePrice || 150));
+                                              setPinnedLocation({ lat: req.locationLat, lng: req.locationLng });
+                                              triggerToast(lang === 'ar' ? 'تم تحديد موقع العميل وتفعيل بوابة تقديم العروض!' : 'Client breakdown pinned on map!', 'info');
+                                            }
+                                          }}
+                                          className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl transition-all cursor-pointer"
+                                        >
+                                          {isSelected ? (lang === 'ar' ? 'إغلاق' : 'Close') : (lang === 'ar' ? 'تقديم عرض 🛠️' : 'Bid 🛠️')}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
