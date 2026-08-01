@@ -3246,20 +3246,11 @@ export default function App() {
     setActiveTab('simulator');
   };
 
-  const handleLogout = async (isKickedOutParam?: boolean | React.MouseEvent) => {
+  const handleLogout = (isKickedOutParam?: boolean | React.MouseEvent) => {
     const isKickedOut = typeof isKickedOutParam === 'boolean' ? isKickedOutParam : false;
     const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
-    if (cleanEmail && !isKickedOut) {
-      try {
-        await setDoc(doc(db, "users", cleanEmail), {
-          activeSessionId: null,
-          isOnline: false,
-          lastActive: Date.now()
-        }, { merge: true });
-      } catch (err) {
-        console.warn("Logout Firestore update warning:", err);
-      }
-    }
+
+    // Reset React state & Session Storage INSTANTLY without awaiting Firestore
     setIsLoggedIn(false);
     setUserRole(null);
     setLoggedInUserEmail('');
@@ -3279,6 +3270,8 @@ export default function App() {
     setTechCoordinates(null);
     setProblemDescription('');
     setChatMessages([]);
+    setShowProfileModal(false);
+
     sessionStorage.removeItem('systro_is_logged_in');
     sessionStorage.removeItem('systro_user_email');
     sessionStorage.removeItem('systro_user_name');
@@ -3288,6 +3281,22 @@ export default function App() {
     sessionStorage.removeItem('systro_active_request_id');
     const newSid = 'sess_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
     sessionStorage.setItem('systro_session_id', newSid);
+
+    // Update Firestore asynchronously in background without delaying user UI logout
+    if (cleanEmail && !isKickedOut) {
+      try {
+        setDoc(doc(db, "users", cleanEmail), {
+          activeSessionId: null,
+          isOnline: false,
+          lastActive: Date.now()
+        }, { merge: true }).catch((err) => {
+          console.warn("Logout Firestore update warning:", err);
+        });
+      } catch (err) {
+        console.warn("Logout Firestore sync error:", err);
+      }
+    }
+
     if (isKickedOut) {
       triggerToast(lang === 'ar' ? 'تم تسجيل الخروج لأن حسابك فُتح على هاتف آخر 📱' : 'Logged out because your account was opened on another device 📱', 'warning');
     } else {
@@ -4200,8 +4209,13 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => handleLogout()}
-                  className="px-3.5 h-11 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-xl text-xs font-bold text-red-400 transition-all flex items-center gap-1.5 cursor-pointer"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleLogout();
+                  }}
+                  className="px-3.5 h-11 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-xl text-xs font-bold text-red-400 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
                   title={lang === 'ar' ? 'تسجيل الخروج' : 'Logout'}
                 >
                   <LogOut className="w-3.5 h-3.5 shrink-0" />
@@ -4210,12 +4224,15 @@ export default function App() {
               </div>
             )}
 
-            {/* Mobile Vertical Stack for Profile & Logout Buttons (As Requested in Green Circle) */}
+            {/* Mobile Vertical Stack for Profile & Logout Buttons */}
             {isLoggedIn && (
               <div className="lg:hidden flex flex-col gap-1 items-center justify-center shrink-0 my-0.5">
                 {/* Profile Button (Top) */}
                 <button
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setProfileNameInput(loggedInUserName);
                     setProfilePhoneInput(phoneNumber);
                     setProfileAvatarInput(userAvatar || providerAvatar || activeTechDoc?.avatar || '');
@@ -4233,8 +4250,13 @@ export default function App() {
 
                 {/* Logout Button (Bottom) */}
                 <button
-                  onClick={() => handleLogout()}
-                  className="p-1.5 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-lg text-red-400 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleLogout();
+                  }}
+                  className="p-1.5 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-lg text-red-400 transition-all cursor-pointer flex items-center justify-center shadow-sm active:scale-95"
                   title={lang === 'ar' ? 'تسجيل الخروج' : lang === 'he' ? 'התנתק' : 'Logout'}
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -7386,20 +7408,33 @@ export default function App() {
             </div>
 
             {/* Fixed Footer Buttons - Always visible at bottom of modal */}
-            <div className="p-3.5 sm:p-4 border-t border-gray-800 bg-[#0A0B10] flex items-center gap-2.5 shrink-0">
+            <div className="p-3.5 sm:p-4 border-t border-gray-800 bg-[#0A0B10] flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={handleSaveProfile}
-                className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-2"
+                className="flex-1 py-3 px-3.5 bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <span>✓</span>
-                <span>{lang === 'ar' ? 'حفظ التغييرات والمعلومات' : lang === 'he' ? 'שמור שינויים' : 'Save Profile Changes'}</span>
+                <span>{lang === 'ar' ? 'حفظ التغييرات' : lang === 'he' ? 'שמור שינויים' : 'Save Changes'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProfileModal(false);
+                  handleLogout();
+                }}
+                className="py-3 px-3.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 shrink-0"
+                title={lang === 'ar' ? 'تسجيل الخروج من الحساب' : 'Logout from account'}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{lang === 'ar' ? 'خروج' : 'Logout'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setShowProfileModal(false)}
-                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-300 font-bold text-xs rounded-xl transition-all cursor-pointer shrink-0"
+                className="px-3 py-3 bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-300 font-bold text-xs rounded-xl transition-all cursor-pointer shrink-0"
               >
                 {lang === 'ar' ? 'إلغاء' : lang === 'he' ? 'ביטול' : 'Cancel'}
               </button>
