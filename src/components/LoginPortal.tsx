@@ -203,7 +203,7 @@ export default function LoginPortal({
         sessionStorage.setItem('systro_saved_google_name', trimmedName);
 
         setShowGoogleFallbackModal(false);
-        await handleGoogleSignIn(trimmedEmail, trimmedName, true);
+        await handleGoogleSignIn(trimmedEmail, trimmedName, false);
         triggerToast(
           lang === 'ar' 
             ? `تم التحقق من حسابك وتأكيده بنجاح! 🔐` 
@@ -761,7 +761,7 @@ export default function LoginPortal({
                           if (handleRealAppleSignIn) {
                             await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
                           } else {
-                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', true);
+                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', false);
                             if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
                           }
                         }
@@ -769,7 +769,7 @@ export default function LoginPortal({
                         if (handleRealAppleSignIn) {
                           await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
                         } else {
-                          await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', true);
+                          await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', false);
                           if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
                         }
                       } finally {

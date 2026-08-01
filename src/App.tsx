@@ -3183,12 +3183,16 @@ export default function App() {
     }
   };
 
-  const handleGoogleSignIn = async (email?: string, name?: string, forceOverrideSession: boolean = true) => {
+  const handleGoogleSignIn = async (email?: string, name?: string, forceOverrideSession: boolean = false) => {
     const resolvedEmail = (email || `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`).trim().toLowerCase();
     const resolvedName = name || (lang === 'ar' ? 'مستخدم سيسترو' : lang === 'he' ? 'משתמש סיסטרו' : 'Systro User');
     
     // 1. Single active device session check
     if (!forceOverrideSession) {
+      let isConflict = false;
+      let conflictTime = Date.now();
+
+      // A. Server memory session check
       try {
         const serverCheck = await fetch('/api/user-session/login', {
           method: 'POST',
@@ -3204,16 +3208,43 @@ export default function App() {
         if (serverCheck.ok) {
           const resJson = await serverCheck.json();
           if (resJson.conflict) {
-            setActiveSessionConflict({
-              email: resolvedEmail,
-              name: resolvedName,
-              existingDeviceTime: resJson.lastActive || Date.now()
-            });
-            return; // Abort login pending user confirmation modal
+            isConflict = true;
+            conflictTime = resJson.lastActive || Date.now();
           }
         }
       } catch (err) {
         console.warn("Server session conflict check error:", err);
+      }
+
+      // B. Firestore cloud session check (secondary fallback truth)
+      if (!isConflict) {
+        try {
+          const userSnap = await getDoc(doc(db, "users", resolvedEmail));
+          if (userSnap.exists()) {
+            const uData = userSnap.data();
+            if (
+              uData.activeSessionId &&
+              uData.activeSessionId !== currentSessionId &&
+              uData.isOnline !== false &&
+              uData.lastActive &&
+              (Date.now() - uData.lastActive < 45000)
+            ) {
+              isConflict = true;
+              conflictTime = uData.lastActive;
+            }
+          }
+        } catch (err) {
+          console.warn("Firestore session conflict check error:", err);
+        }
+      }
+
+      if (isConflict) {
+        setActiveSessionConflict({
+          email: resolvedEmail,
+          name: resolvedName,
+          existingDeviceTime: conflictTime
+        });
+        return; // Abort login pending user confirmation modal
       }
     }
 
@@ -3231,6 +3262,19 @@ export default function App() {
       });
     } catch (e) {
       console.warn("Server session login error:", e);
+    }
+
+    // Register active session lock in Firestore
+    try {
+      await setDoc(doc(db, "users", resolvedEmail), {
+        activeSessionId: currentSessionId,
+        lastActive: Date.now(),
+        isOnline: true,
+        email: resolvedEmail,
+        name: resolvedName
+      }, { merge: true });
+    } catch (e) {
+      console.warn("Firestore activeSessionId update error:", e);
     }
 
     // Broadcast override event to other tabs on same device/browser
