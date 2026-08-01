@@ -15,7 +15,7 @@ interface LoginPortalProps {
   setShowAppleFallbackModal?: (show: boolean) => void;
   handleRealGoogleSignIn: (isFallbackMode?: boolean, fallbackEmail?: string, fallbackName?: string) => Promise<void>;
   handleRealAppleSignIn?: (isFallbackMode?: boolean, fallbackEmail?: string, fallbackName?: string) => Promise<void>;
-  handleGoogleSignIn: (email: string, name: string) => Promise<void>;
+  handleGoogleSignIn: (email: string, name: string, forceOverride?: boolean) => Promise<void>;
   triggerToast: (text: string, type?: 'success' | 'warning' | 'info' | 'error') => void;
   t: any;
 }
@@ -203,7 +203,7 @@ export default function LoginPortal({
         sessionStorage.setItem('systro_saved_google_name', trimmedName);
 
         setShowGoogleFallbackModal(false);
-        await handleGoogleSignIn(trimmedEmail, trimmedName);
+        await handleGoogleSignIn(trimmedEmail, trimmedName, true);
         triggerToast(
           lang === 'ar' 
             ? `تم التحقق من حسابك وتأكيده بنجاح! 🔐` 
@@ -761,7 +761,7 @@ export default function LoginPortal({
                           if (handleRealAppleSignIn) {
                             await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
                           } else {
-                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User');
+                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', true);
                             if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
                           }
                         }
@@ -769,7 +769,7 @@ export default function LoginPortal({
                         if (handleRealAppleSignIn) {
                           await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
                         } else {
-                          await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User');
+                          await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', true);
                           if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
                         }
                       } finally {

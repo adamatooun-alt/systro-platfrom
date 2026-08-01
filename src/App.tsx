@@ -171,12 +171,13 @@ const cleanInput = (val: string): string => {
 
 const getOrCreateSessionId = (): string => {
   try {
-    let sid = sessionStorage.getItem('systro_session_id');
-    if (!sid) {
-      sid = 'sess_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
-      sessionStorage.setItem('systro_session_id', sid);
+    if (typeof window !== 'undefined') {
+      if (!window.name || !window.name.startsWith('systro_tab_')) {
+        window.name = 'systro_tab_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+      }
+      return window.name;
     }
-    return sid;
+    return 'sess_' + Date.now();
   } catch (e) {
     return 'sess_' + Date.now();
   }
@@ -3141,7 +3142,7 @@ export default function App() {
     }
   };
 
-  const handleGoogleSignIn = async (email?: string, name?: string, forceOverrideSession: boolean = false) => {
+  const handleGoogleSignIn = async (email?: string, name?: string, forceOverrideSession: boolean = true) => {
     const resolvedEmail = (email || `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`).trim().toLowerCase();
     const resolvedName = name || (lang === 'ar' ? 'مستخدم سيسترو' : lang === 'he' ? 'משתמש סיסטרו' : 'Systro User');
     
