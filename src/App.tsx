@@ -187,6 +187,7 @@ const getOrCreateSessionId = (): string => {
 
 export default function App() {
   const [currentSessionId] = useState<string>(() => getOrCreateSessionId());
+  const lastLoginTimeRef = useRef<number>(0);
 
   // Global Language State: 'ar' (Arabic is default as shown in screenshots) or 'en' or 'he'
   const [lang, setLang] = useState<'ar' | 'en' | 'he'>(() => {
@@ -1052,7 +1053,7 @@ export default function App() {
 
     // Periodic heartbeat every 3 seconds to maintain active status and check server lock status
     const updateHeartbeat = async () => {
-      // 1. Check server-side active device session lock
+      // 1. Check server-side active device session lock (skipping if within fresh login grace period)
       try {
         const resp = await fetch('/api/user-session/heartbeat', {
           method: 'POST',
@@ -1062,10 +1063,12 @@ export default function App() {
         if (resp.ok) {
           const data = await resp.json();
           if (data.kickedOut || data.active === false) {
-            console.warn(`[Server Lock] ${cleanEmail} logged in from another device. Terminating session on this device.`);
-            handleLogout(true);
-            setKickedOutNotice(cleanEmail);
-            return;
+            if (Date.now() - lastLoginTimeRef.current > 12000) {
+              console.warn(`[Server Lock] ${cleanEmail} logged in from another device. Terminating session on this device.`);
+              handleLogout(true);
+              setKickedOutNotice(cleanEmail);
+              return;
+            }
           }
         }
       } catch (err) {
@@ -1095,9 +1098,11 @@ export default function App() {
         bc.onmessage = (event) => {
           if (event.data && event.data.type === 'LOGIN_OVERRIDE' && event.data.email === cleanEmail) {
             if (event.data.sessionId !== currentSessionId) {
-              console.warn(`[BroadcastChannel Lock] ${cleanEmail} logged in from another tab/device.`);
-              handleLogout(true);
-              setKickedOutNotice(cleanEmail);
+              if (Date.now() - lastLoginTimeRef.current > 12000) {
+                console.warn(`[BroadcastChannel Lock] ${cleanEmail} logged in from another tab/device.`);
+                handleLogout(true);
+                setKickedOutNotice(cleanEmail);
+              }
             }
           }
         };
@@ -1113,9 +1118,11 @@ export default function App() {
         const isOnlineInDb = data.isOnline !== false;
 
         if (sidInDb && sidInDb !== currentSessionId && isOnlineInDb) {
-          console.warn(`[Firestore Lock] ${cleanEmail} logged in from another device (${sidInDb}). Terminating this session.`);
-          handleLogout(true);
-          setKickedOutNotice(cleanEmail);
+          if (Date.now() - lastLoginTimeRef.current > 12000) {
+            console.warn(`[Firestore Lock] ${cleanEmail} logged in from another device (${sidInDb}). Terminating this session.`);
+            handleLogout(true);
+            setKickedOutNotice(cleanEmail);
+          }
         }
       }
     }, (err) => {
@@ -3202,6 +3209,9 @@ export default function App() {
     const resolvedEmail = (email || `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`).trim().toLowerCase();
     const resolvedName = name || (lang === 'ar' ? 'مستخدم سيسترو' : lang === 'he' ? 'משתמש סיסטרו' : 'Systro User');
     
+    // Set grace period timestamp for session lock listeners
+    lastLoginTimeRef.current = Date.now();
+
     // 1. Single active device session check
     if (!forceOverrideSession) {
       let isConflict = false;
@@ -3307,9 +3317,10 @@ export default function App() {
     } catch (e) {}
 
     setActiveSessionConflict(null);
-    setIsLoggedIn(true);
     setShowGoogleFallbackModal(false);
     setShowAppleFallbackModal(false);
+    setOtpSentToEmail(false);
+    setOtpSent(false);
     
     // Clear previous active request and bid states to guarantee clean account context
     setActiveRequestId(null);
@@ -3340,8 +3351,8 @@ export default function App() {
           setUserRole(data.role);
           sessionStorage.setItem('systro_user_role', data.role);
         } else {
-          setUserRole(null);
-          sessionStorage.removeItem('systro_user_role');
+          setUserRole('client');
+          sessionStorage.setItem('systro_user_role', 'client');
         }
         if (data.avatar) {
           setUserAvatar(data.avatar);
@@ -3369,7 +3380,7 @@ export default function App() {
           id: resolvedEmail,
           email: resolvedEmail,
           name: resolvedName,
-          role: null,
+          role: 'client',
           phone: '',
           avatar: '',
           activeSessionId: currentSessionId,
@@ -3377,8 +3388,8 @@ export default function App() {
           isOnline: true,
           createdAt: new Date().toISOString()
         }, { merge: true });
-        setUserRole(null);
-        sessionStorage.removeItem('systro_user_role');
+        setUserRole('client');
+        sessionStorage.setItem('systro_user_role', 'client');
         setPhoneNumber('');
         sessionStorage.removeItem('systro_phone_number');
       }
@@ -3386,7 +3397,8 @@ export default function App() {
       console.warn("Firestore offline or unavailable during sign-in, maintaining local session state:", err);
     }
 
-    setActiveTab('simulator');
+    setIsLoggedIn(true);
+    setActiveTab('home');
   };
 
   const handleLogout = (isKickedOutParam?: boolean | React.MouseEvent) => {
