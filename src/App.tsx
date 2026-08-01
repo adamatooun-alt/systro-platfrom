@@ -3120,6 +3120,7 @@ export default function App() {
       const data = await response.json();
       if (response.ok && data.success) {
         setOtpSentToEmail(true);
+        setOtpCodeInput('');
         triggerToast(lang === 'ar' 
           ? 'تم إرسال رمز التحقق لبريدك الإلكتروني الحقيقي بنجاح! ✉️' 
           : 'Verification code sent to your real email inbox successfully! ✉️', 'success');

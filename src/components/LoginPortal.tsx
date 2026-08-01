@@ -145,23 +145,22 @@ export default function LoginPortal({
       if (response.ok && data.success) {
         setFallbackOtpSent(true);
         setResendCooldown(600); // 10 minutes
+        setFallbackOtpCode('');
         if (data.simulatedCode) {
-          setFallbackOtpCode(data.simulatedCode);
           setSimulatedCode(data.simulatedCode);
           triggerToast(
             lang === 'ar' 
-              ? `تم إصدار رمز التحقق بنجاح: (${data.simulatedCode}) ✉️` 
-              : `Verification code generated: (${data.simulatedCode}) ✉️`, 
+              ? `تم إصدار رمز التحقق بنجاح: (${data.simulatedCode}) ✉️ يرجى إدخاله في خانة الرمز للتحقق.` 
+              : `Verification code generated: (${data.simulatedCode}) ✉️ Please enter it in the code field to verify.`, 
             'info'
           );
         } else {
-          setFallbackOtpCode('');
           triggerToast(
             lang === 'ar' 
-              ? 'تم إرسال رمز التحقق لبريدك الإلكتروني بنجاح! ✉️' 
+              ? 'تم إرسال رمز التحقق لبريدك الإلكتروني بنجاح! ✉️ يرجى إدخاله في خانة الرمز للتحقق.' 
               : lang === 'he'
               ? 'קוד האימות נשלח לאימייל שלך בהצלחה! ✉️'
-              : 'Verification code sent to your email inbox successfully! ✉️', 
+              : 'Verification code sent to your email inbox successfully! ✉️ Please enter it in the code field.', 
             'success'
           );
         }
@@ -578,7 +577,7 @@ export default function LoginPortal({
 
                   <button
                     type="button"
-                    disabled={fallbackOtpVerifying}
+                    disabled={fallbackOtpVerifying || fallbackOtpCode.trim().length < 6}
                     onClick={handleVerifyFallbackOtp}
                     className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-emerald-600/20 hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
