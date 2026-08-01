@@ -1047,12 +1047,11 @@ export default function App() {
     const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
     if (!isLoggedIn || !cleanEmail) return;
 
-    // Periodic heartbeat every 20 seconds to maintain active status
+    // Periodic heartbeat every 15 seconds to maintain active status (WITHOUT changing activeSessionId)
     const updateHeartbeat = async () => {
       try {
         const userDocRef = doc(db, "users", cleanEmail);
         await setDoc(userDocRef, {
-          activeSessionId: currentSessionId,
           lastActive: Date.now(),
           isOnline: true
         }, { merge: true });
@@ -1062,7 +1061,7 @@ export default function App() {
     };
 
     updateHeartbeat();
-    const intervalId = setInterval(updateHeartbeat, 20000);
+    const intervalId = setInterval(updateHeartbeat, 15000);
 
     // Snapshot listener to catch if another device logs into this email
     const userDocRef = doc(db, "users", cleanEmail);
@@ -1074,7 +1073,7 @@ export default function App() {
 
         if (sidInDb && sidInDb !== currentSessionId && isOnlineInDb) {
           console.warn(`[Session Conflict] ${cleanEmail} logged in from another device (${sidInDb}). Terminating this session.`);
-          handleLogout();
+          handleLogout(true); // Pass true so it does NOT clear activeSessionId in Firestore!
           setKickedOutNotice(cleanEmail);
         }
       }
@@ -3126,39 +3125,16 @@ export default function App() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otpCode === '1234' || otpCode) {
-      setIsLoggedIn(true);
       const role = portalTab === 'client' ? 'client' : 'technician';
-      setUserRole(role);
-      
       const cleanPhone = phoneNumber ? phoneNumber.trim() : '';
       const resolvedEmail = loggedInUserEmail || (cleanPhone ? `${cleanPhone.replace(/[^0-9]/g, '')}@systro.live` : `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`);
       const resolvedName = loggedInUserName || (role === 'technician' ? (lang === 'ar' ? 'فني سيسترو' : 'Systro Tech') : (lang === 'ar' ? 'عميل سيسترو' : 'Systro Client'));
 
-      setLoggedInUserEmail(resolvedEmail);
-      setLoggedInUserName(resolvedName);
-
-      sessionStorage.setItem('systro_is_logged_in', 'true');
-      sessionStorage.setItem('systro_user_email', resolvedEmail);
-      sessionStorage.setItem('systro_user_name', resolvedName);
+      await handleGoogleSignIn(resolvedEmail, resolvedName);
+      setUserRole(role);
       sessionStorage.setItem('systro_user_role', role);
       if (cleanPhone) sessionStorage.setItem('systro_phone_number', cleanPhone);
 
-      try {
-        const userDocRef = doc(db, "users", resolvedEmail);
-        await setDoc(userDocRef, {
-          id: resolvedEmail,
-          email: resolvedEmail,
-          name: resolvedName,
-          phone: cleanPhone,
-          role: role,
-          avatar: userAvatar || '',
-          createdAt: new Date().toISOString()
-        }, { merge: true });
-      } catch (err) {
-        console.warn("Firestore error saving OTP user:", err);
-      }
-
-      setActiveTab('simulator');
       triggerToast(lang === 'ar' ? 'تم تسجيل الدخول بنجاح لبوابة سيسترو الآمنة!' : 'Successfully signed in to secure Systro portal!', 'success');
     } else {
       triggerToast(lang === 'ar' ? 'رمز التحقق غير صحيح! استخدم 1234 للتجربة.' : 'Verification code incorrect! Use 1234 to bypass.', 'error');
@@ -3270,9 +3246,10 @@ export default function App() {
     setActiveTab('simulator');
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (isKickedOutParam?: boolean | React.MouseEvent) => {
+    const isKickedOut = typeof isKickedOutParam === 'boolean' ? isKickedOutParam : false;
     const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
-    if (cleanEmail) {
+    if (cleanEmail && !isKickedOut) {
       try {
         await setDoc(doc(db, "users", cleanEmail), {
           activeSessionId: null,
@@ -3311,7 +3288,11 @@ export default function App() {
     sessionStorage.removeItem('systro_active_request_id');
     const newSid = 'sess_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
     sessionStorage.setItem('systro_session_id', newSid);
-    triggerToast(lang === 'ar' ? 'تم تسجيل الخروج بنجاح!' : 'Logged out successfully!', 'info');
+    if (isKickedOut) {
+      triggerToast(lang === 'ar' ? 'تم تسجيل الخروج لأن حسابك فُتح على هاتف آخر 📱' : 'Logged out because your account was opened on another device 📱', 'warning');
+    } else {
+      triggerToast(lang === 'ar' ? 'تم تسجيل الخروج بنجاح!' : 'Logged out successfully!', 'info');
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -4219,7 +4200,7 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={handleLogout}
+                  onClick={() => handleLogout()}
                   className="px-3.5 h-11 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-xl text-xs font-bold text-red-400 transition-all flex items-center gap-1.5 cursor-pointer"
                   title={lang === 'ar' ? 'تسجيل الخروج' : 'Logout'}
                 >
@@ -4252,7 +4233,7 @@ export default function App() {
 
                 {/* Logout Button (Bottom) */}
                 <button
-                  onClick={handleLogout}
+                  onClick={() => handleLogout()}
                   className="p-1.5 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-lg text-red-400 transition-all cursor-pointer flex items-center justify-center shadow-sm"
                   title={lang === 'ar' ? 'تسجيل الخروج' : lang === 'he' ? 'התנתק' : 'Logout'}
                 >
