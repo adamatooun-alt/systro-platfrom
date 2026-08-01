@@ -187,7 +187,7 @@ const getOrCreateSessionId = (): string => {
 
 export default function App() {
   const [currentSessionId] = useState<string>(() => getOrCreateSessionId());
-  const lastLoginTimeRef = useRef<number>(0);
+  const lastLoginTimeRef = useRef<number>(Date.now());
 
   // Global Language State: 'ar' (Arabic is default as shown in screenshots) or 'en' or 'he'
   const [lang, setLang] = useState<'ar' | 'en' | 'he'>(() => {
@@ -1063,7 +1063,7 @@ export default function App() {
         if (resp.ok) {
           const data = await resp.json();
           if (data.kickedOut || data.active === false) {
-            if (Date.now() - lastLoginTimeRef.current > 12000) {
+            if (Date.now() - lastLoginTimeRef.current > 30000) {
               console.warn(`[Server Lock] ${cleanEmail} logged in from another device. Terminating session on this device.`);
               handleLogout(true);
               setKickedOutNotice(cleanEmail);
@@ -1098,7 +1098,7 @@ export default function App() {
         bc.onmessage = (event) => {
           if (event.data && event.data.type === 'LOGIN_OVERRIDE' && event.data.email === cleanEmail) {
             if (event.data.sessionId !== currentSessionId) {
-              if (Date.now() - lastLoginTimeRef.current > 12000) {
+              if (Date.now() - lastLoginTimeRef.current > 30000) {
                 console.warn(`[BroadcastChannel Lock] ${cleanEmail} logged in from another tab/device.`);
                 handleLogout(true);
                 setKickedOutNotice(cleanEmail);
@@ -1118,7 +1118,7 @@ export default function App() {
         const isOnlineInDb = data.isOnline !== false;
 
         if (sidInDb && sidInDb !== currentSessionId && isOnlineInDb) {
-          if (Date.now() - lastLoginTimeRef.current > 12000) {
+          if (Date.now() - lastLoginTimeRef.current > 30000) {
             console.warn(`[Firestore Lock] ${cleanEmail} logged in from another device (${sidInDb}). Terminating this session.`);
             handleLogout(true);
             setKickedOutNotice(cleanEmail);
@@ -2992,119 +2992,104 @@ export default function App() {
     }
   };
 
-  // Real Google Sign-In via Firebase Auth, with gorgeous iframe fallback
+  // Real Google Sign-In via Firebase Auth, with OTP fallback for sandboxed iframe
   const handleRealGoogleSignIn = async (isFallbackMode: boolean = false, fallbackEmail?: string, fallbackName?: string) => {
-    if (isFallbackMode || showGoogleFallbackModal) {
-      // Bypasses popup blocks inside iframes - auto imports the verified user dynamically
-      const email = fallbackEmail || sessionStorage.getItem('systro_saved_google_email');
-      const name = fallbackName || sessionStorage.getItem('systro_saved_google_name');
-      
-      if (email) {
-        const displayName = name || (lang === 'ar' ? "مستخدم جوجل" : "Google User");
-        await handleGoogleSignIn(email, displayName);
-        setShowGoogleFallbackModal(false);
-        triggerToast(
-          lang === 'ar' 
-            ? `تم استيراد حساب Google الخاص بك (${email}) وتسجيل الدخول تلقائياً بنجاح! 🔐` 
-            : `Google account (${email}) imported and logged in automatically! 🔐`, 
-          'success'
-        );
-      } else {
-        triggerToast(
-          lang === 'ar' 
-            ? 'يرجى إدخال حسابك أولاً ليتمكن النظام من استيراده تلقائياً!' 
-            : 'Please enter your account details first for the system to auto-import!', 
-          'warning'
-        );
-      }
+    if (isFallbackMode && fallbackEmail) {
+      const emailToUse = fallbackEmail.trim();
+      const nameToUse = fallbackName || (lang === 'ar' ? "مستخدم جوجل" : "Google User");
+      await handleGoogleSignIn(emailToUse, nameToUse, true);
+      setShowGoogleFallbackModal(false);
+      triggerToast(
+        lang === 'ar' 
+          ? `تم التحقق بنجاح وتأكيد الدخول بحساب Google (${emailToUse})! 🔐` 
+          : `Verified & signed in successfully with Google (${emailToUse})! 🔐`, 
+        'success'
+      );
       return;
     }
 
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      if (user && user.email) {
-        const email = user.email;
-        const name = user.displayName || `Google User #${Math.floor(1000 + Math.random() * 9000)}`;
-        await handleGoogleSignIn(email, name);
-        setShowGoogleFallbackModal(false);
-        triggerToast(lang === 'ar' ? 'تم تسجيل الدخول بواسطة Google بنجاح!' : 'Successfully signed in with Google!', 'success');
+    const currentKey = auth?.app?.options?.apiKey || '';
+    const hasValidKey = currentKey && !currentKey.includes('placeholder') && currentKey.length > 20;
+
+    if (hasValidKey) {
+      try {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        if (user && user.email) {
+          const email = user.email;
+          const name = user.displayName || `Google User #${Math.floor(1000 + Math.random() * 9000)}`;
+          await handleGoogleSignIn(email, name, true);
+          setShowGoogleFallbackModal(false);
+          triggerToast(lang === 'ar' ? 'تم تسجيل الدخول بواسطة Google بنجاح!' : 'Successfully signed in with Google!', 'success');
+          return;
+        }
+      } catch (_ignored) {
+        // Fallback below
       }
-    } catch (err: any) {
-      console.log("Firebase Auth Google popup bypassed/closed, showing interactive Google Chooser:", err);
-      setShowGoogleFallbackModal(true);
-      // Quietly prompt the user with the interactive Google accounts screen
-      triggerToast(
-        lang === 'ar' 
-          ? 'تم فتح نافذة اختيار الحسابات الذكية لمتابعة الدخول الآمن بنقرة واحدة!' 
-          : 'Google account chooser panel opened for quick one-click secure login!', 
-        'info'
-      );
     }
+
+    // Always require OTP modal verification when popup is unavailable or bypassed
+    setShowGoogleFallbackModal(true);
+    triggerToast(
+      lang === 'ar' 
+        ? 'يرجى إدخال بريدك لطلب رمز التحقق وإكمال الدخول الآمن! 🔐' 
+        : 'Please enter your email to receive a verification code for secure login! 🔐', 
+      'info'
+    );
   };
 
-  // Real Apple Sign-In via Firebase Auth (OAuthProvider 'apple.com'), with interactive Apple fallback modal
+  // Real Apple Sign-In via Firebase Auth, with OTP fallback
   const handleRealAppleSignIn = async (isFallbackMode: boolean = false, fallbackEmail?: string, fallbackName?: string) => {
-    if (isFallbackMode || showAppleFallbackModal) {
-      const email = fallbackEmail || sessionStorage.getItem('systro_saved_apple_email') || sessionStorage.getItem('systro_saved_google_email');
-      const name = fallbackName || sessionStorage.getItem('systro_saved_apple_name') || (lang === 'ar' ? "مستخدم Apple" : lang === 'he' ? "משתמש Apple" : "Apple User");
-      
-      if (email) {
-        const displayName = name || (lang === 'ar' ? "مستخدم Apple" : "Apple User");
-        await handleGoogleSignIn(email, displayName);
-        setShowAppleFallbackModal(false);
-        setShowGoogleFallbackModal(false);
-        triggerToast(
-          lang === 'ar' 
-            ? `تم تسجيل الدخول بنجاح بحساب Apple (${email})! ` 
-            : lang === 'he'
-            ? `התחברת בהצלחה באמצעות Apple (${email})! `
-            : `Signed in successfully with Apple (${email})! `, 
-          'success'
-        );
-      } else {
-        triggerToast(
-          lang === 'ar' 
-            ? 'يرجى إدخال حساب Apple الخاص بك أولاً!' 
-            : lang === 'he'
-            ? 'אנא הזן את פרטי חשבון ה-Apple שלך תחילה!'
-            : 'Please enter your Apple account details first!', 
-          'warning'
-        );
-      }
+    if (isFallbackMode && fallbackEmail) {
+      const emailToUse = fallbackEmail.trim();
+      const nameToUse = fallbackName || (lang === 'ar' ? "مستخدم Apple" : lang === 'he' ? "משתמש Apple" : "Apple User");
+      await handleGoogleSignIn(emailToUse, nameToUse, true);
+      setShowAppleFallbackModal(false);
+      setShowGoogleFallbackModal(false);
+      triggerToast(
+        lang === 'ar' 
+          ? `تم التحقق بنجاح وتأكيد الدخول بحساب Apple (${emailToUse})! ` 
+          : `Verified & signed in successfully with Apple (${emailToUse})! `, 
+        'success'
+      );
       return;
     }
 
-    try {
-      const provider = new OAuthProvider('apple.com');
-      provider.addScope('email');
-      provider.addScope('name');
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      if (user && user.email) {
-        const email = user.email;
-        const name = user.displayName || `Apple User #${Math.floor(1000 + Math.random() * 9000)}`;
-        await handleGoogleSignIn(email, name);
-        setShowAppleFallbackModal(false);
-        triggerToast(
-          lang === 'ar' ? 'تم تسجيل الدخول بواسطة Apple بنجاح! ' : lang === 'he' ? 'התחברת בהצלחה באמצעות Apple! ' : 'Successfully signed in with Apple! ', 
-          'success'
-        );
+    const currentKey = auth?.app?.options?.apiKey || '';
+    const hasValidKey = currentKey && !currentKey.includes('placeholder') && currentKey.length > 20;
+
+    if (hasValidKey) {
+      try {
+        const provider = new OAuthProvider('apple.com');
+        provider.addScope('email');
+        provider.addScope('name');
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        if (user && user.email) {
+          const email = user.email;
+          const name = user.displayName || `Apple User #${Math.floor(1000 + Math.random() * 9000)}`;
+          await handleGoogleSignIn(email, name, true);
+          setShowAppleFallbackModal(false);
+          triggerToast(
+            lang === 'ar' ? 'تم تسجيل الدخول بواسطة Apple بنجاح! ' : lang === 'he' ? 'התחברת בהצלחה באמצעות Apple! ' : 'Successfully signed in with Apple! ', 
+            'success'
+          );
+          return;
+        }
+      } catch (_ignored) {
+        // Fallback below
       }
-    } catch (err: any) {
-      console.log("Firebase Auth Apple popup bypassed/closed, showing Apple Sign-In modal chooser:", err);
-      setShowGoogleFallbackModal(false);
-      setShowAppleFallbackModal(true);
-      triggerToast(
-        lang === 'ar' 
-          ? 'تم فتح بوابة Sign in with Apple المعتمدة للدخول المباشر السريع! ' 
-          : lang === 'he'
-          ? 'נפתח חלון התחברות Sign in with Apple '
-          : 'Sign in with Apple portal opened for quick secure login! ', 
-        'info'
-      );
     }
+
+    // Always require OTP modal verification when popup is unavailable
+    setShowAppleFallbackModal(true);
+    triggerToast(
+      lang === 'ar' 
+        ? 'يرجى إدخال بريد Apple لطلب رمز التحقق وإكمال الدخول! ' 
+        : 'Please enter your Apple email to receive a verification code! ', 
+      'info'
+    );
   };
 
   // Send real email OTP via server.ts backend
@@ -3188,27 +3173,27 @@ export default function App() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode === '1234' || otpCode) {
-      const role = portalTab === 'client' ? 'client' : 'technician';
-      const cleanPhone = phoneNumber ? phoneNumber.trim() : '';
-      const resolvedEmail = loggedInUserEmail || (cleanPhone ? `${cleanPhone.replace(/[^0-9]/g, '')}@systro.live` : `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`);
-      const resolvedName = loggedInUserName || (role === 'technician' ? (lang === 'ar' ? 'فني سيسترو' : 'Systro Tech') : (lang === 'ar' ? 'عميل سيسترو' : 'Systro Client'));
+    if (otpCode === "1234" || otpCode) {
+      const role = portalTab === "client" ? "client" : "technician";
+      const cleanPhone = phoneNumber ? phoneNumber.trim() : "";
+      const resolvedEmail = loggedInUserEmail || (cleanPhone ? `${cleanPhone.replace(/[^0-9]/g, "")}@systro.live` : `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`);
+      const resolvedName = loggedInUserName || (role === "technician" ? (lang === "ar" ? "فني سيسترو" : "Systro Tech") : (lang === "ar" ? "عميل سيسترو" : "Systro Client"));
 
-      await handleGoogleSignIn(resolvedEmail, resolvedName);
+      await handleGoogleSignIn(resolvedEmail, resolvedName, true);
       setUserRole(role);
-      sessionStorage.setItem('systro_user_role', role);
-      if (cleanPhone) sessionStorage.setItem('systro_phone_number', cleanPhone);
+      sessionStorage.setItem("systro_user_role", role);
+      if (cleanPhone) sessionStorage.setItem("systro_phone_number", cleanPhone);
 
-      triggerToast(lang === 'ar' ? 'تم تسجيل الدخول بنجاح لبوابة سيسترو الآمنة!' : 'Successfully signed in to secure Systro portal!', 'success');
+      triggerToast(lang === "ar" ? "تم تسجيل الدخول بنجاح لبوابة سيسترو الآمنة!" : "Successfully signed in to secure Systro portal!", "success");
     } else {
-      triggerToast(lang === 'ar' ? 'رمز التحقق غير صحيح! استخدم 1234 للتجربة.' : 'Verification code incorrect! Use 1234 to bypass.', 'error');
+      triggerToast(lang === "ar" ? "رمز التحقق غير صحيح! استخدم 1234 للتجربة." : "Verification code incorrect! Use 1234 to bypass.", "error");
     }
   };
 
   const handleGoogleSignIn = async (email?: string, name?: string, forceOverrideSession: boolean = false) => {
     const resolvedEmail = (email || `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`).trim().toLowerCase();
-    const resolvedName = name || (lang === 'ar' ? 'مستخدم سيسترو' : lang === 'he' ? 'משתמש סיסטרו' : 'Systro User');
-    
+    const resolvedName = name || (lang === "ar" ? "مستخدم سيسترو" : lang === "he" ? "משתמש سيسترو" : "Systro User");
+
     // Set grace period timestamp for session lock listeners
     lastLoginTimeRef.current = Date.now();
 
@@ -3274,33 +3259,16 @@ export default function App() {
     }
 
     // Register active session with server
-    try {
-      await fetch('/api/user-session/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: resolvedEmail,
-          sessionId: currentSessionId,
-          forceOverride: true,
-          deviceName: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Device'
-        })
-      });
-    } catch (e) {
-      console.warn("Server session login error:", e);
-    }
-
-    // Register active session lock in Firestore
-    try {
-      await setDoc(doc(db, "users", resolvedEmail), {
-        activeSessionId: currentSessionId,
-        lastActive: Date.now(),
-        isOnline: true,
+    fetch('/api/user-session/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         email: resolvedEmail,
-        name: resolvedName
-      }, { merge: true });
-    } catch (e) {
-      console.warn("Firestore activeSessionId update error:", e);
-    }
+        sessionId: currentSessionId,
+        forceOverride: true,
+        deviceName: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Device'
+      })
+    }).catch((e) => console.warn("Server session login error:", e));
 
     // Broadcast override event to other tabs on same device/browser
     try {
@@ -3337,68 +3305,65 @@ export default function App() {
     sessionStorage.setItem('systro_is_logged_in', 'true');
     sessionStorage.setItem('systro_user_email', resolvedEmail);
     sessionStorage.setItem('systro_user_name', resolvedName);
-
-    try {
-      const userDocRef = doc(db, "users", resolvedEmail);
-      const snapshot = await getDoc(userDocRef);
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        if (data.name) {
-          setLoggedInUserName(data.name);
-          sessionStorage.setItem('systro_user_name', data.name);
-        }
-        if (data.role) {
-          setUserRole(data.role);
-          sessionStorage.setItem('systro_user_role', data.role);
-        } else {
-          setUserRole('client');
-          sessionStorage.setItem('systro_user_role', 'client');
-        }
-        if (data.avatar) {
-          setUserAvatar(data.avatar);
-          sessionStorage.setItem('systro_user_avatar', data.avatar);
-        }
-        if (data.phone) {
-          setPhoneNumber(data.phone);
-          sessionStorage.setItem('systro_phone_number', data.phone);
-        } else {
-          setPhoneNumber('');
-          sessionStorage.removeItem('systro_phone_number');
-        }
-
-        // Lock active session ID to this device in Firestore
-        await setDoc(userDocRef, {
-          activeSessionId: currentSessionId,
-          lastActive: Date.now(),
-          isOnline: true,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-
-      } else {
-        // Create initial user document with active session ID lock
-        await setDoc(userDocRef, {
-          id: resolvedEmail,
-          email: resolvedEmail,
-          name: resolvedName,
-          role: 'client',
-          phone: '',
-          avatar: '',
-          activeSessionId: currentSessionId,
-          lastActive: Date.now(),
-          isOnline: true,
-          createdAt: new Date().toISOString()
-        }, { merge: true });
-        setUserRole('client');
-        sessionStorage.setItem('systro_user_role', 'client');
-        setPhoneNumber('');
-        sessionStorage.removeItem('systro_phone_number');
-      }
-    } catch (err) {
-      console.warn("Firestore offline or unavailable during sign-in, maintaining local session state:", err);
+    if (!sessionStorage.getItem('systro_user_role')) {
+      setUserRole('client');
+      sessionStorage.setItem('systro_user_role', 'client');
     }
 
+    // Set logged in state IMMEDIATELY to enter the application
     setIsLoggedIn(true);
     setActiveTab('home');
+
+    // Asynchronous background sync with Firestore (race with timeout so it never blocks login)
+    (async () => {
+      try {
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 1000));
+        const userDocRef = doc(db, "users", resolvedEmail);
+        const snapshot = await Promise.race([getDoc(userDocRef), timeoutPromise]) as any;
+
+        if (snapshot && snapshot.exists && snapshot.exists()) {
+          const data = snapshot.data();
+          if (data.name) {
+            setLoggedInUserName(data.name);
+            sessionStorage.setItem('systro_user_name', data.name);
+          }
+          if (data.role) {
+            setUserRole(data.role);
+            sessionStorage.setItem('systro_user_role', data.role);
+          }
+          if (data.avatar) {
+            setUserAvatar(data.avatar);
+            sessionStorage.setItem('systro_user_avatar', data.avatar);
+          }
+          if (data.phone) {
+            setPhoneNumber(data.phone);
+            sessionStorage.setItem('systro_phone_number', data.phone);
+          }
+
+          setDoc(userDocRef, {
+            activeSessionId: currentSessionId,
+            lastActive: Date.now(),
+            isOnline: true,
+            updatedAt: new Date().toISOString()
+          }, { merge: true }).catch(() => {});
+        } else {
+          setDoc(userDocRef, {
+            id: resolvedEmail,
+            email: resolvedEmail,
+            name: resolvedName,
+            role: 'client',
+            phone: '',
+            avatar: '',
+            activeSessionId: currentSessionId,
+            lastActive: Date.now(),
+            isOnline: true,
+            createdAt: new Date().toISOString()
+          }, { merge: true }).catch(() => {});
+        }
+      } catch (err) {
+        console.warn("Firestore background sync bypassed or timed out safely:", err);
+      }
+    })();
   };
 
   const handleLogout = (isKickedOutParam?: boolean | React.MouseEvent) => {

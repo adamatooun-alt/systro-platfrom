@@ -55,6 +55,7 @@ export default function LoginPortal({
   const [fallbackOtpSending, setFallbackOtpSending] = React.useState(false);
   const [fallbackOtpVerifying, setFallbackOtpVerifying] = React.useState(false);
   const [simulatedCode, setSimulatedCode] = React.useState('');
+  const [appleSimulatedCode, setAppleSimulatedCode] = React.useState('');
   const [resendCooldown, setResendCooldown] = React.useState(0);
 
   const handleEmailChange = (val: string) => {
@@ -529,23 +530,25 @@ export default function LoginPortal({
                     </label>
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={fallbackOtpSending}
-                    onClick={handleSendFallbackOtp}
-                    className="w-full py-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-sky-600/20 hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {fallbackOtpSending ? (
-                      <span>{lang === 'ar' ? 'جاري إرسال الرمز...' : 'Sending code...'}</span>
-                    ) : (
-                      <>
-                        <ShieldCheck className="w-5 h-5 shrink-0" />
-                        <span>
-                          {lang === 'ar' ? 'إرسال رمز تحقق آمن' : 'Send Secure Code'}
-                        </span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex flex-col gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={!customEmail || !customEmail.includes('@') || fallbackOtpSending}
+                      onClick={handleSendFallbackOtp}
+                      className="w-full py-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md shadow-sky-600/20 hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {fallbackOtpSending ? (
+                        <span>{lang === 'ar' ? 'جاري إرسال رمز التحقق...' : 'Sending verification code...'}</span>
+                      ) : (
+                        <>
+                          <Mail className="w-5 h-5 shrink-0" />
+                          <span>
+                            {lang === 'ar' ? 'إرسال رمز التحقق لـ Gmail ✉️' : 'Send Verification Code to Gmail ✉️'}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </>
               ) : (
                 <>
@@ -558,6 +561,16 @@ export default function LoginPortal({
                     <p className="font-mono text-xs text-slate-700 font-bold break-all bg-white py-1 px-3.5 rounded-lg inline-block border border-slate-100">
                       {customEmail}
                     </p>
+                    {simulatedCode && (
+                      <div className="bg-amber-500/10 border border-amber-500/30 p-2 rounded-xl text-center space-y-0.5 mt-2">
+                        <p className="text-[11px] text-amber-700 font-black">
+                          {lang === 'ar' ? '🔑 رمز التحقق التجريبي:' : '🔑 Demo Verification Code:'}
+                        </p>
+                        <p className="font-mono text-base font-black text-amber-800 tracking-widest">
+                          {simulatedCode}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -728,66 +741,72 @@ export default function LoginPortal({
                     </label>
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={!appleEmail || !appleEmail.includes('@') || appleOtpSending}
-                    onClick={async () => {
-                      if (!acceptedTerms) {
-                        triggerToast(lang === 'ar' ? 'يرجى الموافقة على شروط الخدمة أولاً!' : 'Please accept terms of service first!', 'warning');
-                        return;
-                      }
-                      setAppleOtpSending(true);
-                      sessionStorage.setItem('systro_saved_apple_email', appleEmail.trim());
-                      sessionStorage.setItem('systro_saved_apple_name', appleName.trim() || 'Apple User');
-                      
-                      try {
-                        const response = await fetch('/api/send-otp', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email: appleEmail.trim() })
-                        });
-                        const data = await response.json();
-                        if (response.ok && data.success) {
+                  <div className="flex flex-col gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={!appleEmail || !appleEmail.includes('@') || appleOtpSending}
+                      onClick={async () => {
+                        if (!acceptedTerms) {
+                          triggerToast(lang === 'ar' ? 'يرجى الموافقة على شروط الخدمة أولاً! 📜' : 'Please accept terms of service first! 📜', 'warning');
+                          return;
+                        }
+                        setAppleOtpSending(true);
+                        const trimmedAppleEmail = appleEmail.trim();
+                        sessionStorage.setItem('systro_saved_apple_email', trimmedAppleEmail);
+                        sessionStorage.setItem('systro_saved_apple_name', appleName.trim() || 'Apple User');
+                        
+                        try {
+                          const response = await fetch('/api/send-otp', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: trimmedAppleEmail })
+                          });
+                          const data = await response.json();
+                          setAppleOtpSent(true);
+                          setAppleOtpCode('');
+                          if (data.simulatedCode) {
+                            setAppleSimulatedCode(data.simulatedCode);
+                            triggerToast(
+                              lang === 'ar' 
+                                ? `تم إصدار رمز التحقق بنجاح: (${data.simulatedCode}) ✉️ يرجى كتابته للتحقق.` 
+                                : `Verification code generated: (${data.simulatedCode}) ✉️`, 
+                              'info'
+                            );
+                          } else {
+                            triggerToast(
+                              lang === 'ar' 
+                                ? `تم إرسال رمز التحقق إلى حساب Apple ID (${trimmedAppleEmail}) بنجاح! ✉️` 
+                                : `Verification code sent to Apple ID (${trimmedAppleEmail})! ✉️`, 
+                              'success'
+                            );
+                          }
+                        } catch (err) {
+                          console.error("Error sending Apple OTP:", err);
                           setAppleOtpSent(true);
                           triggerToast(
                             lang === 'ar' 
-                              ? `تم إرسال رمز التحقق الآمن إلى بريد Apple ID (${appleEmail.trim()}) بنجاح! ✉️` 
-                              : `Verification code sent to Apple ID (${appleEmail.trim()})! ✉️`, 
-                            'success'
+                              ? `يرجى إدخال رمز التحقق المكون من 6 أرقام للتحقق ✉️` 
+                              : `Please enter the 6-digit verification code ✉️`, 
+                            'info'
                           );
-                        } else {
-                          // Fallback to direct login
-                          if (handleRealAppleSignIn) {
-                            await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
-                          } else {
-                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', false);
-                            if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
-                          }
+                        } finally {
+                          setAppleOtpSending(false);
                         }
-                      } catch (err) {
-                        if (handleRealAppleSignIn) {
-                          await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
-                        } else {
-                          await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', false);
-                          if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
-                        }
-                      } finally {
-                        setAppleOtpSending(false);
-                      }
-                    }}
-                    className="w-full py-3.5 bg-white hover:bg-neutral-200 active:bg-neutral-300 text-black font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {appleOtpSending ? (
-                      <span>{lang === 'ar' ? 'جاري الاتصال بـ Apple...' : 'Connecting to Apple...'}</span>
-                    ) : (
-                      <>
-                        <ShieldCheck className="w-5 h-5 shrink-0" />
-                        <span>
-                          {lang === 'ar' ? 'المتابعة مع Apple ID' : 'Continue with Apple ID'}
-                        </span>
-                      </>
-                    )}
-                  </button>
+                      }}
+                      className="w-full py-4 bg-white hover:bg-neutral-100 active:bg-neutral-200 text-black font-black rounded-2xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {appleOtpSending ? (
+                        <span>{lang === 'ar' ? 'جاري إرسال رمز التحقق...' : 'Sending verification code...'}</span>
+                      ) : (
+                        <>
+                          <Mail className="w-5 h-5 shrink-0 text-black" />
+                          <span>
+                            {lang === 'ar' ? 'إرسال رمز التحقق لـ Apple ID ✉️' : 'Send Verification Code to Apple ID ✉️'}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </>
               ) : (
                 <>
@@ -800,6 +819,16 @@ export default function LoginPortal({
                     <p className="font-mono text-xs text-white font-bold break-all bg-black py-1 px-3.5 rounded-lg inline-block border border-neutral-800">
                       {appleEmail}
                     </p>
+                    {appleSimulatedCode && (
+                      <div className="bg-amber-500/10 border border-amber-500/30 p-2 rounded-xl text-center space-y-0.5 mt-2">
+                        <p className="text-[11px] text-amber-400 font-black">
+                          {lang === 'ar' ? '🔑 رمز التحقق التجريبي:' : '🔑 Demo Verification Code:'}
+                        </p>
+                        <p className="font-mono text-base font-black text-amber-300 tracking-widest">
+                          {appleSimulatedCode}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
