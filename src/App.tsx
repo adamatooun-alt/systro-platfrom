@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { translations } from './translations';
 import { db, auth } from './firebase';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
@@ -53,6 +53,7 @@ import {
   Home,
   LogOut,
   ExternalLink,
+  RefreshCw,
   Edit,
   Settings,
   X,
@@ -727,6 +728,34 @@ export default function App() {
     return sessionStorage.getItem('systro_active_request_id') || null;
   });
 
+  // Helper to determine if a request is open / pending for technician response
+  const isPendingRequest = useCallback((req: RescueRequest) => {
+    if (!req) return false;
+    if (req.status === 'completed' || req.status === 'disputed' || req.status === 'en_route' || req.status === 'arrived' || req.status === 'in_progress') {
+      return false;
+    }
+    return true;
+  }, []);
+
+  const handleManualRefreshRequests = async () => {
+    try {
+      const snap = await getDocs(collection(db, "requests"));
+      const list: RescueRequest[] = [];
+      snap.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
+      });
+      list.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
+      setAllRequests(list);
+      triggerToast(lang === 'ar' ? 'تم تحديث قائمة البلاغات المباشرة بنجاح! 🔄' : 'Live requests refreshed successfully! 🔄', 'success');
+    } catch (err) {
+      console.error("Manual refresh error:", err);
+    }
+  };
+
   // Sync activeRequestId with sessionStorage
   useEffect(() => {
     if (activeRequestId) {
@@ -1211,15 +1240,32 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Listen for all requests
+  // Listen for all requests with real-time onSnapshot + periodic backup polling
   useEffect(() => {
+    const fetchRequestsDirectly = async () => {
+      try {
+        const snap = await getDocs(collection(db, "requests"));
+        const list: RescueRequest[] = [];
+        snap.forEach(docSnap => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
+        });
+        list.sort((a, b) => {
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+        });
+        setAllRequests(list);
+      } catch (err) {
+        console.warn("Requests background sync notice:", err);
+      }
+    };
+
     const q = query(collection(db, "requests"));
     const unsub = onSnapshot(q, (snapshot) => {
       const list: RescueRequest[] = [];
       snapshot.forEach(docSnap => {
         list.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
       });
-      // Sort by newest first safely
       list.sort((a, b) => {
         const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
         const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
@@ -1228,8 +1274,18 @@ export default function App() {
       setAllRequests(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "requests");
+      fetchRequestsDirectly();
     });
-    return () => unsub();
+
+    // 3-second periodic polling backup to guarantee sync on mobile connections
+    const interval = setInterval(() => {
+      fetchRequestsDirectly();
+    }, 3000);
+
+    return () => {
+      unsub();
+      clearInterval(interval);
+    };
   }, []);
 
   // Automatically restore active request for logged in or guest client ONLY for their own session/email
@@ -1316,7 +1372,7 @@ export default function App() {
     const isTech = userRole === 'technician' || (isLoggedIn && activeTechDoc);
     if (!isTech) return;
 
-    const pendingReqs = allRequests.filter(r => r.status === 'pending_bids');
+    const pendingReqs = allRequests.filter(isPendingRequest);
 
     pendingReqs.forEach(req => {
       // Create a technician-specific notification key
@@ -4410,7 +4466,7 @@ export default function App() {
       </header>
 
       {/* Real-time Global Emergency Rescue Bar (Visible when any client posts an alert) */}
-      {allRequests.filter(r => r.status === 'pending_bids').length > 0 && (
+      {allRequests.filter(isPendingRequest).length > 0 && (
         <div className="bg-gradient-to-r from-red-600 via-amber-600 to-red-600 text-white px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 text-xs font-black animate-pulse select-none z-30 sticky top-20 border-b border-red-500/40">
           <div className="flex items-center gap-2 max-w-4xl truncate">
             <span className="bg-white text-red-600 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black shrink-0 animate-bounce shadow">
@@ -4418,8 +4474,8 @@ export default function App() {
             </span>
             <span className="truncate">
               {lang === 'ar' 
-                ? `يوجد (${allRequests.filter(r => r.status === 'pending_bids').length}) نداء استغاثة طارئ نشط حالياً بانتظار استجابة الفنيين!` 
-                : `There are (${allRequests.filter(r => r.status === 'pending_bids').length}) active emergency alerts waiting for technician response!`}
+                ? `يوجد (${allRequests.filter(isPendingRequest).length}) نداء استغاثة طارئ نشط حالياً بانتظار استجابة الفنيين!` 
+                : `There are (${allRequests.filter(isPendingRequest).length}) active emergency alerts waiting for technician response!`}
             </span>
           </div>
 
@@ -4865,7 +4921,7 @@ export default function App() {
                       </div>
 
                       {/* PROMINENT LIVE EMERGENCY ALERTS BANNER FOR TECHNICIAN */}
-                      {allRequests.filter(r => r.status === 'pending_bids').length > 0 && (
+                      {allRequests.filter(isPendingRequest).length > 0 && (
                         <div className="p-4 bg-gradient-to-r from-red-950/90 via-[#1A0A0A] to-[#0A0B10] border-2 border-red-500/80 rounded-3xl space-y-3 shadow-2xl shadow-red-950/50 animate-pulse text-right">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
@@ -4878,8 +4934,8 @@ export default function App() {
                                 </span>
                                 <h4 className="text-sm sm:text-base font-black text-white mt-1">
                                   {lang === 'ar'
-                                    ? `يوجد ${allRequests.filter(r => r.status === 'pending_bids').length} بلاغ طوارئ نشط بانتظار استجابتك وقبولك!`
-                                    : `There are ${allRequests.filter(r => r.status === 'pending_bids').length} active roadside emergencies awaiting your response!`}
+                                    ? `يوجد ${allRequests.filter(isPendingRequest).length} بلاغ طوارئ نشط بانتظار استجابتك وقبولك!`
+                                    : `There are ${allRequests.filter(isPendingRequest).length} active roadside emergencies awaiting your response!`}
                                 </h4>
                               </div>
                             </div>
@@ -5528,20 +5584,40 @@ export default function App() {
 
                       {/* Active client requests from road network */}
                       <div id="technician-rescue-alerts-list" className="space-y-4">
-                        <h4 className="text-xs font-black text-white uppercase tracking-wider border-b border-gray-950 pb-2 flex items-center justify-between">
-                          <span>{lang === 'ar' ? '📡 نداءات استغاثة طارئة نشطة على الطريق:' : '📡 Active Live Rescue Alerts on Road:'}</span>
-                          <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2 py-0.5 rounded text-[9px] animate-pulse">
-                            {allRequests.filter(r => r.status === 'pending_bids').length} ALERTS
-                          </span>
-                        </h4>
+                        <div className="border-b border-gray-950 pb-2 flex items-center justify-between gap-2">
+                          <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                            <span>{lang === 'ar' ? '📡 نداءات استغاثة طارئة نشطة على الطريق:' : '📡 Active Live Rescue Alerts on Road:'}</span>
+                            <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2 py-0.5 rounded text-[9px] animate-pulse font-mono">
+                              {allRequests.filter(isPendingRequest).length} ALERTS
+                            </span>
+                          </h4>
 
-                        {allRequests.filter(r => r.status === 'pending_bids').length === 0 ? (
-                          <div className="p-8 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl">
+                          <button
+                            type="button"
+                            onClick={handleManualRefreshRequests}
+                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                            title={lang === 'ar' ? 'تحديث وتفقد البلاغات الحية الآن' : 'Refresh live alerts now'}
+                          >
+                            <RefreshCw className="w-3 h-3 text-amber-400" />
+                            <span>{lang === 'ar' ? 'تحديث البلاغات 🔄' : 'Refresh 🔄'}</span>
+                          </button>
+                        </div>
+
+                        {allRequests.filter(isPendingRequest).length === 0 ? (
+                          <div className="p-8 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-3">
                             <span className="text-xs text-gray-500 font-bold block">{lang === 'ar' ? 'لا توجد بلاغات طوارئ نشطة حالياً. المركبات تسير بأمان! 👍' : 'No active roadside emergencies. Drivers are safe! 👍'}</span>
+                            <button
+                              type="button"
+                              onClick={handleManualRefreshRequests}
+                              className="px-3 py-1.5 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>{lang === 'ar' ? 'فحص البلاغات مجدداً 🔄' : 'Check Alerts Again 🔄'}</span>
+                            </button>
                           </div>
                         ) : (
                           <div className="space-y-3 font-sans">
-                            {allRequests.filter(r => r.status === 'pending_bids').map(req => {
+                            {allRequests.filter(isPendingRequest).map(req => {
                               const isSelected = selectedBidRequest?.id === req.id;
                               return (
                                 <div key={req.id} className={`p-4 rounded-2xl border transition-all ${isSelected ? 'bg-[#0F1424] border-amber-500 shadow-md' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800'}`}>
@@ -6000,20 +6076,40 @@ export default function App() {
                                 : 'Any registered account can view active open requests from other drivers and assist immediately:'}
                             </p>
                           </div>
-                          <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2.5 py-1 rounded-full text-[10px] font-black shrink-0 self-start sm:self-auto animate-pulse">
-                            {allRequests.filter(r => r.status === 'pending_bids').length} {lang === 'ar' ? 'بلاغات نشطة' : 'Active Alerts'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleManualRefreshRequests}
+                              className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                              title={lang === 'ar' ? 'تحديث البلاغات الحية' : 'Refresh live alerts'}
+                            >
+                              <RefreshCw className="w-3 h-3 text-amber-400" />
+                              <span>{lang === 'ar' ? 'تحديث 🔄' : 'Refresh 🔄'}</span>
+                            </button>
+
+                            <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2.5 py-1 rounded-full text-[10px] font-black shrink-0 self-start sm:self-auto animate-pulse font-mono">
+                              {allRequests.filter(isPendingRequest).length} {lang === 'ar' ? 'بلاغات نشطة' : 'Active Alerts'}
+                            </span>
+                          </div>
                         </div>
 
-                        {allRequests.filter(r => r.status === 'pending_bids').length === 0 ? (
-                          <div className="p-6 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl">
+                        {allRequests.filter(isPendingRequest).length === 0 ? (
+                          <div className="p-6 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-3">
                             <span className="text-xs text-gray-500 font-bold block">
                               {lang === 'ar' ? 'لا توجد بلاغات طوارئ نشطة حالياً. جميع المركبات تسير بأمان! 👍' : 'No active roadside emergencies. All vehicles are safe! 👍'}
                             </span>
+                            <button
+                              type="button"
+                              onClick={handleManualRefreshRequests}
+                              className="px-3 py-1.5 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>{lang === 'ar' ? 'إعادة الفحص المباشر 🔄' : 'Re-check Live Network 🔄'}</span>
+                            </button>
                           </div>
                         ) : (
                           <div className="space-y-3 font-sans">
-                            {allRequests.filter(r => r.status === 'pending_bids').map(req => {
+                            {allRequests.filter(isPendingRequest).map(req => {
                               const isMyOwnRequest = (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '') 
                                 ? (req.requestedBy === loggedInUserEmail) 
                                 : (req.sessionId === currentSessionId && (!req.requestedBy || req.requestedBy === ''));
