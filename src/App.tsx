@@ -22,7 +22,9 @@ import {
   query, 
   where, 
   getDocs,
-  getDoc
+  getDocsFromServer,
+  getDoc,
+  increment
 } from 'firebase/firestore';
 import { 
   ShieldCheck, 
@@ -739,7 +741,12 @@ export default function App() {
 
   const handleManualRefreshRequests = async () => {
     try {
-      const snap = await getDocs(collection(db, "requests"));
+      let snap;
+      try {
+        snap = await getDocsFromServer(collection(db, "requests"));
+      } catch (serverErr) {
+        snap = await getDocs(collection(db, "requests"));
+      }
       const list: RescueRequest[] = [];
       snap.forEach(docSnap => {
         list.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
@@ -750,7 +757,13 @@ export default function App() {
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
       setAllRequests(list);
-      triggerToast(lang === 'ar' ? 'تم تحديث قائمة البلاغات المباشرة بنجاح! 🔄' : 'Live requests refreshed successfully! 🔄', 'success');
+      const pendingCount = list.filter(isPendingRequest).length;
+      triggerToast(
+        lang === 'ar' 
+          ? `تم التحديث المباشر من السيرفر! وجد (${pendingCount}) بلاغ نشط 🔄` 
+          : `Live server refresh done! Found (${pendingCount}) active alerts 🔄`, 
+        'success'
+      );
     } catch (err) {
       console.error("Manual refresh error:", err);
     }
@@ -1240,11 +1253,16 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Listen for all requests with real-time onSnapshot + periodic backup polling
+  // Listen for all requests with real-time onSnapshot + periodic backup polling + visibility re-sync
   useEffect(() => {
     const fetchRequestsDirectly = async () => {
       try {
-        const snap = await getDocs(collection(db, "requests"));
+        let snap;
+        try {
+          snap = await getDocsFromServer(collection(db, "requests"));
+        } catch (serverErr) {
+          snap = await getDocs(collection(db, "requests"));
+        }
         const list: RescueRequest[] = [];
         snap.forEach(docSnap => {
           list.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
@@ -1254,7 +1272,13 @@ export default function App() {
           const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
           return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
         });
-        setAllRequests(list);
+        
+        // Prevent wiping active requests if a background getDocs call returns empty due to transient offline cache
+        if (list.length > 0) {
+          setAllRequests(list);
+        } else if (snap.metadata && !snap.metadata.fromCache) {
+          setAllRequests([]);
+        }
       } catch (err) {
         console.warn("Requests background sync notice:", err);
       }
@@ -1277,14 +1301,28 @@ export default function App() {
       fetchRequestsDirectly();
     });
 
-    // 3-second periodic polling backup to guarantee sync on mobile connections
+    // Initial server check
+    fetchRequestsDirectly();
+
+    // 4-second periodic polling backup to guarantee sync on mobile connections
     const interval = setInterval(() => {
       fetchRequestsDirectly();
-    }, 3000);
+    }, 4000);
+
+    // Auto-fetch when user switches back to app tab
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        fetchRequestsDirectly();
+      }
+    };
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
     return () => {
       unsub();
       clearInterval(interval);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
   }, []);
 
@@ -2198,10 +2236,14 @@ export default function App() {
         timestamp: new Date().toISOString()
       });
 
-      // Update global stats
-      await updateDoc(doc(db, "system_stats", "global"), {
-        activeEmergencies: stats.activeEmergencies + 1
-      });
+      // Update global stats safely
+      try {
+        await setDoc(doc(db, "system_stats", "global"), {
+          activeEmergencies: increment(1)
+        }, { merge: true });
+      } catch (statsErr) {
+        console.warn("Global stats notice:", statsErr);
+      }
 
       setActiveRequestId(reqId);
       triggerToast(lang === 'ar' ? 'تم تسجيل وتعميم طلبك بنجاح على الفنيين بالقائمة!' : 'Request published successfully to all technicians!', 'success');
@@ -2282,12 +2324,12 @@ export default function App() {
         }
       }
 
-      // Decrement active emergencies if we can
+      // Decrement active emergencies safely
       if (stats.activeEmergencies > 0) {
         try {
-          await updateDoc(doc(db, "system_stats", "global"), {
+          await setDoc(doc(db, "system_stats", "global"), {
             activeEmergencies: Math.max(0, stats.activeEmergencies - 1)
-          });
+          }, { merge: true });
         } catch (error) {
           handleFirestoreError(error, OperationType.WRITE, "system_stats/global");
         }
@@ -2772,11 +2814,15 @@ export default function App() {
         });
       });
 
-      // Update stats
-      await updateDoc(doc(db, "system_stats", "global"), {
-        completedRescues: stats.completedRescues + 1,
-        activeEmergencies: Math.max(0, stats.activeEmergencies - 1)
-      });
+      // Update stats safely
+      try {
+        await setDoc(doc(db, "system_stats", "global"), {
+          completedRescues: stats.completedRescues + 1,
+          activeEmergencies: Math.max(0, stats.activeEmergencies - 1)
+        }, { merge: true });
+      } catch (statsErr) {
+        console.warn("Stats update notice:", statsErr);
+      }
 
       const releaseMsgId = `c-release-${Date.now()}`;
       await setDoc(doc(db, "chats", releaseMsgId), {
