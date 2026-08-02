@@ -222,6 +222,94 @@ async function startServer() {
     res.json({ success: true, activeSessionId: sessionId });
   });
 
+  // Global in-memory store for rescue requests cross-device synchronization
+  const globalRescueRequestsMap = new Map<string, any>();
+
+  const initSeedRequests = () => {
+    if (globalRescueRequestsMap.size === 0) {
+      const seed1 = {
+        id: "req-seed-101",
+        clientName: "أحمد المحمود (طلب عاجل)",
+        clientPhone: "+972 59-987-6543",
+        requestedBy: "ahmed.m@gmail.com",
+        sessionId: "seed-sess-1",
+        locationLat: 31.9038,
+        locationLng: 35.2034,
+        locationName: "Al-Quds St",
+        arLocationName: "شارع القدس الرئيسية - رام الله",
+        serviceType: "mechanic",
+        description: "عطل كهربائي طارئ في المحرك وتوقف تام للسيارة على جانب الطريق",
+        status: "pending_bids",
+        escrowAmount: 0,
+        approximatePrice: 180,
+        selectedTechnicianId: null,
+        timestamp: new Date().toISOString()
+      };
+      globalRescueRequestsMap.set(seed1.id, seed1);
+    }
+  };
+  initSeedRequests();
+
+  // GET /api/requests
+  app.get('/api/requests', (req, res) => {
+    initSeedRequests();
+    const list = Array.from(globalRescueRequestsMap.values());
+    list.sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+    });
+    res.json({ success: true, count: list.length, requests: list });
+  });
+
+  // POST /api/requests (create or full update)
+  app.post('/api/requests', (req, res) => {
+    const { request, requests } = req.body;
+    if (requests && Array.isArray(requests)) {
+      requests.forEach(r => {
+        if (r && r.id) {
+          globalRescueRequestsMap.set(r.id, r);
+        }
+      });
+    } else if (request && request.id) {
+      globalRescueRequestsMap.set(request.id, request);
+    } else if (req.body && req.body.id) {
+      globalRescueRequestsMap.set(req.body.id, req.body);
+    }
+    const list = Array.from(globalRescueRequestsMap.values());
+    res.json({ success: true, count: list.length, requests: list });
+  });
+
+  // POST /api/requests/update (partial update of a request)
+  app.post('/api/requests/update', (req, res) => {
+    const { id, updates } = req.body;
+    if (!id) {
+      res.status(400).json({ error: 'Request ID is required' });
+      return;
+    }
+    const existing = globalRescueRequestsMap.get(id);
+    if (existing) {
+      const updated = { ...existing, ...updates };
+      globalRescueRequestsMap.set(id, updated);
+      res.json({ success: true, request: updated });
+    } else if (updates) {
+      const newObj = { id, ...updates };
+      globalRescueRequestsMap.set(id, newObj);
+      res.json({ success: true, request: newObj });
+    } else {
+      res.status(404).json({ error: 'Request not found' });
+    }
+  });
+
+  // DELETE /api/requests/:id
+  app.delete('/api/requests/:id', (req, res) => {
+    const { id } = req.params;
+    if (id) {
+      globalRescueRequestsMap.delete(id);
+    }
+    res.json({ success: true });
+  });
+
   app.post('/api/user-session/heartbeat', (req, res) => {
     const { email, sessionId } = req.body;
     if (!email || !sessionId) {

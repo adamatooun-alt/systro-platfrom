@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { translations } from './translations';
 import { db, auth } from './firebase';
-import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
+import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import GooglePayButton from '@google-pay/button-react';
 import { SecuritySentinel } from './components/SecuritySentinel';
 
@@ -24,7 +24,8 @@ import {
   getDocs,
   getDocsFromServer,
   getDoc,
-  increment
+  increment,
+  runTransaction
 } from 'firebase/firestore';
 import { 
   ShieldCheck, 
@@ -757,30 +758,69 @@ export default function App() {
     return true;
   }, []);
 
-  const handleManualRefreshRequests = async () => {
+  // Helper to fetch requests from both Firestore and Node Server backend for multi-device sync
+  const fetchRequestsDirectly = useCallback(async () => {
     try {
-      let snap;
+      const fsList: RescueRequest[] = [];
       try {
-        snap = await getDocsFromServer(collection(db, "requests"));
-      } catch (serverErr) {
-        snap = await getDocs(collection(db, "requests"));
+        let snap;
+        try {
+          snap = await getDocsFromServer(collection(db, "requests"));
+        } catch (serverErr) {
+          snap = await getDocs(collection(db, "requests"));
+        }
+        snap.forEach(docSnap => {
+          fsList.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
+        });
+      } catch (e) {
+        console.warn("Firestore list notice:", e);
       }
-      const list: RescueRequest[] = [];
-      snap.forEach(docSnap => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
+
+      let apiList: RescueRequest[] = [];
+      try {
+        const res = await fetch('/api/requests');
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.requests)) {
+          apiList = data.requests;
+        }
+      } catch (e) {
+        console.warn("API requests notice:", e);
+      }
+
+      const map = new Map<string, RescueRequest>();
+      fsList.forEach(r => map.set(r.id, r));
+      apiList.forEach(r => {
+        if (!map.has(r.id)) {
+          map.set(r.id, r);
+        } else {
+          const existing = map.get(r.id)!;
+          map.set(r.id, { ...existing, ...r });
+        }
       });
+
+      const list = Array.from(map.values());
       list.sort((a, b) => {
         const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
         const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
-      
+
       setAllRequests(list);
+      return list;
+    } catch (err) {
+      console.warn("Requests background sync notice:", err);
+      return [];
+    }
+  }, []);
+
+  const handleManualRefreshRequests = async () => {
+    try {
+      const list = await fetchRequestsDirectly();
       const finalCount = list.filter(isPendingRequest).length;
 
       triggerToast(
         lang === 'ar' 
-          ? `تم التحديث المباشر من السيرفر! وجد (${finalCount}) بلاغ نشط 🔄` 
+          ? `تم فحص وتحديث قائمة البلاغات الحية! وجد (${finalCount}) بلاغ نشط 🔄` 
           : `Live server refresh done! Found (${finalCount}) active alerts 🔄`, 
         'success'
       );
@@ -1278,42 +1318,24 @@ export default function App() {
 
   // Listen for all requests with real-time onSnapshot + periodic backup polling + visibility re-sync
   useEffect(() => {
-    const fetchRequestsDirectly = async () => {
-      try {
-        let snap;
-        try {
-          snap = await getDocsFromServer(collection(db, "requests"));
-        } catch (serverErr) {
-          snap = await getDocs(collection(db, "requests"));
-        }
-        const list: RescueRequest[] = [];
-        snap.forEach(docSnap => {
-          list.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
-        });
+    const q = query(collection(db, "requests"));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const fsList: RescueRequest[] = [];
+      snapshot.forEach(docSnap => {
+        fsList.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
+      });
+      setAllRequests(prev => {
+        const map = new Map<string, RescueRequest>();
+        prev.forEach(r => map.set(r.id, r));
+        fsList.forEach(r => map.set(r.id, r));
+        const list = Array.from(map.values());
         list.sort((a, b) => {
           const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
           const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
           return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
         });
-        
-        setAllRequests(list);
-      } catch (err) {
-        console.warn("Requests background sync notice:", err);
-      }
-    };
-
-    const q = query(collection(db, "requests"));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const list: RescueRequest[] = [];
-      snapshot.forEach(docSnap => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
+        return list;
       });
-      list.sort((a, b) => {
-        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
-      });
-      setAllRequests(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "requests");
       fetchRequestsDirectly();
@@ -1342,7 +1364,7 @@ export default function App() {
       window.removeEventListener('focus', handleVisibilityOrFocus);
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
-  }, []);
+  }, [fetchRequestsDirectly]);
 
   // Cross-tab broadcast sync for instant multi-window/iframe testing
   useEffect(() => {
@@ -2279,31 +2301,52 @@ export default function App() {
 
     try {
       const reqId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const latVal = pinnedLocation?.lat ?? 40;
+      const lngVal = pinnedLocation?.lng ?? 40;
+
       const newReqObj: RescueRequest = {
         id: reqId,
         clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : (loggedInUserName || 'Adam Atooun'),
         clientPhone: phoneNumber || "+972 59-123-4567",
         requestedBy: loggedInUserEmail || '',
-        sessionId: currentSessionId,
-        locationLat: pinnedLocation.lat,
-        locationLng: pinnedLocation.lng,
+        sessionId: currentSessionId || '',
+        locationLat: latVal,
+        locationLng: lngVal,
         locationName: "Al-Quds St",
         arLocationName: "شارع القدس",
-        serviceType: selectedService,
-        description: problemDescription,
+        serviceType: selectedService || 'mechanic',
+        description: problemDescription || '',
         status: "pending_bids",
         escrowAmount: 0,
-        approximatePrice: Number(approximatePrice),
+        approximatePrice: Number(approximatePrice || 150),
         selectedTechnicianId: null,
         timestamp: new Date().toISOString()
       };
 
-      // 1. Optimistically update allRequests state immediately on client
+      // 1. Save document to live Firestore collection safely
+      try {
+        await setDoc(doc(db, "requests", reqId), newReqObj);
+      } catch (fsErr) {
+        console.warn("Firestore setDoc notice:", fsErr);
+      }
+
+      // 1b. Post to Express backend server for instant cross-device sync
+      try {
+        await fetch('/api/requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request: newReqObj })
+        });
+      } catch (apiErr) {
+        console.warn("API post request notice:", apiErr);
+      }
+
+      // 2. Update local state and activeRequestId
       setAllRequests(prev => [newReqObj, ...prev.filter(r => r.id !== reqId)]);
       setActiveRequestId(reqId);
       sessionStorage.setItem('systro_active_request_id', reqId);
 
-      // 2. Broadcast across tabs for multi-window testing
+      // 3. Broadcast across tabs for multi-window testing
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         try {
           const channel = new BroadcastChannel('systro_requests_channel');
@@ -2313,9 +2356,6 @@ export default function App() {
           console.warn("Broadcast channel notice:", bErr);
         }
       }
-
-      // 3. Initialize/Update the request document in the live collection
-      await setDoc(doc(db, "requests", reqId), newReqObj);
 
       // Update global stats safely
       try {
@@ -4942,7 +4982,7 @@ export default function App() {
                 ) : (
                   /* Google Maps Component rendering */
                   <APIProvider apiKey={mapsKey} version="weekly">
-                    <Map
+                    <GoogleMap
                       defaultCenter={pinnedLocation ? mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng) : { lat: 31.7683, lng: 35.2137 }}
                       defaultZoom={pinnedLocation ? 13 : 11}
                       mapId="DEMO_MAP_ID"
@@ -4992,7 +5032,7 @@ export default function App() {
                         </AdvancedMarker>
                       )}
 
-                    </Map>
+                    </GoogleMap>
                   </APIProvider>
                 )}
               </div>
@@ -5964,19 +6004,32 @@ export default function App() {
                                           const acceptPrice = Number(req.approximatePrice || 150);
 
                                           try {
-                                            const reqDocSnap = await getDoc(doc(db, "requests", req.id));
-                                            if (reqDocSnap.exists()) {
-                                              const currentReqData = reqDocSnap.data();
-                                              if (currentReqData.selectedTechnicianId && currentReqData.selectedTechnicianId !== techEmail && currentReqData.status !== 'pending_bids' && currentReqData.status !== 'pending') {
-                                                triggerToast(
-                                                  lang === 'ar' 
-                                                    ? '⚠️ نعتذر، قام فني آخر بقبول وتلبية هذه المهمة قبلك بسباق السرعة!' 
-                                                    : '⚠️ Sorry, another technician accepted this task first!',
-                                                  'warning'
-                                                );
-                                                return;
+                                            await runTransaction(db, async (transaction) => {
+                                              const reqRef = doc(db, "requests", req.id);
+                                              const reqDocSnap = await transaction.get(reqRef);
+
+                                              if (!reqDocSnap.exists()) {
+                                                throw new Error("TASK_NOT_FOUND");
                                               }
-                                            }
+
+                                              const currentReqData = reqDocSnap.data();
+                                              const existingTech = currentReqData.selectedTechnicianId;
+                                              const currentStatus = currentReqData.status;
+
+                                              if (existingTech && String(existingTech).trim() !== '' && existingTech !== techEmail) {
+                                                throw new Error("TASK_ALREADY_TAKEN");
+                                              }
+
+                                              if (currentStatus !== 'pending_bids' && currentStatus !== 'pending' && currentStatus !== 'idle') {
+                                                throw new Error("TASK_ALREADY_TAKEN");
+                                              }
+
+                                              transaction.update(reqRef, {
+                                                status: 'en_route',
+                                                selectedTechnicianId: techEmail,
+                                                escrowAmount: acceptPrice
+                                              });
+                                            });
 
                                             const bidId = 'bid-' + Math.random().toString(36).substring(2, 9);
                                             const newBidObj = {
@@ -5994,13 +6047,6 @@ export default function App() {
                                               plateNumber: activeTechDoc?.plateNumber || '7-4321-99'
                                             };
                                             await setDoc(doc(db, "bids", bidId), newBidObj);
-
-                                            // Update Firestore request: status becomes 'en_route', locking it to this tech!
-                                            await updateDoc(doc(db, "requests", req.id), {
-                                              status: 'en_route',
-                                              selectedTechnicianId: techEmail,
-                                              escrowAmount: acceptPrice
-                                            });
 
                                             // Send automated system chat message
                                             const chatMsgId = `sys-accept-${Date.now()}`;
@@ -6025,9 +6071,19 @@ export default function App() {
                                                 : `✅ Task accepted! Locked and en route, removed from other technicians!`,
                                               'success'
                                             );
-                                          } catch (err) {
-                                            console.error("Error accepting task:", err);
-                                            triggerToast(lang === 'ar' ? 'حدث خطأ في قبول المهمة' : 'Error accepting task', 'error');
+                                          } catch (err: any) {
+                                            if (err?.message === "TASK_ALREADY_TAKEN") {
+                                              triggerToast(
+                                                lang === 'ar' 
+                                                  ? '⚠️ نعتذر، قام فني آخر بقبول وتلبية هذه المهمة قبلك بسباق السرعة!' 
+                                                  : '⚠️ Sorry, another technician accepted this task first!',
+                                                'warning'
+                                              );
+                                              handleManualRefreshRequests();
+                                            } else {
+                                              console.error("Error accepting task:", err);
+                                              triggerToast(lang === 'ar' ? 'حدث خطأ في قبول المهمة' : 'Error accepting task', 'error');
+                                            }
                                           }
                                         }}
                                         className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-[10px] rounded-lg transition-all cursor-pointer shadow-md flex items-center gap-1 active:scale-95"
@@ -6480,19 +6536,32 @@ export default function App() {
                                             const acceptPrice = Number(req.approximatePrice || 150);
 
                                             try {
-                                              const reqDocSnap = await getDoc(doc(db, "requests", req.id));
-                                              if (reqDocSnap.exists()) {
-                                                const currentReqData = reqDocSnap.data();
-                                                if (currentReqData.selectedTechnicianId && currentReqData.selectedTechnicianId !== techEmail && currentReqData.status !== 'pending_bids' && currentReqData.status !== 'pending') {
-                                                  triggerToast(
-                                                    lang === 'ar' 
-                                                      ? '⚠️ نعتذر، قام فني آخر بقبول وتلبية هذه المهمة قبلك بسباق السرعة!' 
-                                                      : '⚠️ Sorry, another technician accepted this task first!',
-                                                    'warning'
-                                                  );
-                                                  return;
+                                              await runTransaction(db, async (transaction) => {
+                                                const reqRef = doc(db, "requests", req.id);
+                                                const reqDocSnap = await transaction.get(reqRef);
+
+                                                if (!reqDocSnap.exists()) {
+                                                  throw new Error("TASK_NOT_FOUND");
                                                 }
-                                              }
+
+                                                const currentReqData = reqDocSnap.data();
+                                                const existingTech = currentReqData.selectedTechnicianId;
+                                                const currentStatus = currentReqData.status;
+
+                                                if (existingTech && String(existingTech).trim() !== '' && existingTech !== techEmail) {
+                                                  throw new Error("TASK_ALREADY_TAKEN");
+                                                }
+
+                                                if (currentStatus !== 'pending_bids' && currentStatus !== 'pending' && currentStatus !== 'idle') {
+                                                  throw new Error("TASK_ALREADY_TAKEN");
+                                                }
+
+                                                transaction.update(reqRef, {
+                                                  status: 'en_route',
+                                                  selectedTechnicianId: techEmail,
+                                                  escrowAmount: acceptPrice
+                                                });
+                                              });
 
                                               const bidId = 'bid-' + Math.random().toString(36).substring(2, 9);
                                               const newBidObj = {
@@ -6510,13 +6579,6 @@ export default function App() {
                                                 plateNumber: '7-4321-99'
                                               };
                                               await setDoc(doc(db, "bids", bidId), newBidObj);
-
-                                              // Update Firestore request: status becomes 'en_route', locking it to this responder!
-                                              await updateDoc(doc(db, "requests", req.id), {
-                                                status: 'en_route',
-                                                selectedTechnicianId: techEmail,
-                                                escrowAmount: acceptPrice
-                                              });
 
                                               // Send automated system chat message
                                               const chatMsgId = `sys-accept-${Date.now()}`;
@@ -6536,15 +6598,42 @@ export default function App() {
                                               setSelectedBid(newBidObj);
                                               setSelectedBidRequest(null);
 
+                                              try {
+                                                await fetch('/api/requests/update', {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({
+                                                    id: req.id,
+                                                    updates: {
+                                                      status: 'en_route',
+                                                      selectedTechnicianId: techEmail,
+                                                      escrowAmount: acceptPrice
+                                                    }
+                                                  })
+                                                });
+                                              } catch (apiErr) {
+                                                console.warn("API update notice:", apiErr);
+                                              }
+
                                               triggerToast(
                                                 lang === 'ar' 
                                                   ? `✅ تم قبول وتلبية المهمة بنجاح! تم تحديث الحالة لـ (جاري التحرك 🚚) وفتح الخريطة والمحادثة!` 
                                                   : `✅ Task accepted! En route to client location with live map & chat!`,
                                                 'success'
                                               );
-                                            } catch (err) {
-                                              console.error("Error accepting task:", err);
-                                              triggerToast(lang === 'ar' ? 'حدث خطأ في قبول المهمة' : 'Error accepting task', 'error');
+                                            } catch (err: any) {
+                                              if (err?.message === "TASK_ALREADY_TAKEN") {
+                                                triggerToast(
+                                                  lang === 'ar' 
+                                                    ? '⚠️ نعتذر، قام فني آخر بقبول وتلبية هذه المهمة قبلك بسباق السرعة!' 
+                                                    : '⚠️ Sorry, another technician accepted this task first!',
+                                                  'warning'
+                                                );
+                                                handleManualRefreshRequests();
+                                              } else {
+                                                console.error("Error accepting task:", err);
+                                                triggerToast(lang === 'ar' ? 'حدث خطأ في قبول المهمة' : 'Error accepting task', 'error');
+                                              }
                                             }
                                           }}
                                           className="px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5 active:scale-95"
