@@ -25,7 +25,11 @@ export type RequestStatus =
   | 'completed'
   | 'disputed'
   | 'released'
-  | 'refunded';
+  | 'refunded'
+  | 'bid_accepted'
+  | 'accepted'
+  | 'cancelled'
+  | 'finished';
 
 export interface RescueRequest {
   id: string;

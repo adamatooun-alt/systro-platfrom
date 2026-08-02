@@ -736,7 +736,22 @@ export default function App() {
   // Helper to determine if a request is open / pending for technician response
   const isPendingRequest = useCallback((req: RescueRequest) => {
     if (!req) return false;
-    if (req.status === 'completed' || req.status === 'disputed' || req.status === 'en_route' || req.status === 'arrived' || req.status === 'in_progress') {
+    if (
+      req.status === 'completed' || 
+      req.status === 'disputed' || 
+      req.status === 'en_route' || 
+      req.status === 'arrived' || 
+      req.status === 'in_progress' ||
+      req.status === 'bid_accepted' ||
+      req.status === 'accepted' ||
+      req.status === 'awaiting_deposit' ||
+      req.status === 'cancelled' ||
+      req.status === 'finished'
+    ) {
+      return false;
+    }
+    // If a technician has already been selected or assigned, hide from other technicians
+    if (req.selectedTechnicianId && String(req.selectedTechnicianId).trim() !== '') {
       return false;
     }
     return true;
@@ -760,21 +775,8 @@ export default function App() {
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
       
-      let finalCount = list.filter(isPendingRequest).length;
-      setAllRequests(prev => {
-        if (list.length === 0) return prev;
-        const dict: Record<string, RescueRequest> = {};
-        list.forEach(item => { dict[item.id] = item; });
-        prev.forEach(item => { if (!dict[item.id]) dict[item.id] = item; });
-        const merged: RescueRequest[] = Object.values(dict);
-        merged.sort((a, b) => {
-          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-          return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
-        });
-        finalCount = merged.filter(isPendingRequest).length;
-        return merged;
-      });
+      setAllRequests(list);
+      const finalCount = list.filter(isPendingRequest).length;
 
       triggerToast(
         lang === 'ar' 
@@ -1294,20 +1296,7 @@ export default function App() {
           return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
         });
         
-        if (list.length > 0) {
-          setAllRequests(prev => {
-            const dict: Record<string, RescueRequest> = {};
-            list.forEach(item => { dict[item.id] = item; });
-            prev.forEach(item => { if (!dict[item.id]) dict[item.id] = item; });
-            const merged: RescueRequest[] = Object.values(dict);
-            merged.sort((a, b) => {
-              const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-              const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-              return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
-            });
-            return merged;
-          });
-        }
+        setAllRequests(list);
       } catch (err) {
         console.warn("Requests background sync notice:", err);
       }
@@ -1324,18 +1313,7 @@ export default function App() {
         const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
-      setAllRequests(prev => {
-        const dict: Record<string, RescueRequest> = {};
-        list.forEach(item => { dict[item.id] = item; });
-        prev.forEach(item => { if (!dict[item.id]) dict[item.id] = item; });
-        const merged: RescueRequest[] = Object.values(dict);
-        merged.sort((a, b) => {
-          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-          return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
-        });
-        return merged;
-      });
+      setAllRequests(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "requests");
       fetchRequestsDirectly();
@@ -5986,6 +5964,20 @@ export default function App() {
                                           const acceptPrice = Number(req.approximatePrice || 150);
 
                                           try {
+                                            const reqDocSnap = await getDoc(doc(db, "requests", req.id));
+                                            if (reqDocSnap.exists()) {
+                                              const currentReqData = reqDocSnap.data();
+                                              if (currentReqData.selectedTechnicianId && currentReqData.selectedTechnicianId !== techEmail && currentReqData.status !== 'pending_bids' && currentReqData.status !== 'pending') {
+                                                triggerToast(
+                                                  lang === 'ar' 
+                                                    ? '⚠️ نعتذر، قام فني آخر بقبول وتلبية هذه المهمة قبلك بسباق السرعة!' 
+                                                    : '⚠️ Sorry, another technician accepted this task first!',
+                                                  'warning'
+                                                );
+                                                return;
+                                              }
+                                            }
+
                                             const bidId = 'bid-' + Math.random().toString(36).substring(2, 9);
                                             const newBidObj = {
                                               id: bidId,
@@ -6488,6 +6480,20 @@ export default function App() {
                                             const acceptPrice = Number(req.approximatePrice || 150);
 
                                             try {
+                                              const reqDocSnap = await getDoc(doc(db, "requests", req.id));
+                                              if (reqDocSnap.exists()) {
+                                                const currentReqData = reqDocSnap.data();
+                                                if (currentReqData.selectedTechnicianId && currentReqData.selectedTechnicianId !== techEmail && currentReqData.status !== 'pending_bids' && currentReqData.status !== 'pending') {
+                                                  triggerToast(
+                                                    lang === 'ar' 
+                                                      ? '⚠️ نعتذر، قام فني آخر بقبول وتلبية هذه المهمة قبلك بسباق السرعة!' 
+                                                      : '⚠️ Sorry, another technician accepted this task first!',
+                                                    'warning'
+                                                  );
+                                                  return;
+                                                }
+                                              }
+
                                               const bidId = 'bid-' + Math.random().toString(36).substring(2, 9);
                                               const newBidObj = {
                                                 id: bidId,
