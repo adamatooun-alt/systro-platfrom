@@ -84,7 +84,10 @@ import {
   PlusCircle,
   Maximize2,
   Minimize2,
-  Smartphone
+  Smartphone,
+  Wallet,
+  Calendar,
+  Building2
 } from 'lucide-react';
 import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification } from './types';
 import TrustPortal from './components/TrustPortal';
@@ -756,12 +759,27 @@ export default function App() {
         const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
-      setAllRequests(list);
-      const pendingCount = list.filter(isPendingRequest).length;
+      
+      let finalCount = list.filter(isPendingRequest).length;
+      setAllRequests(prev => {
+        if (list.length === 0) return prev;
+        const dict: Record<string, RescueRequest> = {};
+        list.forEach(item => { dict[item.id] = item; });
+        prev.forEach(item => { if (!dict[item.id]) dict[item.id] = item; });
+        const merged: RescueRequest[] = Object.values(dict);
+        merged.sort((a, b) => {
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+        });
+        finalCount = merged.filter(isPendingRequest).length;
+        return merged;
+      });
+
       triggerToast(
         lang === 'ar' 
-          ? `تم التحديث المباشر من السيرفر! وجد (${pendingCount}) بلاغ نشط 🔄` 
-          : `Live server refresh done! Found (${pendingCount}) active alerts 🔄`, 
+          ? `تم التحديث المباشر من السيرفر! وجد (${finalCount}) بلاغ نشط 🔄` 
+          : `Live server refresh done! Found (${finalCount}) active alerts 🔄`, 
         'success'
       );
     } catch (err) {
@@ -808,6 +826,9 @@ export default function App() {
 
   // Escrows List (Admin simulation)
   const [escrows, setEscrows] = useState<{ id: string; clientName: string; techName: string; amount: number; serviceType: string; status: 'escrowed' | 'released' | 'refunded' | 'disputed' }[]>([]);
+
+  // Payout requests list for technician financial accounting
+  const [payoutRequests, setPayoutRequests] = useState<{ id: string; technicianEmail: string; technicianName?: string; grossAmount: number; commissionRate: number; netAmount: number; payoutPreference?: string; serviceName?: string; status: 'pending' | 'completed'; requestedAt: string }[]>([]);
 
   // Reported website issues / bug reports state
   const [websiteIssues, setWebsiteIssues] = useState<{ id: string; name?: string; phone?: string; issue: string; createdAt?: any }[]>([]);
@@ -1273,11 +1294,19 @@ export default function App() {
           return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
         });
         
-        // Prevent wiping active requests if a background getDocs call returns empty due to transient offline cache
         if (list.length > 0) {
-          setAllRequests(list);
-        } else if (snap.metadata && !snap.metadata.fromCache) {
-          setAllRequests([]);
+          setAllRequests(prev => {
+            const dict: Record<string, RescueRequest> = {};
+            list.forEach(item => { dict[item.id] = item; });
+            prev.forEach(item => { if (!dict[item.id]) dict[item.id] = item; });
+            const merged: RescueRequest[] = Object.values(dict);
+            merged.sort((a, b) => {
+              const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+              const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+              return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+            });
+            return merged;
+          });
         }
       } catch (err) {
         console.warn("Requests background sync notice:", err);
@@ -1295,7 +1324,18 @@ export default function App() {
         const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
-      setAllRequests(list);
+      setAllRequests(prev => {
+        const dict: Record<string, RescueRequest> = {};
+        list.forEach(item => { dict[item.id] = item; });
+        prev.forEach(item => { if (!dict[item.id]) dict[item.id] = item; });
+        const merged: RescueRequest[] = Object.values(dict);
+        merged.sort((a, b) => {
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+        });
+        return merged;
+      });
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "requests");
       fetchRequestsDirectly();
@@ -1326,16 +1366,42 @@ export default function App() {
     };
   }, []);
 
+  // Cross-tab broadcast sync for instant multi-window/iframe testing
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
+    const channel = new BroadcastChannel('systro_requests_channel');
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'NEW_REQUEST' && event.data?.request) {
+        const req = event.data.request as RescueRequest;
+        setAllRequests(prev => {
+          if (prev.some(r => r.id === req.id)) return prev;
+          return [req, ...prev];
+        });
+      } else if (event.data?.type === 'UPDATE_REQUEST' && event.data?.request) {
+        const req = event.data.request as RescueRequest;
+        setAllRequests(prev => prev.map(r => r.id === req.id ? req : r));
+      }
+    };
+    channel.addEventListener('message', handleMessage);
+    return () => {
+      channel.removeEventListener('message', handleMessage);
+      channel.close();
+    };
+  }, []);
+
   // Automatically restore active request for logged in or guest client ONLY for their own session/email
   useEffect(() => {
     if ((userRole === 'client' || userRole === null) && allRequests.length > 0) {
       if (activeRequestId) {
         const existing = allRequests.find(r => r.id === activeRequestId);
-        const belongsToMe = (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '')
-          ? (existing?.requestedBy === loggedInUserEmail)
-          : (existing?.sessionId === currentSessionId && (!existing?.requestedBy || existing?.requestedBy === ''));
+        // If request is still in flight / not yet returned in snapshot, do NOT wipe activeRequestId!
+        if (!existing) return;
 
-        if (!existing || existing.status === 'completed' || !belongsToMe) {
+        const belongsToMe = (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '')
+          ? (existing.requestedBy === loggedInUserEmail)
+          : (existing.sessionId === currentSessionId && (!existing.requestedBy || existing.requestedBy === ''));
+
+        if (existing.status === 'completed' || !belongsToMe) {
           setActiveRequestId(null);
           setSelectedBid(null);
           setIncomingBids([]);
@@ -1366,9 +1432,14 @@ export default function App() {
     if (isLoggedIn && loggedInUserEmail && userRole === 'technician' && allRequests.length > 0) {
       if (activeRequestId) {
         const existing = allRequests.find(r => r.id === activeRequestId);
-        const belongsToTech = existing?.selectedTechnicianId === loggedInUserEmail;
+        // If request is not yet in list or in-flight, do NOT wipe activeRequestId!
+        if (!existing) return;
 
-        if (!existing || existing.status === 'completed' || !belongsToTech) {
+        // Pending requests waiting for bids can be viewed or bid on by ANY technician
+        const isPending = isPendingRequest(existing);
+        const belongsToTech = existing.selectedTechnicianId === loggedInUserEmail;
+
+        if (existing.status === 'completed' || (!isPending && !belongsToTech)) {
           setActiveRequestId(null);
           setSelectedBid(null);
           setIncomingBids([]);
@@ -1397,7 +1468,7 @@ export default function App() {
           });
       }
     }
-  }, [isLoggedIn, loggedInUserEmail, userRole, activeRequestId, allRequests]);
+  }, [isLoggedIn, loggedInUserEmail, userRole, activeRequestId, allRequests, isPendingRequest]);
 
   // Reset notified set when loggedInUserEmail or userRole changes so that a logged-in technician gets notified
   useEffect(() => {
@@ -1728,6 +1799,20 @@ export default function App() {
       setEscrows(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "escrows");
+    });
+    return () => unsub();
+  }, []);
+
+  // Listen for technician payout requests
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "payout_requests"), (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setPayoutRequests(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, "payout_requests");
     });
     return () => unsub();
   }, []);
@@ -2216,8 +2301,7 @@ export default function App() {
 
     try {
       const reqId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      // Initialize/Update the request document in the live collection
-      await setDoc(doc(db, "requests", reqId), {
+      const newReqObj: RescueRequest = {
         id: reqId,
         clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : (loggedInUserName || 'Adam Atooun'),
         clientPhone: phoneNumber || "+972 59-123-4567",
@@ -2234,7 +2318,26 @@ export default function App() {
         approximatePrice: Number(approximatePrice),
         selectedTechnicianId: null,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // 1. Optimistically update allRequests state immediately on client
+      setAllRequests(prev => [newReqObj, ...prev.filter(r => r.id !== reqId)]);
+      setActiveRequestId(reqId);
+      sessionStorage.setItem('systro_active_request_id', reqId);
+
+      // 2. Broadcast across tabs for multi-window testing
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const channel = new BroadcastChannel('systro_requests_channel');
+          channel.postMessage({ type: 'NEW_REQUEST', request: newReqObj });
+          channel.close();
+        } catch (bErr) {
+          console.warn("Broadcast channel notice:", bErr);
+        }
+      }
+
+      // 3. Initialize/Update the request document in the live collection
+      await setDoc(doc(db, "requests", reqId), newReqObj);
 
       // Update global stats safely
       try {
@@ -2245,7 +2348,6 @@ export default function App() {
         console.warn("Global stats notice:", statsErr);
       }
 
-      setActiveRequestId(reqId);
       triggerToast(lang === 'ar' ? 'تم تسجيل وتعميم طلبك بنجاح على الفنيين بالقائمة!' : 'Request published successfully to all technicians!', 'success');
 
       // Fetch matching technicians and dispatch real notification alerts (SMTP / WhatsApp)
@@ -2768,6 +2870,69 @@ export default function App() {
         setIsPaymentProcessing(false);
       }
     }, 1500);
+  };
+
+  // Handler to update technician payout settlement preference ('per_mission' vs 'monthly')
+  const handleSaveTechPayoutPreference = async (preference: 'per_mission' | 'monthly') => {
+    if (!isLoggedIn || !loggedInUserEmail || userRole !== 'technician') return;
+    try {
+      await setDoc(doc(db, "technicians", loggedInUserEmail), {
+        payoutPreference: preference,
+        updatedAt: Date.now()
+      }, { merge: true });
+
+      triggerToast(
+        lang === 'ar'
+          ? (preference === 'per_mission'
+              ? '✅ تم تفعيل خيار المحاسبة والصرف الفوري عن كل مهمة (بناءً على طلبك)!'
+              : '✅ تم تفعيل خيار التحويل والمحاسبة الشهرية الدورية بنهاية الشهر!')
+          : (preference === 'per_mission'
+              ? '✅ Payout per mission preference active!'
+              : '✅ Scheduled monthly payout option active!'),
+        'success'
+      );
+    } catch (err) {
+      console.error("Error updating payout preference:", err);
+      triggerToast(lang === 'ar' ? 'حدث خطأ في تحديث خيار المحاسبة' : 'Error updating preference', 'error');
+    }
+  };
+
+  // Handler to submit a payout request to Admin for instant money transfer
+  const handleRequestPayout = async (grossAmount: number, serviceName?: string) => {
+    if (!isLoggedIn || !loggedInUserEmail || userRole !== 'technician') return;
+    if (grossAmount <= 0) {
+      triggerToast(lang === 'ar' ? 'لا يوجد رصيد قابل للصرف حالياً' : 'No payable balance available', 'warning');
+      return;
+    }
+    try {
+      const pId = `payout-${Date.now()}-${Math.random().toString(36).substring(2,6)}`;
+      const commRate = activeTechDoc?.commissionRate ?? 10;
+      const netAmount = Math.round(grossAmount * (1 - commRate / 100));
+
+      await setDoc(doc(db, "payout_requests", pId), {
+        id: pId,
+        technicianEmail: loggedInUserEmail,
+        technicianName: activeTechDoc?.name || loggedInUserName || 'فني معتمد',
+        technicianPhone: activeTechDoc?.phone || phoneNumber || '+972 59-123-4567',
+        grossAmount,
+        commissionRate: commRate,
+        netAmount,
+        serviceName: serviceName || (lang === 'ar' ? 'تصفية أرباح المهام المكتملة' : 'Tasks Payout Settlement'),
+        payoutPreference: activeTechDoc?.payoutPreference || 'per_mission',
+        status: 'pending',
+        requestedAt: new Date().toISOString()
+      });
+
+      triggerToast(
+        lang === 'ar'
+          ? `✅ تم تسجيل طلب تحويل المستحقات الصافية (${netAmount} ₪) لدى إدارة سيسترو بنجاح!`
+          : `✅ Payout request of (${netAmount} ILS) submitted to admin!`,
+        'success'
+      );
+    } catch (err) {
+      console.error("Error submitting payout request:", err);
+      triggerToast(lang === 'ar' ? 'حدث خطأ في تقديم طلب التحويل' : 'Error submitting payout request', 'error');
+    }
   };
 
   // Handler for technician to save/update payment billing plan (Per-task commission vs Monthly Subscription)
@@ -5290,104 +5455,227 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Provider Billing & Payment Plan Options (خطة مدفوعات الخدمة والعمولات) */}
-                        <div className="space-y-3 pt-3 border-t border-gray-900">
-                          <div className="flex items-center justify-between">
-                            <h5 className="text-[11px] font-black text-amber-400 flex items-center gap-1.5">
-                              <Coins className="w-3.5 h-3.5 text-amber-500" />
-                              <span>{lang === 'ar' ? '💳 نظام ونموذج المدفوعات لمقدم الخدمة:' : '💳 Provider Billing & Payment Model:'}</span>
-                            </h5>
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold">
-                              {activeTechDoc?.paymentPlan === 'monthly_subscription'
-                                ? (lang === 'ar' ? '🟢 اشتراك شهري (عمولة 0%)' : '🟢 Monthly Sub (0% Comm.)')
-                                : (lang === 'ar' ? `🎯 دفع بالمهمة (${activeTechDoc?.commissionRate || 10}%)` : `🎯 Per-Task (${activeTechDoc?.commissionRate || 10}%)`)}
-                            </span>
-                          </div>
+                        {/* TECHNICIAN FINANCIAL ACCOUNTING & SETTLEMENT HUB (قسم المحاسبة وتحويل المستحقات للفني) */}
+                        {(() => {
+                          const completedTasks = allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && r.status === 'completed');
+                          const completedGrossEarnings = completedTasks.reduce((sum, r) => {
+                            const matchingBid = incomingBids.find(b => b.requestId === r.id && b.technicianId === loggedInUserEmail);
+                            return sum + (matchingBid?.price || r.approximatePrice || 150);
+                          }, 0);
+                          const techCommRate = activeTechDoc?.commissionRate ?? 10;
+                          const netPayableBalance = Math.round(completedGrossEarnings * (1 - techCommRate / 100));
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-right">
-                            {/* Option 1: Pay Per Task / Commission */}
-                            <div className={`p-3.5 rounded-2xl border transition-all ${
-                              activeTechDoc?.paymentPlan !== 'monthly_subscription'
-                                ? 'bg-amber-500/10 border-amber-500/50 text-white'
-                                : 'bg-[#05060A] border-gray-900 text-gray-400'
-                            }`}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-xs font-black text-amber-400">
-                                  {lang === 'ar' ? 'الخيار 1: دفع نسبة / عمولة عن كل مهمة' : 'Option 1: Pay Commission Per Task'}
-                                </span>
-                                <span className="text-[10px] bg-amber-500/20 text-amber-300 font-mono font-bold px-1.5 py-0.5 rounded">
-                                  5% - 10%
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-gray-400 font-semibold mb-3 leading-relaxed">
-                                {lang === 'ar'
-                                  ? 'يدفع مقدم الخدمة نسبة بسيطة (5% أو 10%) عن كل مهمة إنقاذ ناجحة دون أي رسوم أو التزام شهري ثابت.'
-                                  : 'Pay a small percentage (5% or 10%) per successful rescue without fixed monthly commitment.'}
-                              </p>
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveTechPaymentPlan('per_task', 5)}
-                                  className={`flex-1 py-1.5 text-[10px] font-black rounded-xl border transition-all cursor-pointer ${
-                                    activeTechDoc?.paymentPlan !== 'monthly_subscription' && (activeTechDoc?.commissionRate === 5)
-                                      ? 'bg-amber-500 text-black border-amber-400'
-                                      : 'bg-[#0F1017] border-gray-800 text-gray-300 hover:border-amber-500/50'
-                                  }`}
-                                >
-                                  {lang === 'ar' ? 'تفعيل عمولة 5%' : 'Enable 5% Comm.'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveTechPaymentPlan('per_task', 10)}
-                                  className={`flex-1 py-1.5 text-[10px] font-black rounded-xl border transition-all cursor-pointer ${
-                                    activeTechDoc?.paymentPlan !== 'monthly_subscription' && (activeTechDoc?.commissionRate !== 5)
-                                      ? 'bg-amber-500 text-black border-amber-400'
-                                      : 'bg-[#0F1017] border-gray-800 text-gray-300 hover:border-amber-500/50'
-                                  }`}
-                                >
-                                  {lang === 'ar' ? 'تفعيل عمولة 10%' : 'Enable 10% Comm.'}
-                                </button>
-                              </div>
-                            </div>
+                          return (
+                            <div className="space-y-4 pt-4 border-t border-gray-900 text-right">
+                              
+                              {/* Section Header & Escrow Guarantee Notice */}
+                              <div className="p-4 rounded-2xl bg-[#090C15] border border-amber-500/30 space-y-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-850 pb-2.5">
+                                  <h5 className="text-xs font-black text-amber-400 flex items-center gap-2">
+                                    <Coins className="w-4 h-4 text-amber-500" />
+                                    <span>{lang === 'ar' ? '💳 قسم المحاسبة المالية وتحويل مستحقات الفني:' : '💳 Financial Accounting & Provider Payout Hub:'}</span>
+                                  </h5>
+                                  <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold self-start sm:self-auto flex items-center gap-1">
+                                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                                    <span>{lang === 'ar' ? 'تحويل المبالغ للمنصة بالكامل' : '100% Platform Escrow Held'}</span>
+                                  </span>
+                                </div>
 
-                            {/* Option 2: Monthly Subscription */}
-                            <div className={`p-3.5 rounded-2xl border transition-all ${
-                              activeTechDoc?.paymentPlan === 'monthly_subscription'
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
-                                : 'bg-[#05060A] border-gray-900 text-gray-400'
-                            }`}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-xs font-black text-emerald-400">
-                                  {lang === 'ar' ? 'الخيار 2: الاشتراك الشهري (199 ₪ / شهرياً)' : 'Option 2: Monthly Subscription (199 ₪/mo)'}
-                                </span>
-                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-mono font-bold px-1.5 py-0.5 rounded">
-                                  0% عمولة
-                                </span>
+                                <p className="text-[11px] text-gray-300 font-semibold leading-relaxed">
+                                  {lang === 'ar' 
+                                    ? 'تصل مدفوعات العملاء كاملة إلى محفظة وحساب منصة سيسترو المالية. وتقوم إدارة سيسترو بتحويل مستحقاتك الصافية وفق خيارك المفضل بعد خصم نسبة العمولة الخاضعة للاتفاق معنا.'
+                                    : 'All client payments are deposited fully to Systro Platform Escrow. Net earnings are transferred by Systro Admin according to your settlement preference after deducting the agreed platform commission.'}
+                                </p>
+
+                                {/* Financial Calculation Bar */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
+                                  <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl text-center">
+                                    <span className="text-[9px] text-gray-400 font-bold block mb-0.5">{lang === 'ar' ? 'إجمالي المبالغ بالمنصة' : 'Gross Platform Held'}</span>
+                                    <span className="text-xs font-black text-amber-400 font-mono">
+                                      {completedGrossEarnings} ₪
+                                    </span>
+                                  </div>
+
+                                  <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl text-center">
+                                    <span className="text-[9px] text-gray-400 font-bold block mb-0.5">{lang === 'ar' ? 'نسبة العمولة المتفق عليها' : 'Agreed Commission'}</span>
+                                    <span className="text-xs font-black text-blue-400 font-mono">
+                                      {techCommRate}%
+                                    </span>
+                                  </div>
+
+                                  <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl text-center">
+                                    <span className="text-[9px] text-gray-400 font-bold block mb-0.5">{lang === 'ar' ? 'خصم عمولة المنصة' : 'Platform Fee'}</span>
+                                    <span className="text-xs font-black text-red-400 font-mono">
+                                      -{Math.round(completedGrossEarnings * (techCommRate / 100))} ₪
+                                    </span>
+                                  </div>
+
+                                  <div className="p-2.5 bg-emerald-950/30 border border-emerald-500/40 rounded-xl text-center">
+                                    <span className="text-[9px] text-emerald-400/80 font-bold block mb-0.5">{lang === 'ar' ? 'الصافي المستحق للصرف' : 'Net Payable Balance'}</span>
+                                    <span className="text-xs font-black text-emerald-400 font-mono">
+                                      {netPayableBalance} ₪
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-[10px] text-gray-400 font-semibold mb-3 leading-relaxed">
-                                {lang === 'ar'
-                                  ? 'اشتراك شهري كامل يمنحك استقبال كافة المهمات والتنبيهات بلا حدود وبنسبة عمولة 0% على أرباحك.'
-                                  : 'Full monthly sub granting unlimited rescues and 0% commission deducted from your earnings.'}
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveTechPaymentPlan('monthly_subscription', 0)}
-                                className={`w-full py-2 text-[10px] font-black rounded-xl border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                  activeTechDoc?.paymentPlan === 'monthly_subscription'
-                                    ? 'bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-950/40'
-                                    : 'bg-[#0F1017] border-gray-800 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40'
-                                }`}
-                              >
-                                <Zap className="w-3.5 h-3.5" />
-                                <span>
-                                  {activeTechDoc?.paymentPlan === 'monthly_subscription'
-                                    ? (lang === 'ar' ? 'الاشتراك الشهري نشط حالياً 🟢' : 'Monthly Sub Active 🟢')
-                                    : (lang === 'ar' ? 'تفعيل الاشتراك الشهري الآن (199 ₪) 💳' : 'Activate Monthly Sub (199 ₪) 💳')}
-                                </span>
-                              </button>
+
+                              {/* Two Settlement Payout Options Grid */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                
+                                {/* OPTION 1: PER MISSION SETTLEMENT (محاسبة وصرف عن كل مهمة) */}
+                                <div className={`p-4 rounded-2xl border transition-all ${
+                                  (activeTechDoc?.payoutPreference || 'per_mission') === 'per_mission'
+                                    ? 'bg-amber-500/10 border-amber-500/60 text-white shadow-lg shadow-amber-950/20'
+                                    : 'bg-[#05060A] border-gray-900 text-gray-400'
+                                }`}>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
+                                      <Zap className="w-3.5 h-3.5 text-amber-400" />
+                                      <span>{lang === 'ar' ? 'الخيار 1: المحاسبة والصرف عن كل مهمة' : 'Option 1: Payout Per Mission'}</span>
+                                    </span>
+                                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold font-mono">
+                                      {lang === 'ar' ? 'بناءً على طلبك' : 'On Demand'}
+                                    </span>
+                                  </div>
+
+                                  <p className="text-[10px] text-gray-300 font-semibold mb-3 leading-relaxed">
+                                    {lang === 'ar'
+                                      ? 'تطالب الإدارة بتحويل مستحقاتك الصافية فور إتمام كل مهمة إنقاذ مباشرة دون انتظار، ويتم الصرف الفوري لحسابك البنكي أو محفظتك.'
+                                      : 'Request immediate payout settlement for each task individually right after completion upon your demand.'}
+                                  </p>
+
+                                  <div className="space-y-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveTechPayoutPreference('per_mission')}
+                                      className={`w-full py-2 text-[10px] font-black rounded-xl border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                        (activeTechDoc?.payoutPreference || 'per_mission') === 'per_mission'
+                                          ? 'bg-amber-500 text-black border-amber-400 shadow-md font-black'
+                                          : 'bg-[#0F1017] border-gray-800 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/40'
+                                      }`}
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>
+                                        {(activeTechDoc?.payoutPreference || 'per_mission') === 'per_mission'
+                                          ? (lang === 'ar' ? 'خيار المحاسبة لكل مهمة مفعّل حالياً 🟢' : 'Per Mission Active 🟢')
+                                          : (lang === 'ar' ? 'اعتماد خيار المحاسبة والصرف لكل مهمة 🎯' : 'Select Per Mission Payout 🎯')}
+                                      </span>
+                                    </button>
+
+                                    {netPayableBalance > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRequestPayout(completedGrossEarnings)}
+                                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[10px] border border-emerald-400 shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                      >
+                                        <Send className="w-3.5 h-3.5" />
+                                        <span>{lang === 'ar' ? `طلب تحويل مستحقات مهمة/أرباح حالية (${netPayableBalance} ₪) 💸` : `Request Instant Payout (${netPayableBalance} ILS) 💸`}</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* OPTION 2: MONTHLY SCHEDULED SETTLEMENT (محاسبة وتحويل شهري شامل) */}
+                                <div className={`p-4 rounded-2xl border transition-all ${
+                                  activeTechDoc?.payoutPreference === 'monthly'
+                                    ? 'bg-emerald-500/10 border-emerald-500/60 text-white shadow-lg shadow-emerald-950/20'
+                                    : 'bg-[#05060A] border-gray-900 text-gray-400'
+                                }`}>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
+                                      <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span>{lang === 'ar' ? 'الخيار 2: المحاسبة والتحويل الشهري' : 'Option 2: Scheduled Monthly Payout'}</span>
+                                    </span>
+                                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold font-mono">
+                                      {lang === 'ar' ? 'تصفية دورية نهاية الشهر' : 'End of Month'}
+                                    </span>
+                                  </div>
+
+                                  <p className="text-[10px] text-gray-300 font-semibold mb-3 leading-relaxed">
+                                    {lang === 'ar'
+                                      ? 'تُجمع كافة أرباحك ومستحقاتك طوال الشهر، وتقوم المنصة بتحويل الرصيد الصافي كاملاً تلقائياً بنهاية كل شهر ميلادي بعد خصم النسبة المتفق عليها.'
+                                      : 'All your earnings accumulate throughout the month, and the platform automatically settles and transfers the total net balance at the end of each month.'}
+                                  </p>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveTechPayoutPreference('monthly')}
+                                    className={`w-full py-2 text-[10px] font-black rounded-xl border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                      activeTechDoc?.payoutPreference === 'monthly'
+                                        ? 'bg-emerald-500 text-black border-emerald-400 shadow-md font-black'
+                                        : 'bg-[#0F1017] border-gray-800 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40'
+                                    }`}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>
+                                      {activeTechDoc?.payoutPreference === 'monthly'
+                                        ? (lang === 'ar' ? 'خيار التحويل الشهري مفعّل حالياً 🟢' : 'Monthly Payout Active 🟢')
+                                        : (lang === 'ar' ? 'اعتماد خيار التحويل والتحصيل الشهري 📅' : 'Select Monthly Scheduled Payout 📅')}
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* DIRECT COMMISSION NEGOTIATION & ADMIN WHATSAPP CONTACT BANNER */}
+                              <div className="p-3.5 bg-gradient-to-r from-amber-950/40 via-emerald-950/30 to-[#0A0B10] border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-right">
+                                <div className="space-y-0.5">
+                                  <span className="text-xs font-black text-amber-400 block">
+                                    {lang === 'ar' ? '🤝 نسبة العمولة وتحديد الاتفاق المالي:' : '🤝 Commission Negotiation & Agreement:'}
+                                  </span>
+                                  <p className="text-[10px] text-gray-300 font-medium">
+                                    {lang === 'ar' 
+                                      ? 'تتم تحديد وتوثيق نسبة عمولة المنصة بالاتفاق المباشر والتواصل معنا عبر إدارة سيسترو.' 
+                                      : 'Commission rate is determined and customized via direct communication & agreement with Systro Management.'}
+                                  </p>
+                                </div>
+
+                                <a
+                                  href={`https://wa.me/972591234567?text=${encodeURIComponent(
+                                    lang === 'ar'
+                                      ? `مرحباً إدارة سيسترو، بصفتي فني معتمد (الإيميل: ${loggedInUserEmail})، أود التواصل والاتفاق على نسبة عمولة المنصة وتأكيد نظام المحاسبة المالية (لكل مهمة / شهرياً).`
+                                      : `Hello Systro Admin, as verified tech (${loggedInUserEmail}), I would like to negotiate/confirm platform commission rate & payout option.`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-black font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+                                >
+                                  <MessageCircle className="w-4 h-4 fill-black text-emerald-400" />
+                                  <span>{lang === 'ar' ? 'الاتفاق على نسبة العمولة بالواتساب 💬' : 'Negotiate Commission on WhatsApp 💬'}</span>
+                                </a>
+                              </div>
+
+                              {/* Payout Requests History List if exists */}
+                              {payoutRequests.filter(p => p.technicianEmail === loggedInUserEmail).length > 0 && (
+                                <div className="space-y-2 pt-2 border-t border-gray-900">
+                                  <span className="text-[11px] font-black text-gray-300 block">
+                                    {lang === 'ar' ? '📋 سجل طلبات تحويل المستحقات السابقة:' : '📋 Payout Request History:'}
+                                  </span>
+                                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                                    {payoutRequests.filter(p => p.technicianEmail === loggedInUserEmail).map((pReq) => (
+                                      <div key={pReq.id} className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl flex items-center justify-between text-xs font-mono">
+                                        <div>
+                                          <span className="font-bold text-gray-200 block text-[11px] font-sans">
+                                            {pReq.serviceName || (lang === 'ar' ? 'طلب تحويل مستحقات' : 'Payout Request')}
+                                          </span>
+                                          <span className="text-[9px] text-gray-500 block">
+                                            {new Date(pReq.requestedAt || Date.now()).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}
+                                          </span>
+                                        </div>
+                                        <div className="text-left">
+                                          <span className="text-emerald-400 font-black block">{pReq.netAmount} ₪</span>
+                                          <span className={`text-[9px] font-bold ${pReq.status === 'completed' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                            {pReq.status === 'completed' ? (lang === 'ar' ? 'تم التحويل ✅' : 'Completed ✅') : (lang === 'ar' ? 'قيد المعالجة ⏳' : 'Pending ⏳')}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
                             </div>
-                          </div>
-                        </div>
+                          );
+                        })()}
                       </div>
 
 
