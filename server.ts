@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import nodemailer from 'nodemailer';
 
@@ -86,6 +87,17 @@ async function sendVerificationEmail(email: string, code: string): Promise<boole
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
+
+  // Permissive CORS middleware for cross-device & iframe support
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
 
   // Body parser middleware for JSON payloads
   app.use(express.json());
@@ -222,8 +234,100 @@ async function startServer() {
     res.json({ success: true, activeSessionId: sessionId });
   });
 
-  // Global in-memory store for rescue requests cross-device synchronization
+  // Global persistent store for rescue requests cross-device synchronization
+  const REQUESTS_FILE_PATH = path.join(process.cwd(), 'data', 'rescue_requests.json');
+  const BIDS_FILE_PATH = path.join(process.cwd(), 'data', 'rescue_bids.json');
+  const CHATS_FILE_PATH = path.join(process.cwd(), 'data', 'rescue_chats.json');
+
   const globalRescueRequestsMap = new Map<string, any>();
+  const globalBidsMap = new Map<string, any>();
+  const globalChatsMap = new Map<string, any>();
+
+  const saveRequestsToFile = () => {
+    try {
+      const dir = path.dirname(REQUESTS_FILE_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const list = Array.from(globalRescueRequestsMap.values());
+      fs.writeFileSync(REQUESTS_FILE_PATH, JSON.stringify(list, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Notice saving requests file:', err);
+    }
+  };
+
+  const loadRequestsFromFile = () => {
+    try {
+      if (fs.existsSync(REQUESTS_FILE_PATH)) {
+        const raw = fs.readFileSync(REQUESTS_FILE_PATH, 'utf-8');
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          list.forEach(r => {
+            if (r && r.id) globalRescueRequestsMap.set(r.id, r);
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Notice loading requests file:', err);
+    }
+  };
+
+  const saveBidsToFile = () => {
+    try {
+      const dir = path.dirname(BIDS_FILE_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const list = Array.from(globalBidsMap.values());
+      fs.writeFileSync(BIDS_FILE_PATH, JSON.stringify(list, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Notice saving bids file:', err);
+    }
+  };
+
+  const loadBidsFromFile = () => {
+    try {
+      if (fs.existsSync(BIDS_FILE_PATH)) {
+        const raw = fs.readFileSync(BIDS_FILE_PATH, 'utf-8');
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          list.forEach(b => {
+            if (b && b.id) globalBidsMap.set(b.id, b);
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Notice loading bids file:', err);
+    }
+  };
+
+  const saveChatsToFile = () => {
+    try {
+      const dir = path.dirname(CHATS_FILE_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const list = Array.from(globalChatsMap.values());
+      fs.writeFileSync(CHATS_FILE_PATH, JSON.stringify(list, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Notice saving chats file:', err);
+    }
+  };
+
+  const loadChatsFromFile = () => {
+    try {
+      if (fs.existsSync(CHATS_FILE_PATH)) {
+        const raw = fs.readFileSync(CHATS_FILE_PATH, 'utf-8');
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          list.forEach(c => {
+            if (c && c.id) globalChatsMap.set(c.id, c);
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Notice loading chats file:', err);
+    }
+  };
+
+  // Initial load from disk
+  loadRequestsFromFile();
+  loadBidsFromFile();
+  loadChatsFromFile();
 
   const initSeedRequests = () => {
     if (globalRescueRequestsMap.size === 0) {
@@ -246,6 +350,7 @@ async function startServer() {
         timestamp: new Date().toISOString()
       };
       globalRescueRequestsMap.set(seed1.id, seed1);
+      saveRequestsToFile();
     }
   };
   initSeedRequests();
@@ -276,6 +381,7 @@ async function startServer() {
     } else if (req.body && req.body.id) {
       globalRescueRequestsMap.set(req.body.id, req.body);
     }
+    saveRequestsToFile();
     const list = Array.from(globalRescueRequestsMap.values());
     res.json({ success: true, count: list.length, requests: list });
   });
@@ -291,10 +397,12 @@ async function startServer() {
     if (existing) {
       const updated = { ...existing, ...updates };
       globalRescueRequestsMap.set(id, updated);
+      saveRequestsToFile();
       res.json({ success: true, request: updated });
     } else if (updates) {
       const newObj = { id, ...updates };
       globalRescueRequestsMap.set(id, newObj);
+      saveRequestsToFile();
       res.json({ success: true, request: newObj });
     } else {
       res.status(404).json({ error: 'Request not found' });
@@ -306,6 +414,46 @@ async function startServer() {
     const { id } = req.params;
     if (id) {
       globalRescueRequestsMap.delete(id);
+      saveRequestsToFile();
+    }
+    res.json({ success: true });
+  });
+
+  // Bids endpoints for backup cross-device sync
+  app.get('/api/bids', (req, res) => {
+    const requestId = req.query.requestId as string;
+    let list = Array.from(globalBidsMap.values());
+    if (requestId) {
+      list = list.filter(b => b.requestId === requestId);
+    }
+    res.json({ success: true, count: list.length, bids: list });
+  });
+
+  app.post('/api/bids', (req, res) => {
+    const { bid } = req.body;
+    if (bid && bid.id) {
+      globalBidsMap.set(bid.id, bid);
+      saveBidsToFile();
+    }
+    res.json({ success: true });
+  });
+
+  // Chats endpoints for backup cross-device sync
+  app.get('/api/chats', (req, res) => {
+    const requestId = req.query.requestId as string;
+    let list = Array.from(globalChatsMap.values());
+    if (requestId) {
+      list = list.filter(c => c.requestId === requestId);
+    }
+    list.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
+    res.json({ success: true, count: list.length, chats: list });
+  });
+
+  app.post('/api/chats', (req, res) => {
+    const { chat } = req.body;
+    if (chat && chat.id) {
+      globalChatsMap.set(chat.id, chat);
+      saveChatsToFile();
     }
     res.json({ success: true });
   });

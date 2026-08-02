@@ -2294,15 +2294,16 @@ export default function App() {
 
   // Client: Submit Rescue Request to Firestore List
   const triggerBidsSimulation = async () => {
-    if (!pinnedLocation) {
-      triggerToast(lang === 'ar' ? 'الرجاء النقر على الخريطة أولاً لتحديد موقعك!' : 'Please click on the map to pin your location first!', 'warning');
-      return;
+    let locToUse = pinnedLocation;
+    if (!locToUse) {
+      locToUse = { lat: 31.9038, lng: 35.2034 };
+      setPinnedLocation(locToUse);
     }
 
     try {
       const reqId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const latVal = pinnedLocation?.lat ?? 40;
-      const lngVal = pinnedLocation?.lng ?? 40;
+      const latVal = locToUse.lat;
+      const lngVal = locToUse.lng;
 
       const newReqObj: RescueRequest = {
         id: reqId,
@@ -2345,6 +2346,9 @@ export default function App() {
       setAllRequests(prev => [newReqObj, ...prev.filter(r => r.id !== reqId)]);
       setActiveRequestId(reqId);
       sessionStorage.setItem('systro_active_request_id', reqId);
+
+      // Force instant background refresh to sync all components
+      fetchRequestsDirectly();
 
       // 3. Broadcast across tabs for multi-window testing
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
