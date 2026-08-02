@@ -758,6 +758,22 @@ export default function App() {
     return true;
   }, []);
 
+  // Helper to check if a request was created by the currently logged in user / current session as a client
+  const isMyOwnClientRequest = useCallback((req: RescueRequest) => {
+    if (!req) return false;
+    const isEmailMatch = Boolean(isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '' && req.requestedBy === loggedInUserEmail);
+    const isSessionMatch = Boolean(req.sessionId && req.sessionId === currentSessionId && (!req.requestedBy || req.requestedBy === ''));
+    return isEmailMatch || isSessionMatch;
+  }, [isLoggedIn, loggedInUserEmail, currentSessionId]);
+
+  // Helper to determine if a request is open AND should be visible to technicians (excludes own client requests)
+  const isPendingForTechnician = useCallback((req: RescueRequest) => {
+    if (!isPendingRequest(req)) return false;
+    // A task created by the user as a client must NOT show up in their own technician dashboard to bid on or accept!
+    if (isMyOwnClientRequest(req)) return false;
+    return true;
+  }, [isPendingRequest, isMyOwnClientRequest]);
+
   // Helper to fetch requests from both Firestore and Node Server backend for multi-device sync
   const fetchRequestsDirectly = useCallback(async () => {
     try {
@@ -816,7 +832,7 @@ export default function App() {
   const handleManualRefreshRequests = async () => {
     try {
       const list = await fetchRequestsDirectly();
-      const finalCount = list.filter(isPendingRequest).length;
+      const finalCount = list.filter(isPendingForTechnician).length;
 
       triggerToast(
         lang === 'ar' 
@@ -1481,7 +1497,7 @@ export default function App() {
     const isTech = userRole === 'technician' || (isLoggedIn && activeTechDoc);
     if (!isTech) return;
 
-    const pendingReqs = allRequests.filter(isPendingRequest);
+    const pendingReqs = allRequests.filter(isPendingForTechnician);
 
     pendingReqs.forEach(req => {
       // Create a technician-specific notification key
@@ -4501,18 +4517,24 @@ export default function App() {
               {t.home}
             </button>
             <button 
-              onClick={() => setActiveTab('services')}
+              onClick={() => {
+                setUserRole('client');
+                sessionStorage.setItem('systro_user_role', 'client');
+                setActiveTab('services');
+              }}
               className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'services' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
             >
-              {t.services}
+              {lang === 'ar' ? 'الخدمات (الزبون) 👤' : t.services}
             </button>
             <button 
               onClick={() => {
+                setUserRole('technician');
+                sessionStorage.setItem('systro_user_role', 'technician');
                 setActiveTab('simulator');
               }}
               className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
             >
-              {t.simulator}
+              {lang === 'ar' ? 'العمليات (الفني) 🛠️' : t.simulator}
             </button>
             <button 
               onClick={() => {
@@ -4698,8 +4720,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Real-time Global Emergency Rescue Bar (Visible when any client posts an alert) */}
-      {allRequests.filter(isPendingRequest).length > 0 && (
+      {/* Real-time Global Emergency Rescue Bar (Visible ONLY for Technicians when open alerts exist from other drivers) */}
+      {userRole === 'technician' && allRequests.filter(isPendingForTechnician).length > 0 && (
         <div className="bg-gradient-to-r from-red-600 via-amber-600 to-red-600 text-white px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 text-xs font-black animate-pulse select-none z-30 sticky top-20 border-b border-red-500/40">
           <div className="flex items-center gap-2 max-w-4xl truncate">
             <span className="bg-white text-red-600 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black shrink-0 animate-bounce shadow">
@@ -4707,8 +4729,8 @@ export default function App() {
             </span>
             <span className="truncate">
               {lang === 'ar' 
-                ? `يوجد (${allRequests.filter(isPendingRequest).length}) نداء استغاثة طارئ نشط حالياً بانتظار استجابة الفنيين!` 
-                : `There are (${allRequests.filter(isPendingRequest).length}) active emergency alerts waiting for technician response!`}
+                ? `يوجد (${allRequests.filter(isPendingForTechnician).length}) نداء استغاثة طارئ نشط حالياً بانتظار استجابة الفنيين!` 
+                : `There are (${allRequests.filter(isPendingForTechnician).length}) active emergency alerts waiting for technician response!`}
             </span>
           </div>
 
@@ -4768,6 +4790,35 @@ export default function App() {
           setShowAddRecordModal={setShowAddRecordModal}
           setShowCustomServiceModal={setShowCustomServiceModal}
           t={t}
+          pinnedLocation={pinnedLocation}
+          setPinnedLocation={setPinnedLocation}
+          detectCurrentLocation={detectCurrentLocation}
+          hasValidKey={hasValidKey}
+          isMapAuthFailed={isMapAuthFailed}
+          mapsKey={mapsKey}
+          triggerBidsSimulation={triggerBidsSimulation}
+          simStatus={simStatus}
+          setSimStatus={setSimStatus}
+          allRequests={allRequests}
+          activeRequestId={activeRequestId}
+          setActiveRequestId={setActiveRequestId}
+          incomingBids={incomingBids}
+          selectedBid={selectedBid}
+          setSelectedBid={setSelectedBid}
+          chatMessages={chatMessages}
+          chatInput={chatInput}
+          setChatInput={setChatInput}
+          selectedService={selectedService}
+          mapPctToLatLng={mapPctToLatLng}
+          latLngToMapPct={latLngToMapPct}
+          technicians={technicians}
+          activeTechDoc={activeTechDoc}
+          userAvatar={userAvatar}
+          providerAvatar={providerAvatar}
+          techCoordinates={techCoordinates}
+          currentSessionId={currentSessionId}
+          loggedInUserEmail={loggedInUserEmail}
+          loggedInUserName={loggedInUserName}
         />
       )}
 
@@ -4808,15 +4859,17 @@ export default function App() {
             <div className="space-y-1">
               <h2 className="text-lg md:text-xl font-black text-white flex items-center gap-2">
                 <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping"></span>
-                {t.simTitle}
+                <span>{lang === 'ar' ? '🛠️ لوحة تحكم وتلبية العمليات للفني (Technician Control Hub)' : '🛠️ Technician Operations & Dispatch Hub'}</span>
               </h2>
-              <p className="text-xs text-gray-400 font-semibold">{t.simDesc}</p>
+              <p className="text-xs text-gray-400 font-semibold">
+                {lang === 'ar' 
+                  ? 'استقبل بلاغات الاستغاثة الطارئة، تصفح مواقع المركبات المتعطلة، وقدم عروضك أو لَبِّ الطلبات فوراً.' 
+                  : 'Monitor live emergency alerts, view stranded vehicle locations, and accept tasks immediately.'}
+              </p>
             </div>
 
-            {/* Actions for simulator control */}
+            {/* Role switch link back to Customer Hub */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
-              
-              {/* Responsive Role Toggle Switcher inside Simulator page */}
               <div className="flex bg-[#0A0B10] p-1 rounded-xl border border-gray-800">
                 <button
                   onClick={async () => {
@@ -4829,30 +4882,23 @@ export default function App() {
                         console.error("Failed to save user role in simulator mode:", err);
                       }
                     }
-                    triggerToast(lang === 'ar' ? 'تم تحويل وضع التحكم لزبون مقطوع' : 'Switched control to Stranded Client', 'success');
+                    setActiveTab('services');
+                    triggerToast(lang === 'ar' ? 'تم تحويلك إلى لوحة الزبون والخدمات 👤' : 'Switched to Customer Services Hub', 'success');
                   }}
-                  className={`flex-1 px-3 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${userRole === 'client' ? 'bg-amber-500 text-black shadow-md font-black' : 'text-gray-400 hover:text-white'}`}
+                  className="flex-1 px-3 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer"
                 >
                   <span>👤</span>
-                  <span>{lang === 'ar' ? 'زبون' : 'Client'}</span>
+                  <span>{lang === 'ar' ? 'التحويل للزبون' : 'Customer View'}</span>
                 </button>
                 <button
-                  onClick={async () => {
+                  onClick={() => {
                     setUserRole('technician');
                     sessionStorage.setItem('systro_user_role', 'technician');
-                    if (loggedInUserEmail) {
-                      try {
-                        await setDoc(doc(db, "users", loggedInUserEmail), { role: 'technician' }, { merge: true });
-                      } catch (err) {
-                        console.error("Failed to save tech role in simulator mode:", err);
-                      }
-                    }
-                    triggerToast(lang === 'ar' ? 'تم تحويل وضع التحكم لمقدم خدمة' : 'Switched control to Service Provider', 'success');
                   }}
-                  className={`flex-1 px-3 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${userRole === 'technician' ? 'bg-amber-500 text-black shadow-md font-black' : 'text-gray-400 hover:text-white'}`}
+                  className="flex-1 px-3 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-amber-500 text-black shadow-md cursor-default"
                 >
                   <span>🛠️</span>
-                  <span>{lang === 'ar' ? 'فني' : 'Tech'}</span>
+                  <span>{lang === 'ar' ? 'لوحة الفني' : 'Tech Dashboard'}</span>
                 </button>
               </div>
             </div>
@@ -4861,181 +4907,76 @@ export default function App() {
           {/* Dynamic grid split */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* Left Column: Interactive Map (12 cols grid map) */}
-            {userRole !== 'technician' && (
-              <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
+            {/* Left Column: Technician Live Emergency Radar Map */}
+            <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
-                <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider">
-                  {t.simMapTitle}
+                <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+                  <span>{lang === 'ar' ? 'خريطة رادار بلاغات الطوارئ المباشرة 📡' : 'Live Emergency Radar Map 📡'}</span>
                 </h3>
-                <span className="bg-blue-500/15 text-blue-400 border border-blue-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none self-start">
-                  {lang === 'ar' ? 'خرائط جوجل لايف 📡' : 'GOOGLE MAPS LIVE 📡'}
+                <span className="bg-red-500/15 text-red-400 border border-red-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none self-start">
+                  {allRequests.filter(isPendingForTechnician).length} {lang === 'ar' ? 'بلاغات طارئة' : 'Alerts'}
                 </span>
               </div>
-
-              {/* Precise Auto-GPS locator button - Hidden for technicians, active for clients */}
-              <button
-                onClick={() => detectCurrentLocation(false)}
-                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-[11px] md:text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-blue-500/30 group active:scale-[0.98]"
-              >
-                <MapPin className="w-4 h-4 text-amber-400 animate-bounce group-hover:scale-110 transition-transform" />
-                <span>
-                  {lang === 'ar' ? 'تحديد موقعي الحالي بدقة تلقائياً (GPS) 📍' : 'Auto-Detect My Current Location (GPS) 📍'}
-                </span>
-              </button>
 
               {/* Map Rendering Container */}
               <div className="relative aspect-square w-full bg-[#050814] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">
                 {!hasValidKey ? (
-                  /* Google Maps setup guidelines when API key is unprovided */
-                  <div className="absolute inset-0 bg-[#0B0E17] p-5 md:p-6 overflow-y-auto flex flex-col justify-center items-center text-center space-y-4 font-sans select-none animate-fadeIn">
+                  <div className="absolute inset-0 bg-[#0B0E17] p-5 flex flex-col justify-center items-center text-center space-y-4 font-sans select-none">
                     <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
+                      <AlertTriangle className="w-6 h-6" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-black text-amber-500 uppercase tracking-wide">
+                      <h4 className="text-xs font-black text-amber-500 uppercase">
                         {lang === 'ar' ? 'مفتاح Google Maps مطلوب لتشغيل الخريطة' : 'Google Maps API Key Required'}
                       </h4>
-                      <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed max-w-xs">
-                        {lang === 'ar' 
-                          ? 'يرجى إضافة مفتاح GOOGLE_MAPS_PLATFORM_KEY إلى إعدادات المشروع لتفعيل تتبع مركبات الإنقاذ والموقع بدقة.' 
-                          : 'Please add GOOGLE_MAPS_PLATFORM_KEY to your project secrets to enable precise location and vehicle tracking.'}
-                      </p>
-                      <div className="mt-2 text-[9px] text-gray-500 font-mono bg-gray-900/40 px-2 py-1 rounded border border-gray-800/50 inline-block">
-                        Status: {mapsKey ? `Loaded (${mapsKey.slice(0, 5)}...${mapsKey.slice(-4)})` : 'No key detected'}
-                      </div>
-                    </div>
-                    
-                    <div className="bg-[#121626] border border-gray-800 rounded-xl p-3.5 text-right w-full max-w-xs space-y-2 text-[9px] md:text-[10px]">
-                      <p className="font-extrabold text-gray-300 border-b border-gray-800 pb-1.5 text-center">
-                        {lang === 'ar' ? 'خطوات تفعيل الخريطة الحية:' : 'Map Setup Steps:'}
-                      </p>
-                      <ol className={`list-decimal space-y-1.5 text-gray-400 leading-normal px-4 ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
-                        <li>
-                          <a href="https://console.cloud.google.com/google/maps-apis/start?utm_campaign=gmp-code-assist-ais" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline font-bold">
-                            {lang === 'ar' ? 'أولاً: اضغط هنا للحصول على مفتاح API مجاني' : 'First: Get a free API Key'}
-                          </a>
-                        </li>
-                        <li>
-                          {lang === 'ar' 
-                            ? 'افتح الإعدادات (⚙️ أيقونة الترس في الزاوية العلوية اليمنى من هذه الصفحة).' 
-                            : 'Open Settings (⚙️ gear icon, top-right corner of this page).'}
-                        </li>
-                        <li>
-                          {lang === 'ar' 
-                            ? 'اختر قسم Secrets واكتب اسم المتغير: GOOGLE_MAPS_PLATFORM_KEY' 
-                            : 'Select Secrets and enter name: GOOGLE_MAPS_PLATFORM_KEY'}
-                        </li>
-                        <li>
-                          {lang === 'ar' 
-                            ? 'ألصق المفتاح الخاص بك في خانة القيمة واضغط Enter لحفظه.' 
-                            : 'Paste your API key value and press Enter to save.'}
-                        </li>
-                      </ol>
                     </div>
                   </div>
                 ) : isMapAuthFailed ? (
-                  /* When Google Maps auth fails (ApiProjectMapError / Maps API not enabled) */
-                  <div className="absolute inset-0 bg-[#0B0E17] p-5 md:p-6 overflow-y-auto flex flex-col justify-center items-center text-center space-y-4 font-sans select-none animate-fadeIn">
+                  <div className="absolute inset-0 bg-[#0B0E17] p-5 flex flex-col justify-center items-center text-center space-y-4 font-sans select-none">
                     <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
+                      <AlertTriangle className="w-6 h-6" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-black text-red-500 uppercase tracking-wide">
-                        {lang === 'ar' ? 'فشل تحميل خريطة جوجل (مشكلة في صلاحيات المفتاح)' : 'Google Maps Authorization Error'}
+                      <h4 className="text-xs font-black text-red-500 uppercase">
+                        {lang === 'ar' ? 'فشل تحميل خريطة جوجل' : 'Google Maps Auth Error'}
                       </h4>
-                      <p className="text-[10px] text-gray-400 mt-1.5 leading-relaxed max-w-xs">
-                        {lang === 'ar' 
-                          ? 'المفتاح المدخل غير مصرح له أو أن "Maps JavaScript API" غير مفعّلة في حسابك على Google Cloud.' 
-                          : 'The API key is invalid or "Maps JavaScript API" is not enabled on your Google Cloud Console.'}
-                      </p>
-                    </div>
-                    
-                    <div className="bg-[#121626] border border-red-500/15 rounded-xl p-3.5 text-right w-full max-w-xs space-y-2 text-[9px] md:text-[10px] sm:text-right">
-                      <p className="font-extrabold text-red-400 border-b border-gray-800 pb-1.5 text-center">
-                        {lang === 'ar' ? 'كيفية حل هذه المشكلة وتفعيل المفتاح:' : 'How to fix this issue:'}
-                      </p>
-                      <ol className={`list-decimal space-y-1.5 text-gray-400 leading-normal px-4 ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
-                        <li>
-                          <a href="https://console.cloud.google.com/google/maps-apis/api-list?utm_campaign=gmp-code-assist-ais" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline font-bold">
-                            {lang === 'ar' ? 'اضغط هنا لفتح صفحة خدمات خرائط جوجل' : 'Click here to open Maps API Library'}
-                          </a>
-                        </li>
-                        <li>
-                          {lang === 'ar' 
-                            ? 'ابحث عن "Maps JavaScript API" واضغط عليها.' 
-                            : 'Search for "Maps JavaScript API" and select it.'}
-                        </li>
-                        <li>
-                          {lang === 'ar' 
-                            ? 'اضغط على زر تفعيل (Enable) لتمكين استخدام الخريطة.' 
-                            : 'Click the "Enable" button to activate the API.'}
-                        </li>
-                        <li>
-                          {lang === 'ar' 
-                            ? 'تأكد أيضاً من تفعيل "Geocoding API" و"Places API" لتجربة إنقاذ متكاملة!' 
-                            : 'Ensure "Geocoding API" and "Places API" are also enabled for a full experience!'}
-                        </li>
-                      </ol>
                     </div>
                   </div>
                 ) : (
-                  /* Google Maps Component rendering */
                   <APIProvider apiKey={mapsKey} version="weekly">
                     <GoogleMap
-                      defaultCenter={pinnedLocation ? mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng) : { lat: 31.7683, lng: 35.2137 }}
-                      defaultZoom={pinnedLocation ? 13 : 11}
+                      defaultCenter={{ lat: 31.7683, lng: 35.2137 }}
+                      defaultZoom={10}
                       mapId="DEMO_MAP_ID"
-                      onClick={(e: any) => {
-                        if (!e.detail.latLng) return;
-                        const { lat, lng } = e.detail.latLng;
-                        const { lat: latPct, lng: lngPct } = latLngToMapPct(lat, lng);
-
-                        if (simStatus !== 'idle') {
-                          triggerToast(lang === 'ar' ? 'لا يمكن تعديل الموقع أثناء طلب نشط!' : 'Cannot change location during an active request!', 'warning');
-                          return;
-                        }
-                        setPinnedLocation({ lat: latPct, lng: lngPct });
-                        triggerToast(lang === 'ar' ? 'تم تحديد موقع سيارتك بنجاح!' : 'Breakdown location pinned successfully!', 'success');
-                      }}
                       internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
                       style={{ width: '100%', height: '100%' }}
                     >
-                      {pinnedLocation && (
+                      {/* Active emergency requests pinned on technician radar map */}
+                      {allRequests.filter(isPendingForTechnician).map(req => (
                         <AdvancedMarker 
-                          position={mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng)} 
-                          title={lang === 'ar' ? 'موقعي 📌' : 'My Location 📌'}
+                          key={req.id} 
+                          position={{ lat: req.locationLat, lng: req.locationLng }} 
+                          title={lang === 'ar' ? `نداء استغاثة: ${req.serviceType} 🚨` : `Emergency: ${req.serviceType} 🚨`}
+                          onClick={() => {
+                            setSelectedBidRequest(req);
+                            setCustomBidPrice(String(req.approximatePrice || 150));
+                            triggerToast(lang === 'ar' ? `تم تحديد طلب ${req.serviceType} في ${req.arLocationName || req.locationName}` : `Selected request ${req.serviceType}`, 'info');
+                          }}
                         >
-                          <Pin background="#EF4444" borderColor="#B91C1C" glyphColor="#FFFFFF" />
+                          <Pin background="#EF4444" borderColor="#991B1B" glyphColor="#FFFFFF" />
+                        </AdvancedMarker>
+                      ))}
+
+                      {/* Technician location marker */}
+                      {providerLat && providerLng && (
+                        <AdvancedMarker 
+                          position={{ lat: providerLat, lng: providerLng }} 
+                          title={lang === 'ar' ? 'موقعي الفعلي كفني 🛠️' : 'My Location 🛠️'}
+                        >
+                          <Pin background="#F59E0B" borderColor="#B45309" glyphColor="#FFFFFF" />
                         </AdvancedMarker>
                       )}
-
-                      {technicians.map(tech => {
-                        if (simStatus !== 'idle' && selectedBid?.technicianId === tech.id) return null;
-                        return (
-                          <AdvancedMarker 
-                            key={tech.id} 
-                            position={mapPctToLatLng(tech.lat, tech.lng)} 
-                            title={lang === 'ar' ? tech.arName : tech.name}
-                          >
-                            <Pin background="#3B82F6" borderColor="#1D4ED8" glyphColor="#FFFFFF" />
-                          </AdvancedMarker>
-                        );
-                      })}
-
-                      {techCoordinates && selectedBid && (
-                        <AdvancedMarker 
-                          position={mapPctToLatLng(techCoordinates.lat, techCoordinates.lng)} 
-                          title={lang === 'ar' ? `ونش ${selectedBid.technicianArName} 🚚` : `${selectedBid.technicianName} 🚚`}
-                        >
-                          <Pin background="#F59E0B" borderColor="#D97706" glyphColor="#FFFFFF" />
-                        </AdvancedMarker>
-                      )}
-
                     </GoogleMap>
                   </APIProvider>
                 )}
@@ -5043,22 +4984,17 @@ export default function App() {
 
               {/* Status details bottom pin details */}
               <div className="bg-[#0A0B10] p-4 rounded-xl border border-gray-900/60 flex items-center justify-between text-xs font-semibold select-none">
-                <span className="text-gray-500">
-                  {lang === 'ar' ? 'إحداثيات موقعي الفعلي:' : 'My GPS Coordinates:'}
+                <span className="text-gray-400">
+                  {lang === 'ar' ? 'تغطية رادار العمليات:' : 'Radar Coverage:'}
                 </span>
-                {pinnedLocation ? (
-                  <span className="text-[#10B981] font-mono font-bold">
-                    Lat: {mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lat.toFixed(5)}°N , Lng: {mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lng.toFixed(5)}°E
-                  </span>
-                ) : (
-                  <span className="text-red-400 font-bold">{lang === 'ar' ? 'غير محدد 📌' : 'Unspecified 📌'}</span>
-                )}
+                <span className="text-amber-400 font-bold font-mono">
+                  {lang === 'ar' ? 'نشط عبر جميع المحافظات 📡' : 'Active Regionwide 📡'}
+                </span>
               </div>
             </div>
-          )}
 
-            {/* Right Column: Workflow Wizard or Partner Dashboard (Dynamic Role Layout) */}
-            <div className={`${userRole === 'technician' ? 'lg:col-span-12' : 'lg:col-span-7'} bg-[#111827]/60 border border-gray-800 p-6 rounded-3xl space-y-6 flex flex-col justify-between`}>
+            {/* Right Column: Service Provider Control Dashboard */}
+            <div className="lg:col-span-7 bg-[#111827]/60 border border-gray-800 p-6 rounded-3xl space-y-6 flex flex-col justify-between">
               
               {userRole === 'technician' ? (
                 /* SERVICE PROVIDER DASHBOARD (Palestine Rescue Live Hub) */
@@ -5154,7 +5090,7 @@ export default function App() {
                       </div>
 
                       {/* PROMINENT LIVE EMERGENCY ALERTS BANNER FOR TECHNICIAN */}
-                      {allRequests.filter(isPendingRequest).length > 0 && (
+                      {allRequests.filter(isPendingForTechnician).length > 0 && (
                         <div className="p-4 bg-gradient-to-r from-red-950/90 via-[#1A0A0A] to-[#0A0B10] border-2 border-red-500/80 rounded-3xl space-y-3 shadow-2xl shadow-red-950/50 animate-pulse text-right">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
@@ -5167,8 +5103,8 @@ export default function App() {
                                 </span>
                                 <h4 className="text-sm sm:text-base font-black text-white mt-1">
                                   {lang === 'ar'
-                                    ? `يوجد ${allRequests.filter(isPendingRequest).length} بلاغ طوارئ نشط بانتظار استجابتك وقبولك!`
-                                    : `There are ${allRequests.filter(isPendingRequest).length} active roadside emergencies awaiting your response!`}
+                                    ? `يوجد ${allRequests.filter(isPendingForTechnician).length} بلاغ طوارئ نشط بانتظار استجابتك وقبولك!`
+                                    : `There are ${allRequests.filter(isPendingForTechnician).length} active roadside emergencies awaiting your response!`}
                                 </h4>
                               </div>
                             </div>
@@ -5944,7 +5880,7 @@ export default function App() {
                           <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
                             <span>{lang === 'ar' ? '📡 نداءات استغاثة طارئة نشطة على الطريق:' : '📡 Active Live Rescue Alerts on Road:'}</span>
                             <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2 py-0.5 rounded text-[9px] animate-pulse font-mono">
-                              {allRequests.filter(isPendingRequest).length} ALERTS
+                              {allRequests.filter(isPendingForTechnician).length} ALERTS
                             </span>
                           </h4>
 
@@ -5959,7 +5895,7 @@ export default function App() {
                           </button>
                         </div>
 
-                        {allRequests.filter(isPendingRequest).length === 0 ? (
+                        {allRequests.filter(isPendingForTechnician).length === 0 ? (
                           <div className="p-8 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-3">
                             <span className="text-xs text-gray-500 font-bold block">{lang === 'ar' ? 'لا توجد بلاغات طوارئ نشطة حالياً. المركبات تسير بأمان! 👍' : 'No active roadside emergencies. Drivers are safe! 👍'}</span>
                             <button
@@ -5973,7 +5909,7 @@ export default function App() {
                           </div>
                         ) : (
                           <div className="space-y-3 font-sans">
-                            {allRequests.filter(isPendingRequest).map(req => {
+                            {allRequests.filter(isPendingForTechnician).map(req => {
                               const isSelected = selectedBidRequest?.id === req.id;
                               return (
                                 <div key={req.id} className={`p-4 rounded-2xl border transition-all ${isSelected ? 'bg-[#0F1424] border-amber-500 shadow-md' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800'}`}>
@@ -6491,275 +6427,6 @@ export default function App() {
                         <Activity className="w-5 h-5 animate-pulse" />
                         <span>{t.simSubmitRequest}</span>
                       </button>
-
-                      {/* LIVE NETWORK ACTIVE REQUESTS & EMERGENCY FEED (FOR ALL REGISTERED ACCOUNTS) */}
-                      <div id="rescue-alerts-community-list" className="mt-8 pt-6 border-t border-gray-900 space-y-4 text-right rtl:text-right ltr:text-left">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-950 pb-3">
-                          <div>
-                            <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-                              <span>{lang === 'ar' ? '📡 نداءات الاستغاثة وطلبات الطريق النشطة حالياً على الشبكة:' : '📡 Live Active Emergency & Roadside Requests Feed:'}</span>
-                            </h4>
-                            <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                              {lang === 'ar' 
-                                ? 'يمكن لأي حساب مسجل الاطلاع على كافة الطلبات الباحثة عن مساعدة وإغفائها أو تلبية الخدمة فوراً:' 
-                                : 'Any registered account can view active open requests from other drivers and assist immediately:'}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={handleManualRefreshRequests}
-                              className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-                              title={lang === 'ar' ? 'تحديث البلاغات الحية' : 'Refresh live alerts'}
-                            >
-                              <RefreshCw className="w-3 h-3 text-amber-400" />
-                              <span>{lang === 'ar' ? 'تحديث 🔄' : 'Refresh 🔄'}</span>
-                            </button>
-
-                            <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2.5 py-1 rounded-full text-[10px] font-black shrink-0 self-start sm:self-auto animate-pulse font-mono">
-                              {allRequests.filter(isPendingRequest).length} {lang === 'ar' ? 'بلاغات نشطة' : 'Active Alerts'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {allRequests.filter(isPendingRequest).length === 0 ? (
-                          <div className="p-6 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-3">
-                            <span className="text-xs text-gray-500 font-bold block">
-                              {lang === 'ar' ? 'لا توجد بلاغات طوارئ نشطة حالياً. جميع المركبات تسير بأمان! 👍' : 'No active roadside emergencies. All vehicles are safe! 👍'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={handleManualRefreshRequests}
-                              className="px-3 py-1.5 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>{lang === 'ar' ? 'إعادة الفحص المباشر 🔄' : 'Re-check Live Network 🔄'}</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="space-y-3 font-sans">
-                            {allRequests.filter(isPendingRequest).map(req => {
-                              const isMyOwnRequest = (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '') 
-                                ? (req.requestedBy === loggedInUserEmail) 
-                                : (req.sessionId === currentSessionId && (!req.requestedBy || req.requestedBy === ''));
-                              const isSelected = selectedBidRequest?.id === req.id;
-
-                              return (
-                                <div key={req.id} className={`p-4 rounded-2xl border transition-all ${isMyOwnRequest ? 'bg-amber-500/5 border-amber-500/40' : isSelected ? 'bg-[#0F1424] border-amber-500 shadow-md' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800'}`}>
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div className="text-right rtl:text-right ltr:text-left space-y-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded inline-block uppercase ${isMyOwnRequest ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse'}`}>
-                                          {isMyOwnRequest ? (lang === 'ar' ? '📍 طلبك الخاص الباحث عن مساعدة' : '📍 Your Active Request') : (lang === 'ar' ? '🚨 بلاغ استغاثة طارئ' : '🚨 Emergency Request')}
-                                        </span>
-                                      </div>
-                                      <h5 className="text-xs font-black text-white flex items-center gap-1.5">
-                                        <span>{req.clientName || (lang === 'ar' ? 'سائق باحث عن مساعدة' : 'Stranded Driver')}</span>
-                                        {req.requestedBy && <span className="text-[9px] text-gray-500 font-mono">({req.requestedBy})</span>}
-                                      </h5>
-                                      <span className="text-[10px] text-gray-400 font-bold block">
-                                        {lang === 'ar' ? 'الخدمة المطلوبة:' : 'Requested service:'} <span className="text-amber-500 font-extrabold">{req.serviceType === 'taxi' ? (lang === 'ar' ? '🚕 توصيل تكسي خاص و VIP' : '🚕 Special VIP Taxi Ride') : req.serviceType}</span>
-                                      </span>
-                                      {req.serviceType === 'taxi' && (
-                                        <div className="mt-1 text-[10px] text-gray-400 font-semibold space-y-0.5 text-right bg-black/40 p-2 rounded-lg border border-gray-900">
-                                          <div>📍 {lang === 'ar' ? 'موقع الاستلام:' : 'Pickup:'} <span className="text-white font-bold">{req.pickupLocation || req.locationName || 'موقعي الحالي'}</span></div>
-                                          <div>🏁 {lang === 'ar' ? 'وجهة التوصيل:' : 'Dropoff:'} <span className="text-white font-bold">{req.dropoffLocation || 'غير محدد'}</span></div>
-                                        </div>
-                                      )}
-                                      <span className="text-[10px] text-amber-400 font-extrabold block mt-1 flex items-center justify-start gap-1">
-                                        <span>💰</span>
-                                        <span>{lang === 'ar' ? `السعر التقريبي المقترح: ${req.approximatePrice || 150} ₪` : `Client Approx Price: ${req.approximatePrice || 150} ₪`}</span>
-                                      </span>
-                                    </div>
-
-                                    {!isMyOwnRequest && (
-                                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                        {/* Direct Task Accept / Rescue Button for Any Registered Account */}
-                                        <button 
-                                          onClick={async () => {
-                                            const techEmail = loggedInUserEmail || 'helper@systro.live';
-                                            const techName = loggedInUserName || (lang === 'ar' ? 'مسعف ومستجيب معتمد' : 'Verified Responder');
-                                            const techAvatar = userAvatar || providerAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120';
-                                            const acceptPrice = Number(req.approximatePrice || 150);
-
-                                            try {
-                                              await runTransaction(db, async (transaction) => {
-                                                const reqRef = doc(db, "requests", req.id);
-                                                const reqDocSnap = await transaction.get(reqRef);
-
-                                                if (!reqDocSnap.exists()) {
-                                                  throw new Error("TASK_NOT_FOUND");
-                                                }
-
-                                                const currentReqData = reqDocSnap.data();
-                                                const existingTech = currentReqData.selectedTechnicianId;
-                                                const currentStatus = currentReqData.status;
-
-                                                if (existingTech && String(existingTech).trim() !== '' && existingTech !== techEmail) {
-                                                  throw new Error("TASK_ALREADY_TAKEN");
-                                                }
-
-                                                if (currentStatus !== 'pending_bids' && currentStatus !== 'pending' && currentStatus !== 'idle') {
-                                                  throw new Error("TASK_ALREADY_TAKEN");
-                                                }
-
-                                                transaction.update(reqRef, {
-                                                  status: 'en_route',
-                                                  selectedTechnicianId: techEmail,
-                                                  escrowAmount: acceptPrice
-                                                });
-                                              });
-
-                                              const bidId = 'bid-' + Math.random().toString(36).substring(2, 9);
-                                              const newBidObj = {
-                                                id: bidId,
-                                                requestId: req.id,
-                                                technicianId: techEmail,
-                                                technicianName: techName,
-                                                technicianArName: techName,
-                                                phone: phoneNumber || activeTechDoc?.phone || '+972 59-999-9999',
-                                                price: acceptPrice,
-                                                etaMinutes: 15,
-                                                rating: 5.0,
-                                                avatar: techAvatar,
-                                                carModel: 'مركبة إغاثة واستجابة',
-                                                plateNumber: '7-4321-99'
-                                              };
-                                              await setDoc(doc(db, "bids", bidId), newBidObj);
-
-                                              // Send automated system chat message
-                                              const chatMsgId = `sys-accept-${Date.now()}`;
-                                              await setDoc(doc(db, "chats", chatMsgId), {
-                                                id: chatMsgId,
-                                                requestId: req.id,
-                                                sender: 'system',
-                                                text: lang === 'ar' 
-                                                  ? `⚡ قام المستخدم [${techName}] بقبول وتلبية استغاثتك فوراً! وهو الآن في طريقه إليك 🚚` 
-                                                  : `⚡ Helper [${techName}] accepted your rescue request immediately! En route to your location 🚚`,
-                                                timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-                                                createdTime: Date.now()
-                                              });
-
-                                              setUserRole('technician');
-                                              setActiveRequestId(req.id);
-                                              setSelectedBid(newBidObj);
-                                              setSelectedBidRequest(null);
-
-                                              try {
-                                                await fetch('/api/requests/update', {
-                                                  method: 'POST',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify({
-                                                    id: req.id,
-                                                    updates: {
-                                                      status: 'en_route',
-                                                      selectedTechnicianId: techEmail,
-                                                      escrowAmount: acceptPrice
-                                                    }
-                                                  })
-                                                });
-                                              } catch (apiErr) {
-                                                console.warn("API update notice:", apiErr);
-                                              }
-
-                                              triggerToast(
-                                                lang === 'ar' 
-                                                  ? `✅ تم قبول وتلبية المهمة بنجاح! تم تحديث الحالة لـ (جاري التحرك 🚚) وفتح الخريطة والمحادثة!` 
-                                                  : `✅ Task accepted! En route to client location with live map & chat!`,
-                                                'success'
-                                              );
-                                            } catch (err: any) {
-                                              if (err?.message === "TASK_ALREADY_TAKEN") {
-                                                triggerToast(
-                                                  lang === 'ar' 
-                                                    ? '⚠️ نعتذر، قام فني آخر بقبول وتلبية هذه المهمة قبلك بسباق السرعة!' 
-                                                    : '⚠️ Sorry, another technician accepted this task first!',
-                                                  'warning'
-                                                );
-                                                handleManualRefreshRequests();
-                                              } else {
-                                                console.warn("Firestore notice during task accept (falling back to server API):", err);
-                                                const updatedReqObj = {
-                                                  ...req,
-                                                  status: "en_route",
-                                                  selectedTechnicianId: techEmail,
-                                                  escrowAmount: acceptPrice
-                                                };
-                                                setAllRequests((prev: any[]) => prev.map((r: any) => r.id === req.id ? updatedReqObj : r));
-                                                try {
-                                                  fetch("/api/requests/update", {
-                                                    method: "POST",
-                                                    headers: { "Content-Type": "application/json" },
-                                                    body: JSON.stringify({
-                                                      id: req.id,
-                                                      updates: {
-                                                        status: "en_route",
-                                                        selectedTechnicianId: techEmail,
-                                                        escrowAmount: acceptPrice
-                                                      }
-                                                    })
-                                                  });
-                                                } catch (apiErr) {}
-                                                const bidId = "bid-" + Math.random().toString(36).substring(2, 9);
-                                                const fallbackBidObj = {
-                                                  id: bidId,
-                                                  requestId: req.id,
-                                                  technicianId: techEmail,
-                                                  technicianName: techName,
-                                                  technicianArName: techName,
-                                                  phone: phoneNumber || activeTechDoc?.phone || "+972 59-999-9999",
-                                                  price: acceptPrice,
-                                                  etaMinutes: 15,
-                                                  rating: 5.0,
-                                                  avatar: techAvatar,
-                                                  carModel: "مركبة إغاثة واستجابة",
-                                                  plateNumber: "7-4321-99"
-                                                };
-                                                setUserRole("technician");
-                                                setActiveRequestId(req.id);
-                                                setSelectedBid(fallbackBidObj);
-                                                setSelectedBidRequest(null);
-                                                triggerToast(
-                                                  lang === 'ar' 
-                                                    ? "✅ تم قبول وتلبية المهمة بنجاح! تم تحديث الحالة لـ (جاري التحرك 🚚) وفتح الخريطة والمحادثة!" 
-                                                    : "✅ Task accepted! En route to client location with live map & chat!",
-                                                  "success"
-                                                );
-                                              }
-                                            }
-                                          }}
-                                          className="px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5 active:scale-95"
-                                        >
-                                          <CheckCircle2 className="w-4 h-4" />
-                                          <span>{lang === 'ar' ? '⚡ قبول وتلبية الطلب فوراً' : '⚡ Accept & Fulfill Request'}</span>
-                                        </button>
-
-                                        <button 
-                                          onClick={() => {
-                                            setUserRole('technician');
-                                            if (isSelected) {
-                                              setSelectedBidRequest(null);
-                                            } else {
-                                              setSelectedBidRequest(req);
-                                              setCustomBidPrice(String(req.approximatePrice || 150));
-                                              setPinnedLocation({ lat: req.locationLat, lng: req.locationLng });
-                                              triggerToast(lang === 'ar' ? 'تم تحديد موقع العميل وتفعيل بوابة تقديم العروض!' : 'Client breakdown pinned on map!', 'info');
-                                            }
-                                          }}
-                                          className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl transition-all cursor-pointer"
-                                        >
-                                          {isSelected ? (lang === 'ar' ? 'إغلاق' : 'Close') : (lang === 'ar' ? 'تقديم عرض 🛠️' : 'Bid 🛠️')}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
                     </div>
                   )}
 

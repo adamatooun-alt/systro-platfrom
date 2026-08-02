@@ -229,19 +229,19 @@ export default function HomeTab({
           {/* Pre-heading Gold Badge */}
                   {/* Main Requested Dual-Action Service Buttons (عميل مقطوع vs طلب تكسي) */}
           <div className="pt-6 flex flex-col md:flex-row items-center justify-center gap-5 max-w-4xl mx-auto">
-            {/* Action 1: العمليات */}
+            {/* Action 1: لوحة الخدمات والزبون */}
             <button 
               type="button"
               onClick={() => {
                 setUserRole('client');
                 sessionStorage.setItem('systro_user_role', 'client');
-                setActiveTab('simulator');
+                setActiveTab('services');
                 triggerToast(
                   lang === 'ar' 
-                    ? 'أهلاً بك في صفحة العمليات - تفضل بتحديد موقعك لطلب الفنيين فورا.' 
+                    ? 'أهلاً بك في لوحة الزبون والخدمات - تفضل باختيار الخدمة وتحديد موقعك لطلب الفنيين فوراً.' 
                     : lang === 'he'
-                    ? 'ברוך הבא לדף הפעילויות - אנא בחר מיקום להזמנת סיוע מיידי.'
-                    : 'Welcome to Operations - please select your location to request assistance.', 
+                    ? 'ברוך הבא לדף השירותים - אנא בחר שירות ומיקום להזמנת סיוע מיידי.'
+                    : 'Welcome to Customer Hub - select service and pin your location to request assistance.', 
                   'success'
                 );
                 if (loggedInUserEmail) {
@@ -253,7 +253,7 @@ export default function HomeTab({
               className="w-full md:flex-1 h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black rounded-2xl shadow-xl shadow-orange-500/15 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer"
             >
               <span className="text-xl">🚗</span>
-              <span className="font-black text-base">{lang === 'ar' ? 'العمليات' : lang === 'he' ? 'פעילויות' : 'Operations'}</span>
+              <span className="font-black text-base">{lang === 'ar' ? 'الخدمات (لوحة الزبون)' : lang === 'he' ? 'שירותים' : 'Services'}</span>
               <ChevronRight className="w-5 h-5 shrink-0" />
             </button>
 
