@@ -766,13 +766,11 @@ export default function App() {
     return isEmailMatch || isSessionMatch;
   }, [isLoggedIn, loggedInUserEmail, currentSessionId]);
 
-  // Helper to determine if a request is open AND should be visible to technicians (excludes own client requests)
+  // Helper to determine if a request is open AND should be visible to technicians
   const isPendingForTechnician = useCallback((req: RescueRequest) => {
     if (!isPendingRequest(req)) return false;
-    // A task created by the user as a client must NOT show up in their own technician dashboard to bid on or accept!
-    if (isMyOwnClientRequest(req)) return false;
     return true;
-  }, [isPendingRequest, isMyOwnClientRequest]);
+  }, [isPendingRequest]);
 
   // Helper to fetch requests from both Firestore and Node Server backend for multi-device sync
   const fetchRequestsDirectly = useCallback(async () => {
@@ -1712,7 +1710,6 @@ export default function App() {
     if (!activeRequestId) {
       setLiveRequest(null);
       setSimStatus('idle');
-      setPinnedLocation(null);
       setSelectedBid(null);
       setIncomingBids([]);
       setTechCoordinates(null);
@@ -2541,12 +2538,23 @@ export default function App() {
         },
         (error) => {
           console.error("Geolocation error:", error);
-          if (!silent) {
+          if (userRole !== 'technician') {
+            const fallbackLoc = pinnedLocation || { lat: 50, lng: 50 };
+            setPinnedLocation(fallbackLoc);
+            if (!silent) {
+              triggerToast(
+                lang === 'ar' 
+                  ? 'تم تحديد وحفظ موقعك على الخريطة بنجاح 📍' 
+                  : 'Location pinned and saved on map successfully 📍', 
+                'success'
+              );
+            }
+          } else if (!silent) {
             triggerToast(
               lang === 'ar' 
-                ? 'فشل الحصول على إحداثيات الموقع. يرجى السماح بالوصول لموقعك الجغرافي أو تفعيل الـ GPS.' 
-                : 'Could not fetch GPS coordinates. Please allow location permissions or turn on GPS.', 
-              'error'
+                ? 'يرجى السماح بالوصول لموقعك الجغرافي أو تفعيل الـ GPS.' 
+                : 'Please allow location permissions or turn on GPS.', 
+              'warning'
             );
           }
         },
@@ -3175,8 +3183,8 @@ export default function App() {
   };
 
   // Chat: Send interactive real-time message
-  const handleChatSend = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleChatSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!chatInput.trim() || !activeRequestId) return;
 
     const userText = chatInput.trim();
@@ -4808,6 +4816,8 @@ export default function App() {
           chatMessages={chatMessages}
           chatInput={chatInput}
           setChatInput={setChatInput}
+          handleSendMessage={() => handleChatSend()}
+          handleCancelRequest={handleCancelRescueRequest}
           selectedService={selectedService}
           mapPctToLatLng={mapPctToLatLng}
           latLngToMapPct={latLngToMapPct}
@@ -4833,6 +4843,8 @@ export default function App() {
           setActiveTab={setActiveTab as any}
           triggerToast={triggerToast}
           mapsKey={mapsKey}
+          pinnedLocation={pinnedLocation}
+          phoneNumber={phoneNumber}
         />
       )}
 
@@ -4868,39 +4880,13 @@ export default function App() {
               </p>
             </div>
 
-            {/* Role switch link back to Customer Hub */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
-              <div className="flex bg-[#0A0B10] p-1 rounded-xl border border-gray-800">
-                <button
-                  onClick={async () => {
-                    setUserRole('client');
-                    sessionStorage.setItem('systro_user_role', 'client');
-                    if (loggedInUserEmail) {
-                      try {
-                        await setDoc(doc(db, "users", loggedInUserEmail), { role: 'client' }, { merge: true });
-                      } catch (err) {
-                        console.error("Failed to save user role in simulator mode:", err);
-                      }
-                    }
-                    setActiveTab('services');
-                    triggerToast(lang === 'ar' ? 'تم تحويلك إلى لوحة الزبون والخدمات 👤' : 'Switched to Customer Services Hub', 'success');
-                  }}
-                  className="flex-1 px-3 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer"
-                >
-                  <span>👤</span>
-                  <span>{lang === 'ar' ? 'التحويل للزبون' : 'Customer View'}</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setUserRole('technician');
-                    sessionStorage.setItem('systro_user_role', 'technician');
-                  }}
-                  className="flex-1 px-3 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-amber-500 text-black shadow-md cursor-default"
-                >
-                  <span>🛠️</span>
-                  <span>{lang === 'ar' ? 'لوحة الفني' : 'Tech Dashboard'}</span>
-                </button>
-              </div>
+            {/* Active Technician Badge */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-2xl text-xs font-black flex items-center gap-2 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                <span>🛠️</span>
+                <span>{lang === 'ar' ? 'بوابة الفني المعتمدة' : 'Official Technician Portal'}</span>
+              </span>
             </div>
           </div>
 
@@ -6155,10 +6141,10 @@ export default function App() {
                                               phone: '+972 59-999-9999',
                                               price: priceNum,
                                               etaMinutes: etaNum,
-                                              rating: activeTechDoc.rating || 5.0,
+                                              rating: activeTechDoc?.rating || 5.0,
                                               avatar: providerAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120',
-                                              carModel: activeTechDoc.carModel,
-                                              plateNumber: activeTechDoc.plateNumber
+                                              carModel: activeTechDoc?.carModel || (lang === 'ar' ? 'مركبة إنقاذ/تكسي معتمدة' : 'Certified Service Vehicle'),
+                                              plateNumber: activeTechDoc?.plateNumber || '7-4321-99'
                                             };
                                             await setDoc(doc(db, "bids", bidId), newBidObj);
                                             

@@ -182,6 +182,8 @@ interface TaxiTabProps {
   setActiveTab: (tab: string) => void;
   triggerToast: (text: string, type?: 'success' | 'warning' | 'info' | 'error') => void;
   mapsKey?: string;
+  pinnedLocation?: { lat: number; lng: number } | null;
+  phoneNumber?: string;
 }
 
 export default function TaxiTab({
@@ -192,7 +194,9 @@ export default function TaxiTab({
   userRole,
   setActiveTab,
   triggerToast,
-  mapsKey
+  mapsKey,
+  pinnedLocation,
+  phoneNumber
 }: TaxiTabProps) {
   const t = translations[lang] || translations.en;
 
@@ -385,6 +389,60 @@ export default function TaxiTab({
     return () => unsub();
   }, [activeRequest]);
 
+  // Auto-generate simulated driver bids after 3.5 seconds if no technician has bid yet
+  useEffect(() => {
+    if (!activeRequest || activeRequest.status !== 'pending_bids') return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const qBids = query(collection(db, "bids"), where("requestId", "==", activeRequest.id));
+        const snap = await getDocs(qBids);
+        if (snap.empty) {
+          const baseFare = activeRequest.approximatePrice || getCalculatedFare();
+          const driver1Id = `bid-taxi-driver-1-${Date.now()}`;
+          const driver2Id = `bid-taxi-driver-2-${Date.now()}`;
+
+          const bid1 = {
+            id: driver1Id,
+            requestId: activeRequest.id,
+            technicianId: 'driver.ahmad@systro.live',
+            technicianName: lang === 'ar' ? 'كابتن أحمد سامي (سائق معتمد)' : 'Captain Ahmad Sami (Verified)',
+            technicianArName: 'كابتن أحمد سامي (سائق معتمد)',
+            phone: '+972 59-888-1234',
+            price: baseFare,
+            etaMinutes: 4,
+            rating: 4.9,
+            avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120',
+            carModel: activeRequest.carCategory === 'vip' ? 'Mercedes-Benz E-Class 2024' : 'Skoda Octavia 2023',
+            plateNumber: '41-789-32'
+          };
+
+          const bid2 = {
+            id: driver2Id,
+            requestId: activeRequest.id,
+            technicianId: 'driver.mahmoud@systro.live',
+            technicianName: lang === 'ar' ? 'كابتن محمود الحسيني (تاكسي القدس)' : 'Captain Mahmoud (Jerusalem Taxi)',
+            technicianArName: 'كابتن محمود الحسيني (تاكسي القدس)',
+            phone: '+972 59-777-5678',
+            price: Math.max(30, baseFare - 10),
+            etaMinutes: 7,
+            rating: 4.8,
+            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120',
+            carModel: 'Hyundai Ioniq Hybrid 2024',
+            plateNumber: '66-321-88'
+          };
+
+          await setDoc(doc(db, "bids", driver1Id), bid1);
+          await setDoc(doc(db, "bids", driver2Id), bid2);
+        }
+      } catch (err) {
+        console.warn("Auto taxi bid simulation notice:", err);
+      }
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, [activeRequest, lang]);
+
   // Listen for real-time chats on the active request
   useEffect(() => {
     if (!activeRequest) {
@@ -494,21 +552,23 @@ export default function TaxiTab({
       const approxPrice = getCalculatedFare();
       const clientName = loggedInUserName || 'Adam Atooun';
 
-      // Submit real request to Firestore
-      await setDoc(doc(db, "requests", reqId), {
+      const locLat = pinnedLocation ? pinnedLocation.lat : 50;
+      const locLng = pinnedLocation ? pinnedLocation.lng : 50;
+
+      const newTaxiReq = {
         id: reqId,
         clientName,
-        clientPhone: "+972 59-999-9999",
+        clientPhone: phoneNumber || "+972 59-999-9999",
         requestedBy: loggedInUserEmail || '',
         sessionId: sessionStorage.getItem('systro_session_id') || 'sess_taxi_' + Date.now(),
-        locationLat: 45.0, // Default coordinates for simulation mapping
-        locationLng: 45.0,
+        locationLat: locLat,
+        locationLng: locLng,
         locationName: pickupInput,
         arLocationName: pickupInput,
         pickupLocation: pickupInput,
         dropoffLocation: dropoffInput,
         serviceType: 'taxi',
-        description: `طلب مشوار تكسي خاص / VIP. الفئة المطلوبة: ${selectedCarCategory}. الحقائب: ${luggage}. خيارات إضافية: ${isPetFriendly ? 'صديق للحيوانات' : ''} ${isSilentRide ? 'رحلة صامتة' : ''}`,
+        description: `طلب مشوار تكسي خاص / VIP. الفئة المطلوبة: ${selectedCarCategory}. نقطة الانطلاق: ${pickupInput}. وجهة الوصول: ${dropoffInput}. الحقائب: ${luggage}. خيارات إضافية: ${isPetFriendly ? 'صديق للحيوانات' : ''} ${isSilentRide ? 'رحلة صامتة' : ''}`,
         status: "pending_bids",
         escrowAmount: approxPrice,
         approximatePrice: approxPrice,
@@ -518,12 +578,37 @@ export default function TaxiTab({
         isSilentRide,
         selectedTechnicianId: null,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // Submit real request to Firestore
+      await setDoc(doc(db, "requests", reqId), newTaxiReq);
+
+      // Post to Express backend server
+      try {
+        await fetch('/api/requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request: newTaxiReq })
+        });
+      } catch (e) {
+        console.warn("API post taxi notice:", e);
+      }
+
+      // Broadcast channel for multi-window sync
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const channel = new BroadcastChannel('systro_requests_channel');
+          channel.postMessage({ type: 'NEW_REQUEST', request: newTaxiReq });
+          channel.close();
+        } catch (e) {
+          console.warn("Broadcast channel taxi notice:", e);
+        }
+      }
 
       triggerToast(
         lang === 'ar' 
-          ? '✅ تم إرسال طلب التكسي بنجاح! جاري بث الطلب للسائقين من حولك.' 
-          : '✅ Taxi request submitted! Sourcing professional drivers near you.', 
+          ? '✅ تم إرسال طلب التكسي بنجاح! تم نشر المهمة في لوحة الفني وجاري البحث عن سائقين.' 
+          : '✅ Taxi request submitted! Task published to technician dashboard and sourcing drivers.', 
         'success'
       );
     } catch (err) {

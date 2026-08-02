@@ -467,11 +467,11 @@ export default function ServicesTab({
                         type="text" 
                         value={chatInput} 
                         onChange={e => setChatInput(e.target.value)} 
-                        onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                        onKeyDown={e => e.key === 'Enter' && handleSendMessage?.()}
                         placeholder={lang === 'ar' ? 'اكتب رسالتك هنا...' : 'Type message...'}
                         className="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
                       />
-                      <button onClick={handleSendMessage} className="px-3 py-2 bg-amber-500 text-black rounded-xl font-bold text-xs hover:bg-amber-400">
+                      <button onClick={() => handleSendMessage?.()} className="px-3 py-2 bg-amber-500 text-black rounded-xl font-bold text-xs hover:bg-amber-400 cursor-pointer">
                         <Send className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -481,10 +481,12 @@ export default function ServicesTab({
                 {/* Cancel Request Button */}
                 <div className="pt-2 flex justify-between items-center">
                   <button
-                    onClick={handleCancelRequest}
-                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all"
+                    type="button"
+                    onClick={() => handleCancelRequest?.()}
+                    className="w-full sm:w-auto px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    {lang === 'ar' ? 'إلغاء الطلب' : 'Cancel Request'}
+                    <span>🚫</span>
+                    <span>{lang === 'ar' ? 'إلغاء الطلب والعودة للرئيسية' : 'Cancel Request'}</span>
                   </button>
                 </div>
               </div>
