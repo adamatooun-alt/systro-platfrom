@@ -180,11 +180,12 @@ const cleanInput = (val: string): string => {
 const getOrCreateSessionId = (): string => {
   try {
     if (typeof window !== 'undefined') {
-      let sid = sessionStorage.getItem('systro_unique_device_session');
+      let sid = localStorage.getItem('systro_unique_device_session') || sessionStorage.getItem('systro_unique_device_session');
       if (!sid) {
         sid = 'dev_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
-        sessionStorage.setItem('systro_unique_device_session', sid);
       }
+      localStorage.setItem('systro_unique_device_session', sid);
+      sessionStorage.setItem('systro_unique_device_session', sid);
       return sid;
     }
     return 'sess_' + Date.now();
@@ -248,7 +249,15 @@ export default function App() {
   }, [lang]);
 
   // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store'
-  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store'>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const savedReqId = localStorage.getItem('systro_active_request_id') || sessionStorage.getItem('systro_active_request_id');
+        if (savedReqId) return 'simulator';
+      }
+    } catch (e) {}
+    return 'home';
+  });
 
   // --- FCM Real-Time In-App Notification System ---
   const [notifications, setNotifications] = useState<InAppNotification[]>(() => {
