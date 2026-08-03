@@ -194,7 +194,7 @@ const getOrCreateSessionId = (): string => {
 };
 
 export default function App() {
-  const [currentSessionId] = useState<string>(() => getOrCreateSessionId());
+  const [currentSessionId, setCurrentSessionId] = useState<string>(() => getOrCreateSessionId());
   const lastLoginTimeRef = useRef<number>(Date.now());
 
   // Global Language State: 'ar' (Arabic is default as shown in screenshots) or 'en' or 'he'
@@ -3905,8 +3905,14 @@ export default function App() {
     sessionStorage.removeItem('systro_phone_number');
     sessionStorage.removeItem('systro_user_avatar');
     sessionStorage.removeItem('systro_active_request_id');
+    sessionStorage.removeItem('systro_saved_google_email');
+    sessionStorage.removeItem('systro_saved_google_name');
+    sessionStorage.removeItem('systro_saved_apple_email');
+    sessionStorage.removeItem('systro_saved_apple_name');
+
     const newSid = 'dev_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
     sessionStorage.setItem('systro_unique_device_session', newSid);
+    setCurrentSessionId(newSid);
 
     // Update Firestore asynchronously in background without delaying user UI logout
     if (cleanEmail && !isKickedOut) {

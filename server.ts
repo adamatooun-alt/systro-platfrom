@@ -469,13 +469,10 @@ async function startServer() {
   });
 
   app.post('/api/user-session/logout', (req, res) => {
-    const { email, sessionId } = req.body;
+    const { email } = req.body;
     if (email) {
-      const cleanEmail = email.trim().toLowerCase();
-      const existing = activeUserSessions.get(cleanEmail);
-      if (existing && (!sessionId || existing.sessionId === sessionId)) {
-        activeUserSessions.delete(cleanEmail);
-      }
+      const cleanEmail = String(email).trim().toLowerCase();
+      activeUserSessions.delete(cleanEmail);
     }
     res.json({ success: true });
   });
