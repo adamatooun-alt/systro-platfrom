@@ -323,13 +323,13 @@ export default function ServicesTab({
                     }}
                     className={`p-3.5 sm:p-4 rounded-2xl border transition-all text-right cursor-pointer flex flex-col justify-between gap-3 relative overflow-hidden shadow-sm ${
                       isSelected 
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-200 shadow-md shadow-amber-500/20 ring-2 ring-amber-500/60' 
-                        : 'bg-[#111827] border-gray-700 text-gray-100 hover:border-gray-600 hover:bg-[#1f293d]'
+                        ? 'bg-amber-100 border-amber-500 shadow-md shadow-amber-500/20 ring-2 ring-amber-500/80' 
+                        : 'bg-white border-amber-200 hover:border-amber-400 hover:bg-amber-50/60'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className={`p-2.5 rounded-xl ${s.color} border border-white/10 shadow-sm`}>
-                        <Icon className="w-5 h-5 shrink-0" />
+                      <div className={`p-2.5 rounded-xl ${s.color} border border-amber-300 shadow-sm`}>
+                        <Icon className="w-5 h-5 shrink-0 text-slate-900" />
                       </div>
                       {isSelected ? (
                         <span className="flex items-center gap-1 text-[10px] font-black bg-amber-500 text-black px-2 py-0.5 rounded-full shadow-sm">
@@ -339,10 +339,10 @@ export default function ServicesTab({
                       ) : null}
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs sm:text-sm font-black block text-white leading-snug break-words">
+                      <span className="text-xs sm:text-sm font-black block text-slate-900 leading-snug break-words">
                         {s.name}
                       </span>
-                      <span className="text-xs text-amber-400 font-mono font-black block">
+                      <span className="text-xs text-amber-800 font-mono font-black block">
                         {s.basePrice} ₪
                       </span>
                     </div>

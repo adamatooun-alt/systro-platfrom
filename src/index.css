@@ -243,8 +243,13 @@ footer.border-t {
   border-color: #FED7AA !important;
 }
 
-/* Headings text colors - Deep Premium Slate */
-h1, h2, h3, h4,
+/* Headings and primary text colors - Deep Premium Slate for Maximum Readability */
+h1, h2, h3, h4, h5, h6,
+.text-white,
+.text-slate-50,
+.text-slate-100,
+.text-slate-200,
+.text-slate-300,
 .text-gray-100 {
   color: #0F172A !important;
 }
@@ -252,20 +257,65 @@ h1, h2, h3, h4,
 /* Secondary text colors - Readable Slate */
 .text-\[\#E2E8F0\],
 .text-gray-200,
-.text-gray-300 {
-  color: #334155 !important;
+.text-gray-300,
+.text-slate-400 {
+  color: #1E293B !important;
 }
 
 /* Subtext colors */
 .text-gray-400,
 .text-gray-500 {
-  color: #64748B !important;
+  color: #475569 !important;
 }
 
 /* Specific text color hover states for navigation links */
 .text-gray-400:hover,
 .hover\:text-white:hover {
   color: #0F172A !important;
+}
+
+/* Amber/Yellow text - Dark amber/golden brown for maximum contrast on light cards */
+.text-amber-200,
+.text-amber-300,
+.text-amber-400,
+.text-yellow-400 {
+  color: #B45309 !important;
+}
+
+.text-amber-500 {
+  color: #D97706 !important;
+}
+
+/* Preserve black text on bright amber/yellow buttons & badges */
+.bg-amber-500,
+.bg-amber-400,
+.bg-yellow-500,
+.bg-amber-500 *,
+.bg-amber-400 *,
+.bg-yellow-500 * {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+/* Preserve white text on dark/vibrant orange, emerald, blue, red buttons */
+.bg-orange-500,
+.bg-orange-600,
+.bg-emerald-600,
+.bg-blue-600,
+.bg-red-600,
+.bg-black,
+.bg-gradient-to-r.from-orange-500 {
+  color: #FFFFFF !important;
+}
+
+.bg-orange-500 *,
+.bg-orange-600 *,
+.bg-emerald-600 *,
+.bg-blue-600 *,
+.bg-red-600 *,
+.bg-black *,
+.bg-gradient-to-r.from-orange-500 * {
+  color: #FFFFFF !important;
 }
 
 /* Fix active and inactive colors for bottom navbar (Mobile) */
