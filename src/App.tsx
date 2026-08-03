@@ -42,6 +42,7 @@ import {
   Send, 
   MapPin, 
   UserCheck, 
+  Power, 
   ThumbsUp, 
   Lightbulb, 
   Globe, 
@@ -759,7 +760,13 @@ export default function App() {
       return false;
     }
     // If a technician has already been selected or assigned, hide from other technicians
-    if (req.selectedTechnicianId && String(req.selectedTechnicianId).trim() !== '') {
+    if (
+      req.selectedTechnicianId && 
+      req.selectedTechnicianId !== 'null' && 
+      req.selectedTechnicianId !== 'undefined' && 
+      req.selectedTechnicianId !== 'none' && 
+      String(req.selectedTechnicianId).trim() !== ''
+    ) {
       return false;
     }
     return true;
@@ -1146,8 +1153,8 @@ export default function App() {
             phone: phoneNumber || providerPhone || '+972 59-999-9999',
             rating: 5.0,
             reviewsCount: 1,
-            isOnline: true,
-            isAvailable: true,
+            isOnline: false,
+            isAvailable: false,
             lat: 40,
             lng: 40,
             avatar: userAvatar || providerAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
@@ -1360,21 +1367,41 @@ export default function App() {
   // Listen for all requests with real-time onSnapshot + periodic backup polling + visibility re-sync
   useEffect(() => {
     const q = query(collection(db, "requests"));
-    const unsub = onSnapshot(q, (snapshot) => {
+    const unsub = onSnapshot(q, async (snapshot) => {
       const fsList: RescueRequest[] = [];
       snapshot.forEach(docSnap => {
         fsList.push({ id: docSnap.id, ...docSnap.data() } as RescueRequest);
       });
+
+      let apiList: RescueRequest[] = [];
+      try {
+        const res = await fetch('/api/requests');
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.requests)) {
+          apiList = data.requests;
+        }
+      } catch (e) {}
+
       setAllRequests(prev => {
         const map = new Map<string, RescueRequest>();
-        // Add all fresh items from Firestore
+        // 1. Add all fresh items from Firestore snapshot
         fsList.forEach(r => map.set(r.id, r));
-        // Keep optimistic local requests created in the last 30 seconds if not yet in Firestore
+        // 2. Combine with items from Express API
+        apiList.forEach(r => {
+          if (!map.has(r.id)) {
+            map.set(r.id, r);
+          } else {
+            const existing = map.get(r.id)!;
+            map.set(r.id, { ...r, ...existing });
+          }
+        });
+        // 3. Keep optimistic local requests created in recent state
         const now = Date.now();
         prev.forEach(r => {
           if (!map.has(r.id)) {
-            const reqTime = r.timestamp ? new Date(r.timestamp).getTime() : 0;
-            if (now - reqTime < 30000 && reqTime > 0) {
+            const reqTimeMatch = r.id ? (r.id.match(/req-(\d+)/) || r.id.match(/req-taxi-(\d+)/)) : null;
+            const reqTime = reqTimeMatch ? Number(reqTimeMatch[1]) : (r.timestamp ? new Date(r.timestamp).getTime() : 0);
+            if ((reqTime > 0 && now - reqTime < 600000) || !r.timestamp) {
               map.set(r.id, r);
             }
           }
@@ -1395,10 +1422,10 @@ export default function App() {
     // Initial server check
     fetchRequestsDirectly();
 
-    // 4-second periodic polling backup to guarantee sync on mobile connections
+    // 3-second periodic polling backup to guarantee cross-device sync
     const interval = setInterval(() => {
       fetchRequestsDirectly();
-    }, 4000);
+    }, 3000);
 
     // Auto-fetch when user switches back to app tab
     const handleVisibilityOrFocus = () => {
@@ -4945,6 +4972,92 @@ export default function App() {
             </div>
           </div>
 
+          {/* TECHNICIAN REGISTRATION & AVAILABILITY STATUS CONTROL BANNER */}
+          <div className={`p-5 rounded-3xl border-2 transition-all shadow-xl select-none flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
+            (activeTechDoc?.isOnline ?? false)
+              ? 'bg-gradient-to-r from-emerald-950/80 via-[#0D1E16] to-[#0A0B10] border-emerald-500/60 shadow-emerald-950/30'
+              : 'bg-gradient-to-r from-amber-950/40 via-[#1A140B] to-[#0A0B10] border-amber-500/40 shadow-amber-950/20'
+          }`}>
+            <div className="flex items-start gap-3.5">
+              <div className={`p-3 rounded-2xl shrink-0 border mt-0.5 ${
+                (activeTechDoc?.isOnline ?? false) 
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse'
+                  : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+              }`}>
+                <UserCheck className="w-6 h-6" />
+              </div>
+              <div className="space-y-1 text-right">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm md:text-base font-black text-white">
+                    {lang === 'ar' 
+                      ? 'هل تريد أن تكون فني مسجل ومتاح للعمل بالمنصة؟' 
+                      : 'Do you want to be a registered active technician on the platform?'}
+                  </h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    (activeTechDoc?.isOnline ?? false)
+                      ? 'bg-emerald-500 text-black'
+                      : 'bg-gray-800 text-gray-400 border border-gray-700'
+                  }`}>
+                    {(activeTechDoc?.isOnline ?? false) 
+                      ? (lang === 'ar' ? 'فني مسجل ونشط 🟢' : 'Registered & Active 🟢')
+                      : (lang === 'ar' ? 'غير متاح (متوقف كالمعتاد) 🔴' : 'Inactive (Offline) 🔴')}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 font-semibold leading-relaxed">
+                  {lang === 'ar'
+                    ? ((activeTechDoc?.isOnline ?? false)
+                        ? 'أنت الآن مسجل ومتاح بالشبكة! يتم بث بلاغات الطوارئ لك وتظهر موقعك على الخريطة للزبائن لتلبية طلباتهم.'
+                        : 'كالمعتاد، حسابك غير نشط كفني حالياً حتى تقرر العمل. لتلقي طلبات الزبائن وتلبية بلاغات الإنقاذ، قم بتفعيل الخيار.')
+                    : ((activeTechDoc?.isOnline ?? false)
+                        ? 'You are registered & online! Receiving live emergency requests.'
+                        : 'By default, tech work mode is OFF. Enable this option whenever you want to work & receive jobs.')}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                const currentOnline = activeTechDoc?.isOnline ?? false;
+                const nextOnline = !currentOnline;
+                try {
+                  const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
+                  if (cleanEmail) {
+                    await updateDoc(doc(db, "technicians", cleanEmail), {
+                      isOnline: nextOnline,
+                      isAvailable: nextOnline
+                    });
+                  }
+                  setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: nextOnline, isAvailable: nextOnline }));
+                  triggerToast(
+                    lang === 'ar'
+                      ? (nextOnline 
+                          ? '🟢 تم تفعيل حسابك كفني مسجل ومتاح بالشبكة! يمكنك الآن استقبال كافة البلاغات والتقديم على المهمات.' 
+                          : '🔴 تم إيقاف وضع الفني: أنت الآن في الوضع العادي وغير متاح لاستقبال الطلبات.')
+                      : (nextOnline 
+                          ? '🟢 Tech Mode Activated! You are now registered and receiving live task alerts.' 
+                          : '🔴 Tech Mode Off: Set to inactive.'),
+                    nextOnline ? 'success' : 'warning'
+                  );
+                } catch (err) {
+                  console.error(err);
+                }
+              }}
+              className={`px-6 py-3.5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer flex items-center gap-2 shadow-lg shrink-0 w-full md:w-auto justify-center ${
+                (activeTechDoc?.isOnline ?? false)
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
+                  : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-amber-500/20 animate-bounce'
+              }`}
+            >
+              <Power className="w-4 h-4" />
+              <span>
+                {lang === 'ar'
+                  ? ((activeTechDoc?.isOnline ?? false) ? 'إيقاف وضع الفني (التحويل لغير متاح)' : 'تفعيل: أريد أن أكون فني مسجل ⚡')
+                  : ((activeTechDoc?.isOnline ?? false) ? 'Deactivate Tech Mode' : 'Enable Active Tech Mode ⚡')}
+              </span>
+            </button>
+          </div>
+
           {/* Dynamic grid split */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
@@ -5068,7 +5181,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={async () => {
-                          const currentOnline = activeTechDoc?.isOnline ?? true;
+                          const currentOnline = activeTechDoc?.isOnline ?? false;
                           const nextOnline = !currentOnline;
                           try {
                             if (loggedInUserEmail) {
@@ -5080,8 +5193,8 @@ export default function App() {
                             setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: nextOnline, isAvailable: nextOnline }));
                             triggerToast(
                               lang === 'ar'
-                                ? (nextOnline ? '🟢 زر الظهور مفعل: أنت متاح الآن بالشبكة وتصلك كافة التنبيهات والمهمات!' : '🔴 زر الظهور متوقف: أنت خارج الموقع الآن (المهمات السابقة محفوظة لحين عودتك).')
-                                : (nextOnline ? '🟢 Status Online: You are active to receive task alerts!' : '🔴 Status Offline: Away from site (Tasks stay saved persistently).'),
+                                ? (nextOnline ? '🟢 تم تفعيل وضع الفني المسجل: أنت متاح الآن بالشبكة وتصلك كافة التنبيهات!' : '🔴 زر الظهور متوقف: أنت خارج الشبكة الآن (غير متاح للعمل).')
+                                : (nextOnline ? '🟢 Registered Tech Active: Online to receive alerts!' : '🔴 Tech Status Offline: Away from site.'),
                               nextOnline ? 'success' : 'warning'
                             );
                           } catch (err) {
@@ -5089,18 +5202,18 @@ export default function App() {
                           }
                         }}
                         className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shadow-lg ${
-                          (activeTechDoc?.isOnline ?? true)
+                          (activeTechDoc?.isOnline ?? false)
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
                             : 'bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30'
                         }`}
                       >
                         <span className={`w-2.5 h-2.5 rounded-full ${
-                          (activeTechDoc?.isOnline ?? true) ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'
+                          (activeTechDoc?.isOnline ?? false) ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'
                         }`}></span>
                         <span>
                           {lang === 'ar' 
-                            ? ((activeTechDoc?.isOnline ?? true) ? 'زر الظهور: متاح بالشبكة 🟢' : 'زر الظهور: غير متاح حالياً 🔴')
-                            : ((activeTechDoc?.isOnline ?? true) ? 'Go Online: Active 🟢' : 'Go Online: Offline 🔴')}
+                            ? ((activeTechDoc?.isOnline ?? false) ? 'وضع الفني: متاح بالشبكة 🟢' : 'وضع الفني: غير متاح (متوقف) 🔴')
+                            : ((activeTechDoc?.isOnline ?? false) ? 'Tech Status: Active 🟢' : 'Tech Status: Offline 🔴')}
                         </span>
                       </button>
 
