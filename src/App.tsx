@@ -1297,12 +1297,12 @@ export default function App() {
 
   // Real-time listener & heartbeat to enforce single active device session lock per email
   useEffect(() => {
-    const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
+    const cleanEmail = (loggedInUserEmail || '').trim().toLowerCase();
     if (!isLoggedIn || !cleanEmail) return;
 
-    // Periodic heartbeat every 3 seconds to maintain active status and check server lock status
+    // Periodic heartbeat every 4 seconds to maintain active status and check server lock status
     const updateHeartbeat = async () => {
-      // 1. Check server-side active device session lock (skipping if within fresh login grace period)
+      // 1. Check server-side active device session lock
       try {
         const resp = await fetch('/api/user-session/heartbeat', {
           method: 'POST',
@@ -1312,7 +1312,7 @@ export default function App() {
         if (resp.ok) {
           const data = await resp.json();
           if (data.kickedOut || data.active === false) {
-            if (Date.now() - lastLoginTimeRef.current > 30000) {
+            if (Date.now() - lastLoginTimeRef.current > 15000) {
               console.warn(`[Server Lock] ${cleanEmail} logged in from another device. Terminating session on this device.`);
               handleLogout(true);
               setKickedOutNotice(cleanEmail);
@@ -1321,7 +1321,7 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.warn("Server session heartbeat warning:", err);
+        // ignore network error
       }
 
       // 2. Update Firestore heartbeat
@@ -1337,7 +1337,7 @@ export default function App() {
     };
 
     updateHeartbeat();
-    const intervalId = setInterval(updateHeartbeat, 3000); // 3-second heartbeat
+    const intervalId = setInterval(updateHeartbeat, 4000); // 4-second heartbeat
 
     // BroadcastChannel listener for instant cross-tab session eviction
     let bc: BroadcastChannel | null = null;
@@ -1347,7 +1347,7 @@ export default function App() {
         bc.onmessage = (event) => {
           if (event.data && event.data.type === 'LOGIN_OVERRIDE' && event.data.email === cleanEmail) {
             if (event.data.sessionId !== currentSessionId) {
-              if (Date.now() - lastLoginTimeRef.current > 30000) {
+              if (Date.now() - lastLoginTimeRef.current > 15000) {
                 console.warn(`[BroadcastChannel Lock] ${cleanEmail} logged in from another tab/device.`);
                 handleLogout(true);
                 setKickedOutNotice(cleanEmail);
@@ -1367,7 +1367,7 @@ export default function App() {
         const isOnlineInDb = data.isOnline !== false;
 
         if (sidInDb && sidInDb !== currentSessionId && isOnlineInDb) {
-          if (Date.now() - lastLoginTimeRef.current > 30000) {
+          if (Date.now() - lastLoginTimeRef.current > 15000) {
             console.warn(`[Firestore Lock] ${cleanEmail} logged in from another device (${sidInDb}). Terminating this session.`);
             handleLogout(true);
             setKickedOutNotice(cleanEmail);
@@ -3494,7 +3494,7 @@ export default function App() {
     if (isFallbackMode && fallbackEmail) {
       const emailToUse = fallbackEmail.trim();
       const nameToUse = fallbackName || (lang === 'ar' ? "مستخدم جوجل" : "Google User");
-      await handleGoogleSignIn(emailToUse, nameToUse, true);
+      await handleGoogleSignIn(emailToUse, nameToUse);
       setShowGoogleFallbackModal(false);
       triggerToast(
         lang === 'ar' 
@@ -3516,7 +3516,7 @@ export default function App() {
         if (user && user.email) {
           const email = user.email;
           const name = user.displayName || `Google User #${Math.floor(1000 + Math.random() * 9000)}`;
-          await handleGoogleSignIn(email, name, true);
+          await handleGoogleSignIn(email, name);
           setShowGoogleFallbackModal(false);
           triggerToast(lang === 'ar' ? 'تم تسجيل الدخول بواسطة Google بنجاح!' : 'Successfully signed in with Google!', 'success');
           return;
@@ -3541,7 +3541,7 @@ export default function App() {
     if (isFallbackMode && fallbackEmail) {
       const emailToUse = fallbackEmail.trim();
       const nameToUse = fallbackName || (lang === 'ar' ? "مستخدم Apple" : lang === 'he' ? "משתמש Apple" : "Apple User");
-      await handleGoogleSignIn(emailToUse, nameToUse, true);
+      await handleGoogleSignIn(emailToUse, nameToUse);
       setShowAppleFallbackModal(false);
       setShowGoogleFallbackModal(false);
       triggerToast(
@@ -3566,7 +3566,7 @@ export default function App() {
         if (user && user.email) {
           const email = user.email;
           const name = user.displayName || `Apple User #${Math.floor(1000 + Math.random() * 9000)}`;
-          await handleGoogleSignIn(email, name, true);
+          await handleGoogleSignIn(email, name);
           setShowAppleFallbackModal(false);
           triggerToast(
             lang === 'ar' ? 'تم تسجيل الدخول بواسطة Apple بنجاح! ' : lang === 'he' ? 'התחברת בהצלחה באמצעות Apple! ' : 'Successfully signed in with Apple! ', 
@@ -3646,7 +3646,7 @@ export default function App() {
           ? enteredName.trim() 
           : (lang === 'ar' ? `عميل سيسترو #${Math.floor(1000 + Math.random() * 9000)}` : `Systro Client #${Math.floor(1000 + Math.random() * 9000)}`);
         
-        await handleGoogleSignIn(enteredEmail.trim(), finalName, true);
+        await handleGoogleSignIn(enteredEmail.trim(), finalName);
         
         // Clean up inputs
         setOtpCodeInput('');
@@ -3676,7 +3676,7 @@ export default function App() {
       const resolvedEmail = loggedInUserEmail || (cleanPhone ? `${cleanPhone.replace(/[^0-9]/g, "")}@systro.live` : `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`);
       const resolvedName = loggedInUserName || (role === "technician" ? (lang === "ar" ? "فني سيسترو" : "Systro Tech") : (lang === "ar" ? "عميل سيسترو" : "Systro Client"));
 
-      await handleGoogleSignIn(resolvedEmail, resolvedName, true);
+      await handleGoogleSignIn(resolvedEmail, resolvedName);
       setUserRole(role);
       sessionStorage.setItem("systro_user_role", role);
       if (cleanPhone) sessionStorage.setItem("systro_phone_number", cleanPhone);
@@ -3688,14 +3688,15 @@ export default function App() {
   };
 
   const handleGoogleSignIn = async (email?: string, name?: string, forceOverrideSession: boolean = false) => {
-    const resolvedEmail = (email || `user-${Math.floor(1000 + Math.random() * 9000)}@systro.live`).trim().toLowerCase();
+    setKickedOutNotice(null);
+    const isGuestSession = !email;
+    const resolvedEmail = (email || `guest_${currentSessionId}@systro.live`).trim().toLowerCase();
     const resolvedName = name || (lang === "ar" ? "مستخدم سيسترو" : lang === "he" ? "משתמש سيسترو" : "Systro User");
 
-    // Set grace period timestamp for session lock listeners
     lastLoginTimeRef.current = Date.now();
 
-    // 1. Single active device session check
-    if (!forceOverrideSession) {
+    // 1. Single active device session check for registered user accounts
+    if (!isGuestSession && !forceOverrideSession) {
       let isConflict = false;
       let conflictTime = Date.now();
 
@@ -4128,7 +4129,13 @@ export default function App() {
 
               <button
                 type="button"
-                onClick={() => setKickedOutNotice(null)}
+                onClick={() => {
+                  setKickedOutNotice(null);
+                  sessionStorage.removeItem('systro_saved_google_email');
+                  sessionStorage.removeItem('systro_saved_google_name');
+                  sessionStorage.removeItem('systro_saved_apple_email');
+                  sessionStorage.removeItem('systro_saved_apple_name');
+                }}
                 className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-2xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer text-center active:scale-95"
               >
                 {lang === 'ar' ? 'حسناً، فهمت 🔒' : 'Understood 🔒'}
@@ -8855,7 +8862,13 @@ export default function App() {
 
             <button
               type="button"
-              onClick={() => setKickedOutNotice(null)}
+              onClick={() => {
+                setKickedOutNotice(null);
+                sessionStorage.removeItem('systro_saved_google_email');
+                sessionStorage.removeItem('systro_saved_google_name');
+                sessionStorage.removeItem('systro_saved_apple_email');
+                sessionStorage.removeItem('systro_saved_apple_name');
+              }}
               className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-2xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer text-center active:scale-95"
             >
               {lang === 'ar' ? 'حسناً، فهمت 🔒' : 'Understood 🔒'}

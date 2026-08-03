@@ -200,7 +200,7 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // Single Active Device Session API Endpoints
+  // Multi-user & Concurrent Session API Endpoints with Single-Device Lock
   app.post('/api/user-session/login', (req, res) => {
     const { email, sessionId, forceOverride, deviceName } = req.body;
     if (!email || !sessionId) {
@@ -212,6 +212,7 @@ async function startServer() {
     const existing = activeUserSessions.get(cleanEmail);
     const now = Date.now();
 
+    // Single Device Session Check for specific account emails
     if (existing && existing.sessionId !== sessionId && (now - existing.lastActive < 45000)) {
       if (!forceOverride) {
         res.json({

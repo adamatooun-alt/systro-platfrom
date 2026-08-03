@@ -91,6 +91,22 @@ export default function LoginPortal({
   }, [showGoogleFallbackModal]);
 
   React.useEffect(() => {
+    if (showAppleFallbackModal) {
+      setAppleName(sessionStorage.getItem('systro_saved_apple_name') || '');
+      setAppleEmail(sessionStorage.getItem('systro_saved_apple_email') || '');
+      setAppleOtpSent(false);
+      setAppleOtpCode('');
+      setAppleSimulatedCode('');
+    } else {
+      setAppleName('');
+      setAppleEmail('');
+      setAppleOtpSent(false);
+      setAppleOtpCode('');
+      setAppleSimulatedCode('');
+    }
+  }, [showAppleFallbackModal]);
+
+  React.useEffect(() => {
     let timer: any;
     if (resendCooldown > 0) {
       timer = setInterval(() => {
@@ -482,9 +498,25 @@ export default function LoginPortal({
                   </p>
 
                   <div className="space-y-1">
-                    <label className={`block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
-                      {lang === 'ar' ? 'البريد الإلكتروني (Gmail):' : lang === 'he' ? 'כתובת אימייל (Gmail):' : 'Gmail Email Address:'}
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className={`block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                        {lang === 'ar' ? 'البريد الإلكتروني (Gmail):' : lang === 'he' ? 'כתובת אימייל (Gmail):' : 'Gmail Email Address:'}
+                      </label>
+                      {customEmail && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomEmail('');
+                            setCustomName('');
+                            sessionStorage.removeItem('systro_saved_google_email');
+                            sessionStorage.removeItem('systro_saved_google_name');
+                          }}
+                          className="text-[10px] font-bold text-sky-600 hover:text-sky-800 underline cursor-pointer"
+                        >
+                          {lang === 'ar' ? 'حساب جديد 🔄' : 'New Account 🔄'}
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="email"
                       required
@@ -683,9 +715,25 @@ export default function LoginPortal({
               {!appleOtpSent ? (
                 <>
                   <div className="space-y-1">
-                    <label className={`block text-[10px] font-extrabold text-neutral-400 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
-                      {lang === 'ar' ? 'البريد الإلكتروني لـ Apple ID / iCloud:' : 'Apple ID / iCloud Email:'}
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className={`block text-[10px] font-extrabold text-neutral-400 uppercase tracking-wide ${lang === 'ar' ? 'text-right' : 'text-left'}`}>
+                        {lang === 'ar' ? 'البريد الإلكتروني لـ Apple ID / iCloud:' : 'Apple ID / iCloud Email:'}
+                      </label>
+                      {appleEmail && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppleEmail('');
+                            setAppleName('');
+                            sessionStorage.removeItem('systro_saved_apple_email');
+                            sessionStorage.removeItem('systro_saved_apple_name');
+                          }}
+                          className="text-[10px] font-bold text-white/70 hover:text-white underline cursor-pointer"
+                        >
+                          {lang === 'ar' ? 'حساب جديد 🔄' : 'New Account 🔄'}
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="email"
                       required
