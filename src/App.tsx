@@ -776,15 +776,22 @@ export default function App() {
   const isMyOwnClientRequest = useCallback((req: RescueRequest) => {
     if (!req) return false;
     const isEmailMatch = Boolean(isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '' && req.requestedBy === loggedInUserEmail);
-    const isSessionMatch = Boolean(req.sessionId && req.sessionId === currentSessionId && (!req.requestedBy || req.requestedBy === ''));
+    const isSessionMatch = Boolean(req.sessionId && req.sessionId === currentSessionId);
     return isEmailMatch || isSessionMatch;
   }, [isLoggedIn, loggedInUserEmail, currentSessionId]);
 
   // Helper to determine if a request is open AND should be visible to technicians
   const isPendingForTechnician = useCallback((req: RescueRequest) => {
+    if (!req) return false;
+    // Exclude default seed/demo request
+    if (req.id === 'req-seed-101' || req.requestedBy === 'ahmed.m@gmail.com' || (req.clientName && req.clientName.includes('أحمد المحمود'))) {
+      return false;
+    }
     if (!isPendingRequest(req)) return false;
+    // CRITICAL: A request created by the current user/session as a client must NOT be shown to themselves in the technician feed
+    if (isMyOwnClientRequest(req)) return false;
     return true;
-  }, [isPendingRequest]);
+  }, [isPendingRequest, isMyOwnClientRequest]);
 
   // Helper to fetch requests from both Firestore and Node Server backend for multi-device sync
   const fetchRequestsDirectly = useCallback(async () => {
@@ -830,8 +837,12 @@ export default function App() {
       // Crucial fix: preserve recent optimistic local requests from previous state so published requests don't vanish!
       setAllRequests(prev => {
         const mergedMap = new Map<string, RescueRequest>();
-        // 1. Populate from server snapshot & API
-        map.forEach((val, key) => mergedMap.set(key, val));
+        // 1. Populate from server snapshot & API (excluding seed request)
+        map.forEach((val, key) => {
+          if (key !== 'req-seed-101' && val.requestedBy !== 'ahmed.m@gmail.com') {
+            mergedMap.set(key, val);
+          }
+        });
 
         // 2. Preserve recent optimistic local requests from prev if not yet present in server response
         const now = Date.now();
@@ -1406,7 +1417,7 @@ export default function App() {
             }
           }
         });
-        const list = Array.from(map.values());
+        const list = Array.from(map.values()).filter(r => r && r.id !== 'req-seed-101' && r.requestedBy !== 'ahmed.m@gmail.com');
         list.sort((a, b) => {
           const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
           const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;

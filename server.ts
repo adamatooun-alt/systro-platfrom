@@ -329,36 +329,19 @@ async function startServer() {
   loadBidsFromFile();
   loadChatsFromFile();
 
-  const initSeedRequests = () => {
-    if (globalRescueRequestsMap.size === 0) {
-      const seed1 = {
-        id: "req-seed-101",
-        clientName: "أحمد المحمود (طلب عاجل)",
-        clientPhone: "+972 59-987-6543",
-        requestedBy: "ahmed.m@gmail.com",
-        sessionId: "seed-sess-1",
-        locationLat: 31.9038,
-        locationLng: 35.2034,
-        locationName: "Al-Quds St",
-        arLocationName: "شارع القدس الرئيسية - رام الله",
-        serviceType: "mechanic",
-        description: "عطل كهربائي طارئ في المحرك وتوقف تام للسيارة على جانب الطريق",
-        status: "pending_bids",
-        escrowAmount: 0,
-        approximatePrice: 180,
-        selectedTechnicianId: null,
-        timestamp: new Date().toISOString()
-      };
-      globalRescueRequestsMap.set(seed1.id, seed1);
-      saveRequestsToFile();
-    }
-  };
-  initSeedRequests();
+  // Ensure old default seed request is purged
+  if (globalRescueRequestsMap.has("req-seed-101")) {
+    globalRescueRequestsMap.delete("req-seed-101");
+    saveRequestsToFile();
+  }
 
   // GET /api/requests
   app.get('/api/requests', (req, res) => {
-    initSeedRequests();
-    const list = Array.from(globalRescueRequestsMap.values());
+    if (globalRescueRequestsMap.has("req-seed-101")) {
+      globalRescueRequestsMap.delete("req-seed-101");
+      saveRequestsToFile();
+    }
+    const list = Array.from(globalRescueRequestsMap.values()).filter(r => r && r.id !== 'req-seed-101' && r.requestedBy !== 'ahmed.m@gmail.com');
     list.sort((a, b) => {
       const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
       const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
