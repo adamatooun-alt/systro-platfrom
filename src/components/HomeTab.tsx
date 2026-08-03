@@ -276,6 +276,26 @@ export default function HomeTab({
               <span className="font-black text-base">{lang === 'ar' ? 'حجز تكسي VIP' : lang === 'he' ? 'הזמנת מונית VIP' : 'Book Taxi VIP'}</span>
               <ChevronRight className="w-5 h-5 shrink-0" />
             </button>
+
+            {/* Action 3: لوحة الفنيين والبلاغات الحية */}
+            <button 
+              onClick={() => {
+                setUserRole('technician');
+                sessionStorage.setItem('systro_user_role', 'technician');
+                setActiveTab('simulator');
+                triggerToast(
+                  lang === 'ar' 
+                    ? 'أهلاً بك في لوحة الفنيين - جارٍ استعراض البلاغات ونداءات الاستغاثة النشطة على الطريق 🛠️' 
+                    : 'Welcome to Technician Hub - viewing active road emergency alerts 🛠️', 
+                  'success'
+                );
+              }}
+              className="w-full md:flex-1 h-16 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-blue-500/15 hover:scale-105 transition-all text-sm flex items-center justify-center gap-3 cursor-pointer border border-blue-400/30"
+            >
+              <span className="text-xl">🛠️</span>
+              <span className="font-black text-base">{lang === 'ar' ? 'لوحة الفنيين (البلاغات)' : 'Technician Hub (Alerts)'}</span>
+              <ChevronRight className="w-5 h-5 shrink-0" />
+            </button>
           </div>
 
           {/* Tag Checklist */}

@@ -1347,8 +1347,18 @@ export default function App() {
       });
       setAllRequests(prev => {
         const map = new Map<string, RescueRequest>();
-        prev.forEach(r => map.set(r.id, r));
+        // Add all fresh items from Firestore
         fsList.forEach(r => map.set(r.id, r));
+        // Keep optimistic local requests created in the last 30 seconds if not yet in Firestore
+        const now = Date.now();
+        prev.forEach(r => {
+          if (!map.has(r.id)) {
+            const reqTime = r.timestamp ? new Date(r.timestamp).getTime() : 0;
+            if (now - reqTime < 30000 && reqTime > 0) {
+              map.set(r.id, r);
+            }
+          }
+        });
         const list = Array.from(map.values());
         list.sort((a, b) => {
           const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
@@ -2362,10 +2372,16 @@ export default function App() {
         console.warn("API post request notice:", apiErr);
       }
 
-      // 2. Update local state and activeRequestId
+      // 2. Update local state, activeRequestId, and simStatus
       setAllRequests(prev => [newReqObj, ...prev.filter(r => r.id !== reqId)]);
       setActiveRequestId(reqId);
+      setSimStatus('pending_bids');
       sessionStorage.setItem('systro_active_request_id', reqId);
+
+      // Play sound feedback for instant user awareness
+      try {
+        playRescueAlertSound();
+      } catch (e) {}
 
       // Force instant background refresh to sync all components
       fetchRequestsDirectly();
@@ -4621,6 +4637,13 @@ export default function App() {
                     const newRole = userRole === 'technician' ? 'client' : 'technician';
                     setUserRole(newRole);
                     sessionStorage.setItem('systro_user_role', newRole);
+                    
+                    if (newRole === 'technician') {
+                      setActiveTab('simulator');
+                      fetchRequestsDirectly();
+                    } else {
+                      setActiveTab('services');
+                    }
                     
                     if (loggedInUserEmail) {
                       try {
