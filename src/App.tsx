@@ -393,17 +393,17 @@ export default function App() {
 
   // Client Portal Sign-In Simulation State
   const [userRole, setUserRole] = useState<'client' | 'technician' | null>(() => {
-    const role = sessionStorage.getItem('systro_user_role');
+    const role = localStorage.getItem('systro_user_role') || sessionStorage.getItem('systro_user_role');
     return (role === 'client' || role === 'technician') ? role : null;
   });
   const [portalTab, setPortalTab] = useState<'client' | 'tech'>('client');
   const [phoneNumber, setPhoneNumber] = useState(() => {
-    return sessionStorage.getItem('systro_phone_number') || '';
+    return localStorage.getItem('systro_phone_number') || sessionStorage.getItem('systro_phone_number') || '';
   });
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return sessionStorage.getItem('systro_is_logged_in') === 'true';
+    return localStorage.getItem('systro_is_logged_in') === 'true' || sessionStorage.getItem('systro_is_logged_in') === 'true';
   });
   const [isTrustPortalOpen, setIsTrustPortalOpen] = useState(false);
   const [customDomain, setCustomDomain] = useState(() => {
@@ -501,10 +501,10 @@ export default function App() {
   const [kickedOutNotice, setKickedOutNotice] = useState<string | null>(null);
 
   const [loggedInUserEmail, setLoggedInUserEmail] = useState(() => {
-    return sessionStorage.getItem('systro_user_email') || '';
+    return localStorage.getItem('systro_user_email') || sessionStorage.getItem('systro_user_email') || '';
   });
   const [loggedInUserName, setLoggedInUserName] = useState(() => {
-    return sessionStorage.getItem('systro_user_name') || '';
+    return localStorage.getItem('systro_user_name') || sessionStorage.getItem('systro_user_name') || '';
   });
 
   // User Profile Modal & Permanent Account State
@@ -512,7 +512,7 @@ export default function App() {
   const [profileNameInput, setProfileNameInput] = useState('');
   const [profilePhoneInput, setProfilePhoneInput] = useState('');
   const [userAvatar, setUserAvatar] = useState(() => {
-    return sessionStorage.getItem('systro_user_avatar') || '';
+    return localStorage.getItem('systro_user_avatar') || sessionStorage.getItem('systro_user_avatar') || '';
   });
   const [profileAvatarInput, setProfileAvatarInput] = useState('');
 
@@ -1092,7 +1092,16 @@ export default function App() {
   const [providerName, setProviderName] = useState('');
   const [providerAvatar, setProviderAvatar] = useState('');
   const [isEditingTechProfile, setIsEditingTechProfile] = useState(false);
-  const [activeTechDoc, setActiveTechDoc] = useState<any>(null);
+  const [activeTechDoc, setActiveTechDoc] = useState<any>(() => {
+    const savedOnline = localStorage.getItem('systro_tech_is_online');
+    const savedRole = localStorage.getItem('systro_user_role') || sessionStorage.getItem('systro_user_role');
+    const isOnline = savedOnline !== null ? (savedOnline === 'true') : (savedRole === 'technician');
+    return {
+      isOnline,
+      isAvailable: isOnline,
+      name: localStorage.getItem('systro_user_name') || sessionStorage.getItem('systro_user_name') || 'فني مسجل'
+    };
+  });
   const [selectedBidRequest, setSelectedBidRequest] = useState<any>(null);
   const [customBidPrice, setCustomBidPrice] = useState<string>('150');
   const [customBidEta, setCustomBidEta] = useState<string>('15');
@@ -1122,39 +1131,110 @@ export default function App() {
     };
   }, [lang]);
 
+  // Unified persistent handler for toggling technician online state
+  const handleToggleTechMode = useCallback(async () => {
+    const savedOnline = localStorage.getItem('systro_tech_is_online');
+    const currentOnline = Boolean(activeTechDoc?.isOnline ?? (savedOnline !== null ? savedOnline === 'true' : (userRole === 'technician')));
+    const nextOnline = !currentOnline;
+
+    // Save to localStorage so state is maintained across refreshes and site re-entry
+    localStorage.setItem('systro_tech_is_online', String(nextOnline));
+    if (nextOnline) {
+      setUserRole('technician');
+      localStorage.setItem('systro_user_role', 'technician');
+      sessionStorage.setItem('systro_user_role', 'technician');
+    }
+
+    setActiveTechDoc((prev: any) => ({
+      ...(prev || {}),
+      isOnline: nextOnline,
+      isAvailable: nextOnline
+    }));
+
+    try {
+      const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || localStorage.getItem('systro_user_email') || '').trim().toLowerCase();
+      if (cleanEmail) {
+        await updateDoc(doc(db, "technicians", cleanEmail), {
+          isOnline: nextOnline,
+          isAvailable: nextOnline
+        }).catch(() => {});
+        await setDoc(doc(db, "users", cleanEmail), {
+          role: nextOnline ? 'technician' : 'client',
+          isOnline: nextOnline
+        }, { merge: true }).catch(() => {});
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
+    triggerToast(
+      lang === 'ar'
+        ? (nextOnline 
+            ? '🟢 تم تفعيل وضع الفني المسجل بنجاح! تم حفظ الوضع وسيظل مفعلاً دائماً حتى بعد تحديث أو الخروج من الموقع.' 
+            : '🔴 تم إيقاف وضع الفني: تم حفظ وضعك كغير متاح بالشبكة.')
+        : (nextOnline 
+            ? '🟢 Tech Mode Active! Saved permanently across refreshes and site re-entry.' 
+            : '🔴 Tech Mode Off: Saved as inactive.'),
+      nextOnline ? 'success' : 'warning'
+    );
+  }, [activeTechDoc, userRole, loggedInUserEmail, lang, triggerToast]);
+
   // ==========================================
   // REAL-TIME FIREBASE FIRESTORE SYNC LISTENERS
   // ==========================================
 
   // Real-time listener for the active technician's profile document linked strictly to loggedInUserEmail
   useEffect(() => {
-    const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
+    const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || localStorage.getItem('systro_user_email') || '').trim().toLowerCase();
+    const savedOnline = localStorage.getItem('systro_tech_is_online');
+    const savedOnlineBool = savedOnline !== null ? savedOnline === 'true' : (userRole === 'technician');
+
     if (!isLoggedIn || !cleanEmail) {
-      setActiveTechDoc(null);
+      const currentRole = userRole || localStorage.getItem('systro_user_role');
+      if (currentRole === 'technician' || savedOnlineBool) {
+        setActiveTechDoc((prev: any) => ({
+          ...(prev || {}),
+          isOnline: savedOnlineBool,
+          isAvailable: savedOnlineBool,
+          name: prev?.name || loggedInUserName || (lang === 'ar' ? 'فني مسجل' : 'Registered Tech')
+        }));
+      } else {
+        setActiveTechDoc(null);
+      }
       setProviderVehicle('');
       setProviderPlate('');
       setProviderName('');
       setProviderAvatar('');
       return;
     }
+
     const docRef = doc(db, "technicians", cleanEmail);
     const unsub = onSnapshot(docRef, async (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
-        setActiveTechDoc(data);
+        const effectiveOnline = savedOnline !== null ? savedOnlineBool : (data.isOnline ?? true);
+        setActiveTechDoc({
+          ...data,
+          isOnline: effectiveOnline,
+          isAvailable: effectiveOnline
+        });
         setProviderVehicle(data.carModel || data.arCarModel || '');
         setProviderPlate(data.plateNumber || '');
         setProviderName(data.name || data.arName || loggedInUserName || '');
         setProviderAvatar(data.avatar || '');
 
+        localStorage.setItem('systro_tech_is_online', String(effectiveOnline));
+
         // Auto-promote user role to technician if document exists and role is unassigned
         if (userRole === null) {
           setUserRole('technician');
+          localStorage.setItem('systro_user_role', 'technician');
           sessionStorage.setItem('systro_user_role', 'technician');
         }
       } else {
         // If technician doc does NOT exist for this email, but role is technician, auto-create it immediately
-        if (userRole === 'technician') {
+        const isTechRole = userRole === 'technician' || localStorage.getItem('systro_user_role') === 'technician';
+        if (isTechRole || savedOnlineBool) {
           const initialSpecs = ['all', 'towing', 'mechanic', 'battery', 'lock', 'fuel', 'taxi', 'tire', 'winch'];
 
           const defaultTech = {
@@ -1164,8 +1244,8 @@ export default function App() {
             phone: phoneNumber || providerPhone || '+972 59-999-9999',
             rating: 5.0,
             reviewsCount: 1,
-            isOnline: false,
-            isAvailable: false,
+            isOnline: savedOnlineBool,
+            isAvailable: savedOnlineBool,
             lat: 40,
             lng: 40,
             avatar: userAvatar || providerAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
@@ -3715,10 +3795,14 @@ export default function App() {
     setLoggedInUserName(resolvedName);
 
     sessionStorage.setItem('systro_is_logged_in', 'true');
+    localStorage.setItem('systro_is_logged_in', 'true');
     sessionStorage.setItem('systro_user_email', resolvedEmail);
+    localStorage.setItem('systro_user_email', resolvedEmail);
     sessionStorage.setItem('systro_user_name', resolvedName);
-    if (!sessionStorage.getItem('systro_user_role')) {
+    localStorage.setItem('systro_user_name', resolvedName);
+    if (!localStorage.getItem('systro_user_role') && !sessionStorage.getItem('systro_user_role')) {
       setUserRole('client');
+      localStorage.setItem('systro_user_role', 'client');
       sessionStorage.setItem('systro_user_role', 'client');
     }
 
@@ -3737,18 +3821,22 @@ export default function App() {
           const data = snapshot.data();
           if (data.name) {
             setLoggedInUserName(data.name);
+            localStorage.setItem('systro_user_name', data.name);
             sessionStorage.setItem('systro_user_name', data.name);
           }
           if (data.role) {
             setUserRole(data.role);
+            localStorage.setItem('systro_user_role', data.role);
             sessionStorage.setItem('systro_user_role', data.role);
           }
           if (data.avatar) {
             setUserAvatar(data.avatar);
+            localStorage.setItem('systro_user_avatar', data.avatar);
             sessionStorage.setItem('systro_user_avatar', data.avatar);
           }
           if (data.phone) {
             setPhoneNumber(data.phone);
+            localStorage.setItem('systro_phone_number', data.phone);
             sessionStorage.setItem('systro_phone_number', data.phone);
           }
 
@@ -4626,6 +4714,7 @@ export default function App() {
             <button 
               onClick={() => {
                 setUserRole('client');
+                localStorage.setItem('systro_user_role', 'client');
                 sessionStorage.setItem('systro_user_role', 'client');
                 setActiveTab('services');
               }}
@@ -4636,7 +4725,10 @@ export default function App() {
             <button 
               onClick={() => {
                 setUserRole('technician');
+                localStorage.setItem('systro_user_role', 'technician');
                 sessionStorage.setItem('systro_user_role', 'technician');
+                localStorage.setItem('systro_tech_is_online', 'true');
+                setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: true, isAvailable: true }));
                 setActiveTab('simulator');
               }}
               className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
@@ -4712,19 +4804,24 @@ export default function App() {
                   onClick={async () => {
                     const newRole = userRole === 'technician' ? 'client' : 'technician';
                     setUserRole(newRole);
+                    localStorage.setItem('systro_user_role', newRole);
                     sessionStorage.setItem('systro_user_role', newRole);
-                    
                     if (newRole === 'technician') {
+                      localStorage.setItem('systro_tech_is_online', 'true');
+                      setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: true, isAvailable: true }));
                       setActiveTab('simulator');
                       fetchRequestsDirectly();
                     } else {
+                      localStorage.setItem('systro_tech_is_online', 'false');
+                      setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: false, isAvailable: false }));
                       setActiveTab('services');
                     }
                     
                     if (loggedInUserEmail) {
                       try {
                         const userDocRef = doc(db, "users", loggedInUserEmail);
-                        await setDoc(userDocRef, { role: newRole }, { merge: true });
+                        await setDoc(userDocRef, { role: newRole, isOnline: newRole === 'technician' }, { merge: true });
+                        await updateDoc(doc(db, "technicians", loggedInUserEmail), { isOnline: newRole === 'technician', isAvailable: newRole === 'technician' }).catch(() => {});
                       } catch (err) {
                         console.error("Error updating user role in Firestore:", err);
                       }
@@ -5028,32 +5125,7 @@ export default function App() {
 
             <button
               type="button"
-              onClick={async () => {
-                const currentOnline = activeTechDoc?.isOnline ?? false;
-                const nextOnline = !currentOnline;
-                try {
-                  const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
-                  if (cleanEmail) {
-                    await updateDoc(doc(db, "technicians", cleanEmail), {
-                      isOnline: nextOnline,
-                      isAvailable: nextOnline
-                    });
-                  }
-                  setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: nextOnline, isAvailable: nextOnline }));
-                  triggerToast(
-                    lang === 'ar'
-                      ? (nextOnline 
-                          ? '🟢 تم تفعيل حسابك كفني مسجل ومتاح بالشبكة! يمكنك الآن استقبال كافة البلاغات والتقديم على المهمات.' 
-                          : '🔴 تم إيقاف وضع الفني: أنت الآن في الوضع العادي وغير متاح لاستقبال الطلبات.')
-                      : (nextOnline 
-                          ? '🟢 Tech Mode Activated! You are now registered and receiving live task alerts.' 
-                          : '🔴 Tech Mode Off: Set to inactive.'),
-                    nextOnline ? 'success' : 'warning'
-                  );
-                } catch (err) {
-                  console.error(err);
-                }
-              }}
+              onClick={handleToggleTechMode}
               className={`px-6 py-3.5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer flex items-center gap-2 shadow-lg shrink-0 w-full md:w-auto justify-center ${
                 (activeTechDoc?.isOnline ?? false)
                   ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
@@ -5191,27 +5263,7 @@ export default function App() {
                       {/* Go Online / Availability Toggle Button (زر الظهور) */}
                       <button
                         type="button"
-                        onClick={async () => {
-                          const currentOnline = activeTechDoc?.isOnline ?? false;
-                          const nextOnline = !currentOnline;
-                          try {
-                            if (loggedInUserEmail) {
-                              await updateDoc(doc(db, "technicians", loggedInUserEmail), {
-                                isOnline: nextOnline,
-                                isAvailable: nextOnline
-                              });
-                            }
-                            setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: nextOnline, isAvailable: nextOnline }));
-                            triggerToast(
-                              lang === 'ar'
-                                ? (nextOnline ? '🟢 تم تفعيل وضع الفني المسجل: أنت متاح الآن بالشبكة وتصلك كافة التنبيهات!' : '🔴 زر الظهور متوقف: أنت خارج الشبكة الآن (غير متاح للعمل).')
-                                : (nextOnline ? '🟢 Registered Tech Active: Online to receive alerts!' : '🔴 Tech Status Offline: Away from site.'),
-                              nextOnline ? 'success' : 'warning'
-                            );
-                          } catch (err) {
-                            console.error(err);
-                          }
-                        }}
+                        onClick={handleToggleTechMode}
                         className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shadow-lg ${
                           (activeTechDoc?.isOnline ?? false)
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
