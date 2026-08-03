@@ -542,12 +542,14 @@ export default function ServicesTab({
                     onClick={() => {
                       setSelectedService(service.id);
                       setUserRole('client');
-                      triggerToast(lang === 'ar' ? `تم تحديد خدمة ${service.name}! تفضل بتحديد موقعك وإرسال الطلب.` : `Selected ${service.name}! Pin your location above to proceed.`, 'success');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
+                      if (triggerBidsSimulation) {
+                        triggerBidsSimulation();
+                      }
                     }}
                     className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all cursor-pointer"
                   >
-                    {lang === 'ar' ? 'اطلب الخدمة الآن 🚀' : 'Request Service Now 🚀'}
+                    {lang === 'ar' ? 'اطلب الخدمة الآن ونشر البلاغ 🚀' : 'Request Service & Broadcast Alert 🚀'}
                   </button>
                 </div>
               </div>

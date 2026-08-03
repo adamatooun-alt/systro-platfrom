@@ -2408,8 +2408,8 @@ export default function App() {
               clientName: (userRole as string) === 'guest' ? (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)') : (loggedInUserName || 'Adam Atooun'),
               clientPhone: phoneNumber || "+972 59-123-4567",
               serviceType: selectedService,
-              locationLat: pinnedLocation.lat,
-              locationLng: pinnedLocation.lng,
+              locationLat: locToUse.lat,
+              locationLng: locToUse.lng,
               locationName: "Al-Quds St",
               arLocationName: "شارع القدس",
               description: problemDescription
