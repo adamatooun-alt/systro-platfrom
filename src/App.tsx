@@ -6260,10 +6260,9 @@ export default function App() {
                       </div>
 
                     </div>
-                  ) : false ? (
-                <>
-                  {/* Wizard Status Idle state: Submit request */}
-                  {simStatus === 'idle' && (
+                    {false ? (
+                      <>
+                        {simStatus === 'idle' && (
                     <div className="space-y-6">
                       <h3 className="text-base font-black text-white border-b border-gray-900 pb-3">
                         {lang === 'ar' ? 'خطوة 1: تعبئة وتفاصيل طلب الإنقاذ' : 'Step 1: Fill Rescue Request details'}
@@ -7076,6 +7075,7 @@ export default function App() {
                     </div>
                   )}
                 </>
+              ) : null}
             </div>
           </div>
         </div>
