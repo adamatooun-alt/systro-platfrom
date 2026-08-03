@@ -4711,19 +4711,6 @@ export default function App() {
                 </button>
               </div>
             )}
-
-            {/* Yellow Admin access button - Hidden on smallest screens to prevent overlap */}
-            <button 
-              onClick={() => setActiveTab('admin')}
-              className={`hidden sm:flex px-4 h-11 text-xs font-extrabold rounded-xl transition-all items-center gap-1.5 shadow-lg cursor-pointer shrink-0 ${
-                activeTab === 'admin' 
-                  ? 'bg-amber-500/20 text-amber-400 border-2 border-amber-500 shadow-amber-500/20' 
-                  : 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/10'
-              }`}
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>{lang === 'ar' ? 'بوابة الإدارة' : lang === 'he' ? 'שער ניהול' : 'Admin Gate'}</span>
-            </button>
           </div>
         </div>
       </header>
@@ -4982,9 +4969,8 @@ export default function App() {
             {/* Right Column: Service Provider Control Dashboard */}
             <div className="lg:col-span-7 bg-[#111827]/60 border border-gray-800 p-6 rounded-3xl space-y-6 flex flex-col justify-between">
               
-              {userRole === 'technician' ? (
-                /* SERVICE PROVIDER DASHBOARD (Palestine Rescue Live Hub) */
-                <div className="space-y-6 text-right">
+              {/* SERVICE PROVIDER DASHBOARD (Palestine Rescue Live Hub) */}
+              <div className="space-y-6 text-right">
                   {/* Live Badge Status Header */}
                   <div className="p-4 bg-[#0A0B10]/95 border border-gray-900 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 select-none">
                     <div className="flex items-center gap-3">
@@ -6274,8 +6260,7 @@ export default function App() {
                       </div>
 
                     </div>
-                  ) : (
-                /* Original Client Workflow (Idle, Pending Bids, Secure Vault Deposit, En Route, Chat, Completed) */
+                  ) : false ? (
                 <>
                   {/* Wizard Status Idle state: Submit request */}
                   {simStatus === 'idle' && (
@@ -7091,7 +7076,6 @@ export default function App() {
                     </div>
                   )}
                 </>
-              )}
             </div>
           </div>
         </div>
@@ -8260,14 +8244,6 @@ export default function App() {
         >
           <ShoppingBag className="w-5 h-5 shrink-0" />
           <span>{lang === 'ar' ? 'المتجر' : lang === 'he' ? 'חנות' : 'Store'}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab('admin')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'admin' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
-        >
-          <Lock className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'الإدارة' : lang === 'he' ? 'ניהول' : 'Admin'}</span>
         </button>
       </div>
 
