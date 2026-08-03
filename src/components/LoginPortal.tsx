@@ -253,10 +253,10 @@ export default function LoginPortal({
           </span>
           <span className="text-[11px] sm:text-xs font-black text-amber-300 tracking-wide leading-snug drop-shadow-sm">
             {lang === 'ar' 
-              ? 'بإشراف وإدارة آدم عطون | المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
+              ? 'المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
               : lang === 'he'
-              ? 'בפיקוח ובניהול אדם עטון | פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
-              : 'Supervised & Managed by Adam Atoun | The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
+              ? 'פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
+              : 'The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
           </span>
         </div>
 

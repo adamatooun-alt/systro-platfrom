@@ -1207,7 +1207,7 @@ export default function TaxiTab({
                         />
                       </div>
                       <div className="space-y-1 text-right sm:text-right">
-                        <h4 className="text-base font-black text-white">{selectedBid?.technicianArName || selectedBid?.technicianName || "الكابتن أحمد عطون"}</h4>
+                        <h4 className="text-base font-black text-white">{selectedBid?.technicianArName || selectedBid?.technicianName || "الكابتن المعتمد"}</h4>
                         <p className="text-xs text-gray-400 font-bold flex items-center justify-center sm:justify-start gap-1">
                           <span>{selectedBid?.carModel || "Silver Skoda Octavia 🚗"}</span>
                         </p>
@@ -1325,7 +1325,7 @@ export default function TaxiTab({
 
                 <h2 className="text-xl md:text-2xl font-black text-white">{t.tripEnded}</h2>
                 <p className="text-gray-400 font-semibold text-xs md:text-sm max-w-md leading-relaxed">
-                  تمت تسوية قيمة الرحلة وإيداع {getCalculatedFare()} ₪ بنجاح في المحفظة الإلكترونية للكابتن أحمد عطون. شكراً لتقييمك ومساهمتك في زيادة موثوقية المجتمع!
+                  تمت تسوية قيمة الرحلة وإيداع {getCalculatedFare()} ₪ بنجاح في المحفظة الإلكترونية للكابتن. شكراً لتقييمك ومساهمتك في زيادة موثوقية المجتمع!
                 </p>
 
                 {/* Rating display summary */}

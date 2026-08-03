@@ -4158,10 +4158,10 @@ export default function App() {
         </span>
         <span className="text-[11px] sm:text-xs font-black text-amber-400 tracking-wide">
           {lang === 'ar' 
-            ? 'بإشراف وإدارة آدم عطون | المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
+            ? `الحساب المسجل: ${isLoggedIn && loggedInUserName ? loggedInUserName : (loggedInUserEmail || 'حساب معتمد')} | المنصة الرقمية المعتمدة للإنقاذ السريع 🛠️✨` 
             : lang === 'he'
-            ? 'בפיקוח ובניהול אדם עטון | פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
-            : 'Supervised & Managed by Adam Atoun | The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
+            ? `חשבון משתמש רשום: ${isLoggedIn && loggedInUserName ? loggedInUserName : (loggedInUserEmail || 'חשבון מאומת')} | פלטפורמת החילוץ המוסמכת 🛠️✨`
+            : `Registered User Account: ${isLoggedIn && loggedInUserName ? loggedInUserName : (loggedInUserEmail || 'Verified User')} | Certified Rescue Platform 🛠️✨`}
         </span>
       </div>
 
@@ -4690,10 +4690,15 @@ export default function App() {
                 <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-cyan-400 to-blue-500 drop-shadow-[0_1px_2px_rgba(14,165,233,0.15)]">
                   {t.logoTitle} <span className="text-sky-400 font-black">{t.logoRescue}</span>
                 </h1>
-                {/* Custom glowing supervisor badge for Adam Atoun */}
-                <span className="px-2 py-0.5 text-[9px] font-black text-amber-300 bg-amber-500/20 border border-amber-500/40 shadow-sm rounded-md animate-pulse">
-                  {lang === 'ar' ? 'بإشراف آدم عطون' : lang === 'he' ? 'בפיקוח אדם עטון' : 'Adam Atoun'}
-                </span>
+                {/* Registered User Account Badge */}
+                <div className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] sm:text-[10px] font-black text-amber-300 bg-amber-500/15 border border-amber-500/30 shadow-sm rounded-lg max-w-[180px] truncate" title={loggedInUserName || loggedInUserEmail || (lang === 'ar' ? 'حساب مسجل' : 'Registered Account')}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
+                  <span className="truncate">
+                    {isLoggedIn && loggedInUserName 
+                      ? (lang === 'ar' ? `الحساب: ${loggedInUserName}` : lang === 'he' ? `חשבון: ${loggedInUserName}` : `Account: ${loggedInUserName}`)
+                      : (lang === 'ar' ? 'حساب مسجل' : lang === 'he' ? 'חשבון רשום' : 'Registered Account')}
+                  </span>
+                </div>
               </div>
               <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-cyan-400/80 block uppercase">
                 {t.logoSub}
@@ -8459,7 +8464,7 @@ export default function App() {
                 {lang === 'ar' ? '© ٢٠٢٦ سيسترو والضمان المالي 🛡️ جميع الحقوق محفوظة.' : lang === 'he' ? '© 2026 סיסטרו והסדר מאובטח 🛡️ כל הזכויות שמורות.' : '© 2026 Systro & Escrow Secure 🛡️ All Rights Reserved.'}
               </span>
               <span className="text-xs font-black text-white block mt-1">
-                {lang === 'ar' ? 'تطوير ودعم تقني تحت إشراف آدم عطون' : lang === 'he' ? 'פיתוח ותמיכה טכנולוגית בפיקוח אדם עטון' : 'Technology support supervised by Adam Atoun'}
+                {lang === 'ar' ? `منصة خدمات الطرق والإنقاذ المباشر - الحساب الحالي: ${loggedInUserName || 'حساب مسجل'}` : lang === 'he' ? `פלטפורמת שירותי דרך וחילוץ - חשבון: ${loggedInUserName || 'חשבון רשום'}` : `Roadside Rescue Platform - Account: ${loggedInUserName || 'Registered User'}`}
               </span>
             </div>
           </div>

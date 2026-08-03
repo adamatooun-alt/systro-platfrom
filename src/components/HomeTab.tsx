@@ -510,10 +510,10 @@ export default function HomeTab({
               </h3>
               <p className="text-sm text-gray-400 font-medium leading-relaxed">
                 {lang === 'ar' 
-                  ? 'ملاحظاتك تهمنا كثيراً لتطوير الخدمة! إذا صادفتك أي مشكلة برمجية، تأخير، أو خطأ في النظام، يرجى كتابتها فوراً ليصل تقريرك مباشرة إلى المهندس آدم عطون للمتابعة الفورية.' 
+                  ? 'ملاحظاتك تهمنا كثيراً لتطوير الخدمة! إذا صادفتك أي مشكلة برمجية، تأخير، أو خطأ في النظام، يرجى كتابتها فوراً ليصل تقريرك مباشرة إلى فريق الدعم والمتابعة الفورية.' 
                   : lang === 'he'
-                  ? 'המשוב שלך חשוב לנו מאוד לפיתוח השירות! אם נתקלת בבעיית תוכנה, עיכוב או שגיאת מערכת, אנא דווח עליה כאן כדי להגיע למהנדס אדם עטון באופן מיידי לטיפול פתרון.'
-                  : 'Your feedback is extremely valuable to us! If you encounter any software bugs, delays, or system errors, please report them here to reach Eng. Adam Atoun immediately for resolving.'}
+                  ? 'המשוב שלך חשוב לנו מאוד לפיתוח השירות! אם נתקלת בבעיית תוכנה, עיכוב או שגיאת מערכת, אנא דווח עליה כאן כדי להגיע לצוות התמיכה באופן מיידי לטיפול פתרון.'
+                  : 'Your feedback is extremely valuable to us! If you encounter any software bugs, delays, or system errors, please report them here to reach our support team immediately for resolving.'}
               </p>
             </div>
 
@@ -677,10 +677,10 @@ export default function HomeTab({
                     <Send className="w-4 h-4 shrink-0" />
                     <span>
                       {lang === 'ar' 
-                        ? 'إرسال البلاغ فوراً للمهندس آدم عطون' 
+                        ? 'إرسال البلاغ فوراً لفريق الدعم والمهندسين' 
                         : lang === 'he'
-                        ? 'שלח דיווח מיידי למהנדס אדם עטון'
-                        : 'Submit Issue to Eng. Adam Atoun'}
+                        ? 'שלח דיווח מיידי לצוות התמיכה'
+                        : 'Submit Issue to Support Team'}
                     </span>
                   </>
                 )}
