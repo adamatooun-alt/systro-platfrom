@@ -772,13 +772,14 @@ export default function App() {
     return true;
   }, []);
 
-  // Helper to check if a request was created by the currently logged in user / current session as a client
+  // Helper to check if a request was created by the currently logged in user as a client
   const isMyOwnClientRequest = useCallback((req: RescueRequest) => {
     if (!req) return false;
-    const isEmailMatch = Boolean(isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '' && req.requestedBy === loggedInUserEmail);
-    const isSessionMatch = Boolean(req.sessionId && req.sessionId === currentSessionId);
-    return isEmailMatch || isSessionMatch;
-  }, [isLoggedIn, loggedInUserEmail, currentSessionId]);
+    if (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '' && req.requestedBy === loggedInUserEmail) {
+      return true;
+    }
+    return false;
+  }, [isLoggedIn, loggedInUserEmail]);
 
   // Helper to determine if a request is open AND should be visible to technicians
   const isPendingForTechnician = useCallback((req: RescueRequest) => {
@@ -788,10 +789,17 @@ export default function App() {
       return false;
     }
     if (!isPendingRequest(req)) return false;
-    // CRITICAL: A request created by the current user/session as a client must NOT be shown to themselves in the technician feed
+
+    // If currently acting/logged in as a technician, show ALL active pending requests!
+    if (userRole === 'technician') {
+      return true;
+    }
+
+    // For client/guest view, do not show own client request in technician lists
     if (isMyOwnClientRequest(req)) return false;
+
     return true;
-  }, [isPendingRequest, isMyOwnClientRequest]);
+  }, [isPendingRequest, isMyOwnClientRequest, userRole]);
 
   // Helper to fetch requests from both Firestore and Node Server backend for multi-device sync
   const fetchRequestsDirectly = useCallback(async () => {
