@@ -299,9 +299,9 @@ export default function ServicesTab({
             <div className="space-y-2">
               <h3 className="text-lg font-black text-white flex items-center gap-2">
                 <Wrench className="w-5 h-5 text-amber-500" />
-                <span>{lang === 'ar' ? 'طلب خدمة إنقاذ وطوارئ طوارئ سريعة 🚗' : 'Request Rapid Emergency Assistance 🚗'}</span>
+                <span>{lang === 'ar' ? 'طلب خدمة إنقاذ وطوارئ سريعة 🚗' : 'Request Rapid Emergency Assistance 🚗'}</span>
               </h3>
-              <p className="text-xs text-gray-400 font-semibold">
+              <p className="text-xs text-slate-300 font-semibold">
                 {lang === 'ar' 
                   ? 'حدد نوع الخدمة المطلوبة وموقعك ليصلك عروض الفنيين القريبين منك فوراً:' 
                   : 'Select service type and pin location to get instant technician quotes:'}
@@ -316,25 +316,35 @@ export default function ServicesTab({
                 return (
                   <button
                     key={s.id}
+                    type="button"
                     onClick={() => {
                       setSelectedService(s.id);
                       triggerToast(lang === 'ar' ? `تم اختيار خدمة ${s.name}` : `Selected ${s.name}`, 'info');
                     }}
-                    className={`p-3.5 rounded-2xl border transition-all text-right cursor-pointer flex flex-col justify-between gap-2 ${
+                    className={`p-3.5 sm:p-4 rounded-2xl border transition-all text-right cursor-pointer flex flex-col justify-between gap-3 relative overflow-hidden shadow-sm ${
                       isSelected 
-                        ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-md shadow-amber-500/10' 
-                        : 'bg-[#0A0B10] border-gray-800 text-gray-300 hover:border-gray-700'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-200 shadow-md shadow-amber-500/20 ring-2 ring-amber-500/60' 
+                        : 'bg-[#111827] border-gray-700 text-gray-100 hover:border-gray-600 hover:bg-[#1f293d]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className={`p-2 rounded-xl ${s.color}`}>
-                        <Icon className="w-4 h-4" />
+                      <div className={`p-2.5 rounded-xl ${s.color} border border-white/10 shadow-sm`}>
+                        <Icon className="w-5 h-5 shrink-0" />
                       </div>
-                      {isSelected && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>}
+                      {isSelected ? (
+                        <span className="flex items-center gap-1 text-[10px] font-black bg-amber-500 text-black px-2 py-0.5 rounded-full shadow-sm">
+                          <span className="w-1.5 h-1.5 rounded-full bg-black animate-ping"></span>
+                          <span>{lang === 'ar' ? 'محدد' : 'Selected'}</span>
+                        </span>
+                      ) : null}
                     </div>
-                    <div>
-                      <span className="text-xs font-black block text-white">{s.name}</span>
-                      <span className="text-[10px] text-amber-400 font-mono font-bold">{s.basePrice} ₪</span>
+                    <div className="space-y-1">
+                      <span className="text-xs sm:text-sm font-black block text-white leading-snug break-words">
+                        {s.name}
+                      </span>
+                      <span className="text-xs text-amber-400 font-mono font-black block">
+                        {s.basePrice} ₪
+                      </span>
                     </div>
                   </button>
                 );

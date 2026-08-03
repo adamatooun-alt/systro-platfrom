@@ -641,11 +641,18 @@ export default function App() {
           enDesc = enDesc || 'Specialized emergency service delivered by certified, fully equipped partner technicians to rescue you immediately.';
         }
         
-        const cleanName = lang === 'en' 
+        let cleanName = lang === 'en' 
           ? (nameEn || nameAr) 
           : lang === 'he' 
           ? (nameAr || nameEn)
           : (nameAr || nameEn);
+
+        // Strip bracketed English text (e.g. " (Fuel Delivery)") for cleaner titles in Arabic
+        if (lang === 'ar' && cleanName) {
+          cleanName = cleanName.replace(/\s*\([A-Za-z\s&/'-]+\)/g, '').trim();
+        } else if (lang === 'en' && cleanName) {
+          cleanName = cleanName.replace(/\s*\([A-Za-z\s&/'-]+\)/g, '').trim();
+        }
 
         const cleanDesc = lang === 'en'
           ? (enDesc || arDesc)
@@ -4494,7 +4501,7 @@ export default function App() {
                   {t.logoTitle} <span className="text-sky-400 font-black">{t.logoRescue}</span>
                 </h1>
                 {/* Custom glowing supervisor badge for Adam Atoun */}
-                <span className="px-2 py-0.5 text-[9px] font-black text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-md animate-pulse">
+                <span className="px-2 py-0.5 text-[9px] font-black text-amber-300 bg-amber-500/20 border border-amber-500/40 shadow-sm rounded-md animate-pulse">
                   {lang === 'ar' ? 'بإشراف آدم عطون' : lang === 'he' ? 'בפיקוח אדם עטון' : 'Adam Atoun'}
                 </span>
               </div>
