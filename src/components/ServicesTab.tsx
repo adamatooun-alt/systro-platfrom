@@ -36,7 +36,7 @@ interface ServicesTabProps {
   hasValidKey?: boolean;
   isMapAuthFailed?: boolean;
   mapsKey?: string;
-  triggerBidsSimulation?: () => Promise<void>;
+  triggerBidsSimulation?: (overrideService?: ServiceType, customPrice?: number, customDesc?: string) => Promise<void>;
   simStatus?: string;
   setSimStatus?: (s: any) => void;
   allRequests?: RescueRequest[];
@@ -544,7 +544,7 @@ export default function ServicesTab({
                       setUserRole('client');
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                       if (triggerBidsSimulation) {
-                        triggerBidsSimulation();
+                        triggerBidsSimulation(service.id, service.basePrice);
                       }
                     }}
                     className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all cursor-pointer"

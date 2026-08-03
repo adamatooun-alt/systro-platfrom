@@ -529,28 +529,10 @@ export default function TaxiTab({
       return;
     }
 
-    if (!isLoggedIn) {
-      triggerToast(
-        lang === 'ar'
-          ? 'الرجاء تسجيل الدخول أولاً للتمكن من حجز تكسي معتمد!'
-          : lang === 'he'
-          ? 'אנא התחבר תחילה כדי לבצע הזמנת מונית!'
-          : 'Please log in to book a certified ride!',
-        'warning'
-      );
-      // Auto scroll to login section on home if any
-      setActiveTab('home');
-      setTimeout(() => {
-        const element = document.getElementById('login-portal-section');
-        if (element) element.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
-      return;
-    }
-
     try {
       const reqId = `req-taxi-${Date.now()}`;
       const approxPrice = getCalculatedFare();
-      const clientName = loggedInUserName || 'Adam Atooun';
+      const clientName = loggedInUserName || (lang === 'ar' ? 'عميل معتمد (حساب ضيف)' : 'Verified Client (Guest)');
 
       const locLat = pinnedLocation ? pinnedLocation.lat : 50;
       const locLng = pinnedLocation ? pinnedLocation.lng : 50;

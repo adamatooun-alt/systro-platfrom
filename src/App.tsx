@@ -815,7 +815,8 @@ export default function App() {
           map.set(r.id, r);
         } else {
           const existing = map.get(r.id)!;
-          map.set(r.id, { ...existing, ...r });
+          // Priority fix: Firestore server data (existing) takes precedence over API cache (r)
+          map.set(r.id, { ...r, ...existing });
         }
       });
 
@@ -2323,7 +2324,7 @@ export default function App() {
   };
 
   // Client: Submit Rescue Request to Firestore List
-  const triggerBidsSimulation = async () => {
+  const triggerBidsSimulation = async (overrideService?: ServiceType, customPrice?: number, customDesc?: string) => {
     let locToUse = pinnedLocation;
     if (!locToUse) {
       locToUse = { lat: 31.9038, lng: 35.2034 };
@@ -2334,6 +2335,9 @@ export default function App() {
       const reqId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
       const latVal = locToUse.lat;
       const lngVal = locToUse.lng;
+      const targetService = overrideService || selectedService || 'towing';
+      const targetPrice = customPrice || approximatePrice || 150;
+      const targetDesc = customDesc || problemDescription || '';
 
       const newReqObj: RescueRequest = {
         id: reqId,
@@ -2345,11 +2349,11 @@ export default function App() {
         locationLng: lngVal,
         locationName: "Al-Quds St",
         arLocationName: "شارع القدس",
-        serviceType: selectedService || 'mechanic',
-        description: problemDescription || '',
+        serviceType: targetService,
+        description: targetDesc,
         status: "pending_bids",
         escrowAmount: 0,
-        approximatePrice: Number(approximatePrice || 150),
+        approximatePrice: Number(targetPrice),
         selectedTechnicianId: null,
         timestamp: new Date().toISOString()
       };
@@ -6421,7 +6425,7 @@ export default function App() {
 
                       {/* Submission actions */}
                       <button 
-                        onClick={triggerBidsSimulation}
+                        onClick={() => triggerBidsSimulation()}
                         className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-black font-black text-sm rounded-2xl transition-all shadow-xl shadow-amber-500/10 flex items-center justify-center gap-2"
                       >
                         <Activity className="w-5 h-5 animate-pulse" />
