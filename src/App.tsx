@@ -820,15 +820,34 @@ export default function App() {
         }
       });
 
-      const list = Array.from(map.values());
-      list.sort((a, b) => {
-        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      // Crucial fix: preserve recent optimistic local requests from previous state so published requests don't vanish!
+      setAllRequests(prev => {
+        const mergedMap = new Map<string, RescueRequest>();
+        // 1. Populate from server snapshot & API
+        map.forEach((val, key) => mergedMap.set(key, val));
+
+        // 2. Preserve recent optimistic local requests from prev if not yet present in server response
+        const now = Date.now();
+        prev.forEach(r => {
+          if (!mergedMap.has(r.id)) {
+            const reqTimeMatch = r.id ? (r.id.match(/req-(\d+)/) || r.id.match(/req-taxi-(\d+)/)) : null;
+            const reqTime = reqTimeMatch ? Number(reqTimeMatch[1]) : (r.timestamp ? new Date(r.timestamp).getTime() : 0);
+            if ((reqTime > 0 && now - reqTime < 120000) || !r.timestamp) {
+              mergedMap.set(r.id, r);
+            }
+          }
+        });
+
+        const list = Array.from(mergedMap.values());
+        list.sort((a, b) => {
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+        });
+        return list;
       });
 
-      setAllRequests(list);
-      return list;
+      return Array.from(map.values());
     } catch (err) {
       console.warn("Requests background sync notice:", err);
       return [];
@@ -1754,6 +1773,12 @@ export default function App() {
         }
       }
     } else {
+      // Prevent resetting activeRequestId if request was created recently and server sync is in progress
+      const reqTimeMatch = activeRequestId.match(/req-(\d+)/) || activeRequestId.match(/req-taxi-(\d+)/);
+      const reqTime = reqTimeMatch ? Number(reqTimeMatch[1]) : 0;
+      if (reqTime > 0 && Date.now() - reqTime < 60000) {
+        return;
+      }
       setActiveRequestId(null);
     }
   }, [activeRequestId, allRequests]);
@@ -2376,10 +2401,12 @@ export default function App() {
         console.warn("API post request notice:", apiErr);
       }
 
-      // 2. Update local state, activeRequestId, and simStatus
+      // 2. Update local state, liveRequest, activeRequestId, simStatus, and switch to simulator tab
+      setLiveRequest(newReqObj);
       setAllRequests(prev => [newReqObj, ...prev.filter(r => r.id !== reqId)]);
       setActiveRequestId(reqId);
       setSimStatus('pending_bids');
+      setActiveTab('simulator');
       sessionStorage.setItem('systro_active_request_id', reqId);
 
       // Play sound feedback for instant user awareness
@@ -2389,6 +2416,13 @@ export default function App() {
 
       // Force instant background refresh to sync all components
       fetchRequestsDirectly();
+
+      triggerToast(
+        lang === 'ar' 
+          ? '🚀 تم نشر المهمة وإطلاق البلاغ بنجاح! جاري عرض الطلب والرادار المباشر.' 
+          : '🚀 Task published & broadcast successfully! Displaying live radar view.',
+        'success'
+      );
 
       // 3. Broadcast across tabs for multi-window testing
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {

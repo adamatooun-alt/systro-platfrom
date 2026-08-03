@@ -375,12 +375,12 @@ export default function ServicesTab({
                   </span>
                   
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                    simStatus === 'searching' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse' :
+                    simStatus === 'searching' || simStatus === 'pending_bids' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse' :
                     simStatus === 'bids_received' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                     simStatus === 'accepted' || simStatus === 'en_route' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
                     'bg-gray-800 text-gray-300'
                   }`}>
-                    {simStatus === 'searching' && (lang === 'ar' ? 'جاري البحث وتنبيه الفنيين 📡' : 'Searching Nearby Techs 📡')}
+                    {(simStatus === 'searching' || simStatus === 'pending_bids') && (lang === 'ar' ? 'جاري بث المهمة على رادار الفنيين 📡' : 'Broadcasting Task on Radar 📡')}
                     {simStatus === 'bids_received' && (lang === 'ar' ? 'تم استقبال عروض أسعار 🛠️' : 'Bids Received 🛠️')}
                     {simStatus === 'accepted' && (lang === 'ar' ? 'تم قبول العرض 🤝' : 'Bid Accepted 🤝')}
                     {simStatus === 'en_route' && (lang === 'ar' ? 'الفني في الطريق إليك 🚚' : 'Tech En Route 🚚')}
@@ -390,7 +390,7 @@ export default function ServicesTab({
                 </div>
 
                 {/* Received Bids Grid */}
-                {simStatus === 'bids_received' && incomingBids.length > 0 && (
+                {(simStatus === 'bids_received' || simStatus === 'pending_bids' || incomingBids.length > 0) && incomingBids.length > 0 && (
                   <div className="space-y-3 pt-2">
                     <h4 className="text-xs font-black text-white">{lang === 'ar' ? 'عروض الأسعار المقدمة لك:' : 'Quotes Provided for You:'}</h4>
                     <div className="grid grid-cols-1 gap-3">
