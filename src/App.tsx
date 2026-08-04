@@ -6623,18 +6623,6 @@ export default function App() {
                     );
                   })()}
                 </div>
-
-                {/* Live Public Group Chat section at bottom of Technician Panel */}
-                <div className="mt-8 pt-6 border-t border-gray-900">
-                  <PublicGroupChat 
-                    lang={lang} 
-                    currentUserRole={userRole || 'technician'}
-                    currentUserName={loggedInUserName || profileNameInput || (lang === 'ar' ? 'فني معتمد' : 'Technician')}
-                    currentUserEmail={loggedInUserEmail}
-                    currentUserAvatar={userAvatar}
-                  />
-                </div>
-
               </div>
                     {false ? (
                       <>
@@ -7453,18 +7441,8 @@ export default function App() {
                 </>
               ) : null}
 
-              {/* Live Public Group Chat section at bottom of Client Panel */}
-              <div className="mt-8 pt-6 border-t border-gray-900">
-                <PublicGroupChat 
-                  lang={lang} 
-                  currentUserRole={userRole || 'client'}
-                  currentUserName={loggedInUserName || profileNameInput || (lang === 'ar' ? 'زبون' : 'Client')}
-                  currentUserEmail={loggedInUserEmail}
-                  currentUserAvatar={userAvatar}
-                />
               </div>
             </div>
-          </div>
           ) : (
             <div className="p-8 md:p-12 bg-[#0F1424]/90 border-2 border-amber-500/30 rounded-3xl text-center space-y-6 shadow-2xl relative overflow-hidden my-4 select-none animate-fade-in">
               <div className="absolute -top-24 -right-24 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -7504,6 +7482,17 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {/* Single Live Public Group Chat section at bottom of Operations / Simulator Tab */}
+          <div className="pt-8 border-t border-gray-900">
+            <PublicGroupChat 
+              lang={lang} 
+              currentUserRole={userRole || 'client'}
+              currentUserName={loggedInUserName || profileNameInput || (lang === 'ar' ? 'مستخدم' : 'User')}
+              currentUserEmail={loggedInUserEmail}
+              currentUserAvatar={userAvatar}
+            />
+          </div>
         </div>
       )}
 
