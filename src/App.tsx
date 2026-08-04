@@ -789,15 +789,25 @@ export default function App() {
   // Helper to check if a request was created by the currently logged in user as a client
   const isMyOwnClientRequest = useCallback((req: RescueRequest) => {
     if (!req) return false;
-    if (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '' && req.requestedBy === loggedInUserEmail) {
+    const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
+    if (cleanEmail && req.requestedBy && req.requestedBy.trim().toLowerCase() === cleanEmail) {
       return true;
     }
-    const activeReqId = sessionStorage.getItem('systro_active_request_id') || localStorage.getItem('systro_active_request_id');
-    if (activeReqId && req.id === activeReqId) {
+    if (activeRequestId && req.id === activeRequestId) {
+      return true;
+    }
+    const savedActiveReqId = (typeof window !== 'undefined') 
+      ? (sessionStorage.getItem('systro_active_request_id') || localStorage.getItem('systro_active_request_id')) 
+      : null;
+    if (savedActiveReqId && req.id === savedActiveReqId) {
+      return true;
+    }
+    const currSession = currentSessionId || (typeof window !== 'undefined' ? sessionStorage.getItem('systro_client_session_id') : null);
+    if (currSession && req.sessionId && req.sessionId === currSession) {
       return true;
     }
     return false;
-  }, [isLoggedIn, loggedInUserEmail]);
+  }, [loggedInUserEmail, activeRequestId, currentSessionId]);
 
   // Helper to determine if a request is open AND should be visible to technicians
   const isPendingForTechnician = useCallback((req: RescueRequest) => {
@@ -808,19 +818,14 @@ export default function App() {
     }
     if (!isPendingRequest(req)) return false;
 
-    // If currently acting or logged in as a technician, show ALL active pending requests!
-    const isTechMode = userRole === 'technician' || sessionStorage.getItem('systro_user_role') === 'technician';
-    if (isTechMode) {
-      return true;
-    }
-
-    // For client/guest view, do not show own client request in technician lists
+    // CRITICAL: A user who published a request MUST NOT see their own request in their own technician dashboard/alerts.
+    // The request is meant to be broadcasted to OTHER registered technicians and other accounts on the network.
     if (isMyOwnClientRequest(req)) {
       return false;
     }
 
     return true;
-  }, [isPendingRequest, isMyOwnClientRequest, userRole]);
+  }, [isPendingRequest, isMyOwnClientRequest]);
 
   // Helper to fetch requests from both Firestore and Node Server backend for multi-device sync
   const fetchRequestsDirectly = useCallback(async () => {
