@@ -748,7 +748,12 @@ export default function App() {
   // New List-driven State
   const [allRequests, setAllRequests] = useState<RescueRequest[]>([]);
   const [activeRequestId, setActiveRequestId] = useState<string | null>(() => {
-    return sessionStorage.getItem('systro_active_request_id') || null;
+    try {
+      if (typeof window !== 'undefined') {
+        return localStorage.getItem('systro_active_request_id') || sessionStorage.getItem('systro_active_request_id') || null;
+      }
+    } catch (e) {}
+    return null;
   });
 
   // Helper to determine if a request is open / pending for technician response
@@ -861,13 +866,10 @@ export default function App() {
           }
         });
 
-        // 2. Preserve recent optimistic local requests from prev if not yet present in server response
-        const now = Date.now();
+        // 2. Preserve all active, un-cancelled requests from local state so published tasks NEVER vanish on refresh or page exit
         prev.forEach(r => {
           if (!mergedMap.has(r.id)) {
-            const reqTimeMatch = r.id ? (r.id.match(/req-(\d+)/) || r.id.match(/req-taxi-(\d+)/)) : null;
-            const reqTime = reqTimeMatch ? Number(reqTimeMatch[1]) : (r.timestamp ? new Date(r.timestamp).getTime() : 0);
-            if ((reqTime > 0 && now - reqTime < 120000) || !r.timestamp) {
+            if (r.status !== 'cancelled') {
               mergedMap.set(r.id, r);
             }
           }
@@ -905,12 +907,18 @@ export default function App() {
     }
   };
 
-  // Sync activeRequestId with sessionStorage
+  // Sync activeRequestId with localStorage & sessionStorage
   useEffect(() => {
     if (activeRequestId) {
-      sessionStorage.setItem('systro_active_request_id', activeRequestId);
+      try {
+        localStorage.setItem('systro_active_request_id', activeRequestId);
+        sessionStorage.setItem('systro_active_request_id', activeRequestId);
+      } catch (e) {}
     } else {
-      sessionStorage.removeItem('systro_active_request_id');
+      try {
+        localStorage.removeItem('systro_active_request_id');
+        sessionStorage.removeItem('systro_active_request_id');
+      } catch (e) {}
     }
   }, [activeRequestId]);
 
@@ -1589,14 +1597,15 @@ export default function App() {
         if (!existing) return;
 
         const belongsToMe = (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '')
-          ? (existing.requestedBy === loggedInUserEmail)
-          : (existing.sessionId === currentSessionId && (!existing.requestedBy || existing.requestedBy === ''));
+          ? (existing.requestedBy === loggedInUserEmail || existing.id === activeRequestId)
+          : (existing.id === activeRequestId || (existing.sessionId && existing.sessionId === currentSessionId));
 
         if (existing.status === 'completed' || !belongsToMe) {
           setActiveRequestId(null);
           setSelectedBid(null);
           setIncomingBids([]);
           setChatMessages([]);
+          localStorage.removeItem('systro_active_request_id');
           sessionStorage.removeItem('systro_active_request_id');
         }
         return;
@@ -1609,7 +1618,8 @@ export default function App() {
           return r.requestedBy === loggedInUserEmail;
         }
         
-        return r.sessionId === currentSessionId && (!r.requestedBy || r.requestedBy === '');
+        const savedActiveId = (typeof window !== 'undefined') ? (localStorage.getItem('systro_active_request_id') || sessionStorage.getItem('systro_active_request_id')) : null;
+        return (r.sessionId === currentSessionId && (!r.requestedBy || r.requestedBy === '')) || (savedActiveId ? r.id === savedActiveId : false);
       });
 
       if (activeUserRequest) {
@@ -1635,6 +1645,7 @@ export default function App() {
           setSelectedBid(null);
           setIncomingBids([]);
           setChatMessages([]);
+          localStorage.removeItem('systro_active_request_id');
           sessionStorage.removeItem('systro_active_request_id');
         }
         return;
@@ -2547,7 +2558,10 @@ export default function App() {
       setActiveRequestId(reqId);
       setSimStatus('pending_bids');
       setActiveTab('simulator');
-      sessionStorage.setItem('systro_active_request_id', reqId);
+      try {
+        localStorage.setItem('systro_active_request_id', reqId);
+        sessionStorage.setItem('systro_active_request_id', reqId);
+      } catch (e) {}
 
       // Play sound feedback for instant user awareness
       try {
@@ -2650,6 +2664,11 @@ export default function App() {
           handleFirestoreError(error, OperationType.DELETE, `requests/${activeRequestId}`);
         }
 
+        // Also delete from Express API server cache
+        try {
+          await fetch(`/api/requests/${activeRequestId}`, { method: 'DELETE' });
+        } catch (e) {}
+
         // Also delete any associated bids from the database
         try {
           const bidsQuery = query(collection(db, "bids"), where("requestId", "==", activeRequestId));
@@ -2661,6 +2680,19 @@ export default function App() {
           handleFirestoreError(error, OperationType.DELETE, `bids?requestId=${activeRequestId}`);
         }
       }
+
+      setActiveRequestId(null);
+      setSimStatus('idle');
+      setPinnedLocation(null);
+      setSelectedBid(null);
+      setIncomingBids([]);
+      setTechCoordinates(null);
+      setProblemDescription('');
+      setChatMessages([]);
+      try {
+        localStorage.removeItem('systro_active_request_id');
+        sessionStorage.removeItem('systro_active_request_id');
+      } catch (e) {}
 
       // Decrement active emergencies safely
       if (stats.activeEmergencies > 0) {
@@ -3954,6 +3986,42 @@ export default function App() {
     }
   };
 
+  // 10-Minute Inactivity / Idle Auto Logout Condition with User Activity Detection
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    let inactivityTimer: NodeJS.Timeout;
+
+    const resetInactivityTimer = () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        handleLogout();
+        triggerToast(
+          lang === 'ar'
+            ? '⚠️ تم تسجيل الخروج تلقائياً لعدم القيام بأي حركة على الموقع لمدة 10 دقائق'
+            : lang === 'he'
+            ? '⚠️ התנתקת באופן אוטומטי עקב חוסר פעילות במשך 10 דקות'
+            : '⚠️ Auto-logged out due to 10 minutes of inactivity',
+          'warning'
+        );
+      }, 600000); // 10 minutes = 600,000 ms
+    };
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'pointerdown', 'click'];
+    resetInactivityTimer();
+
+    activityEvents.forEach((evt) => {
+      window.addEventListener(evt, resetInactivityTimer, { passive: true });
+    });
+
+    return () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      activityEvents.forEach((evt) => {
+        window.removeEventListener(evt, resetInactivityTimer);
+      });
+    };
+  }, [isLoggedIn, lang]);
+
   const handleSaveProfile = async () => {
     const trimmedName = profileNameInput.trim();
     if (!trimmedName) {
@@ -4346,91 +4414,18 @@ export default function App() {
                   </button>
                 ) : (
                   <span className="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/20">
-                    {lang === 'ar' ? 'نشط' : 'Active'}
+                    {lang === 'ar' ? 'مفعّلة' : 'Active'}
                   </span>
                 )}
               </div>
-
-              {/* Simulation Hub */}
-              <div className="flex items-center justify-between gap-2.5">
-                <button
-                  onClick={() => {
-                    triggerToast(
-                      lang === 'ar' 
-                        ? '🚀 جارٍ جدولة إرسال إشعار تجريبي فوري خلال ثانية واحدة...' 
-                        : '🚀 Scheduling an instant simulation trigger in 1 second...',
-                      'info'
-                    );
-                    setTimeout(() => {
-                      triggerNotification(
-                        'system',
-                        '🎯 اختبار الإشعارات الفورية (FCM)',
-                        '🎯 Smart FCM Push Test',
-                        'تم استقبال وتأكيد ربط الإشعار بنجاح فائق! نظام التوجيه نشط 100%.',
-                        'FCM verification signal completed flawlessly! Routing is 100% stable.',
-                        ''
-                      );
-                    }, 1000);
-                  }}
-                  className="flex-1 py-2 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 hover:from-blue-500/15 hover:to-indigo-500/15 text-blue-400 border border-blue-500/25 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span>🎯</span>
-                  <span>{lang === 'ar' ? 'تجرِبة الإشعار الفوري' : 'Test Push Visual'}</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    playRescueAlertSound();
-                    triggerToast(
-                      lang === 'ar' ? '🔊 تم تشغيل نغمة الإنقاذ الذكية!' : '🔊 Played rescue signal tone!',
-                      'success'
-                    );
-                  }}
-                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-gray-800 text-gray-300 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  title={lang === 'ar' ? 'اختبار الصوت والاهتزاز' : 'Test Signal Tone'}
-                >
-                  <Volume2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>{lang === 'ar' ? 'نغمة' : 'Tone'}</span>
-                </button>
-              </div>
-
-              {/* Operations row */}
-              <div className="flex items-center justify-between gap-3 text-[11px] font-black text-gray-500 px-1 pt-1">
-                <button
-                  onClick={() => {
-                    setNotifications(prev => {
-                      const updated = prev.map(n => ({ ...n, isRead: true }));
-                      localStorage.setItem('systro_notifications_history', JSON.stringify(updated));
-                      return updated;
-                    });
-                    triggerToast(lang === 'ar' ? 'تم تحديد جميع الإشعارات كمقروءة!' : 'All marked as read!', 'success');
-                  }}
-                  className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer animate-fade-in"
-                >
-                  <CheckCheck className="w-3.5 h-3.5 shrink-0 text-amber-500" />
-                  <span>{lang === 'ar' ? 'تحديد الكل كمقروء' : 'Mark all read'}</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setNotifications([]);
-                    localStorage.removeItem('systro_notifications_history');
-                    triggerToast(lang === 'ar' ? 'تم مسح سجل الإشعارات بالكامل!' : 'Cleared notification history!', 'info');
-                  }}
-                  className="hover:text-white transition-colors flex items-center gap-1 text-red-400 hover:text-red-300 cursor-pointer animate-fade-in"
-                >
-                  <X className="w-3.5 h-3.5 shrink-0" />
-                  <span>{lang === 'ar' ? 'مسح السجل' : 'Clear all'}</span>
-                </button>
-              </div>
             </div>
 
-            {/* Notifications Scroll list */}
-            <div className="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+            {/* Notifications List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
               {notifications.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3.5">
-                  <div className="w-14 h-14 rounded-full bg-slate-900 border border-gray-800 flex items-center justify-center text-2xl animate-pulse">
-                    🔔
+                <div className="py-12 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto text-gray-600">
+                    <BellOff className="w-6 h-6" />
                   </div>
                   <div className="space-y-1">
                     <span className="text-xs sm:text-sm font-black text-gray-400 block">
@@ -4509,138 +4504,11 @@ export default function App() {
             </div>
 
             {/* Footer informational */}
-            <div className="p-4 bg-[#0A0D18] border-t border-gray-800 text-center select-none">
+            <div className="p-4 bg-[#0A0B10] border-t border-gray-800 text-center select-none">
               <span className="text-[10px] font-bold text-gray-500 block">
                 {lang === 'ar' ? '✓ نظام مشغل ومؤمن بالكامل بواسطة سيسترو السحابي' : '✓ Powered & secured by Systro Cloud System'}
               </span>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Prominent Center-Screen Initial Location & Access Permission Modal Banner */}
-      {showLocationPrompt && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-          <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-black border-2 border-emerald-500/60 rounded-[32px] max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-[0_25px_60px_-15px_rgba(16,185,129,0.35)] relative text-white my-auto text-center animate-scale-up">
-            
-            {/* Top Close Button */}
-            <button 
-              onClick={() => {
-                try {
-                  sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
-                } catch (e) {}
-                setShowLocationPrompt(false);
-              }}
-              className="absolute top-4 left-4 p-2 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-full transition-all cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Icon & Glowing Header */}
-            <div className="space-y-3 pt-2">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 text-slate-950 flex items-center justify-center mx-auto shadow-2xl shadow-emerald-500/40 border-2 border-emerald-300 relative group">
-                <MapPin className="w-10 h-10 text-slate-950 animate-bounce" />
-                <div className="absolute -bottom-1 -right-1 bg-slate-950 text-emerald-400 p-1.5 rounded-full border border-emerald-400 shadow-md">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-              </div>
-
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-black">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                <span>{lang === 'ar' ? 'طلب إذن السماح بالوصول والإنقاذ' : lang === 'he' ? 'בקשת הרשאת גישה למיקום' : 'Permission Access Request'}</span>
-              </div>
-
-              <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
-                {lang === 'ar' 
-                  ? 'هل تسمح لسيسترو بتحديد موقعك الجغرافي؟ 📍' 
-                  : lang === 'he'
-                  ? 'האם אתה מאשור לסיסטרו גישה למיקום שלך? 📍'
-                  : 'Allow Systro to access your location? 📍'}
-              </h2>
-            </div>
-
-            {/* Explanatory Features Card */}
-            <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 sm:p-5 text-right rtl:text-right ltr:text-left space-y-3 text-xs sm:text-sm text-slate-200">
-              <p className="font-bold text-white leading-relaxed">
-                {lang === 'ar'
-                  ? 'للحصول على أسرع خدمة إنقاذ وطوارئ وتكسي، نحتاج لمعرفة موقعك الدقيق على الخريطة لتوجيه أقرب مركبة صيانة إليك مباشرة.'
-                  : 'To provide the fastest emergency, towing & taxi dispatch, we need your accurate GPS location on the map.'}
-              </p>
-
-              <div className="space-y-2 pt-1 font-extrabold text-xs text-emerald-300">
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{lang === 'ar' ? 'تحديد دقيق لموقع تعطل المركبة بنسبة 100%' : '100% accurate breakdown location pinning'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{lang === 'ar' ? 'إرسال التنبيهات الفورية لأقرب الفنيين بالمنطقة' : 'Instant dispatch alerts to nearby maintenance technicians'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{lang === 'ar' ? 'خصوصية مشفرة بالكامل بدون حفظ أو تتبع' : 'Fully encrypted & private, zero background tracking'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* THE TWO BIG CLEAR BUTTONS: ALLOW / DENY */}
-            <div className="space-y-3 pt-1">
-              {/* BUTTON 1: ALLOW / سماح */}
-              <button
-                type="button"
-                onClick={() => {
-                  detectCurrentLocation(false);
-                  try {
-                    sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
-                  } catch (e) {}
-                  setShowLocationPrompt(false);
-                }}
-                className="w-full py-4 px-6 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-slate-950 font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-emerald-500/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer border-2 border-emerald-300 group"
-              >
-                <Check className="w-6 h-6 shrink-0 group-hover:scale-110 transition-transform" />
-                <span>
-                  {lang === 'ar' 
-                    ? 'سماح بالوصول وتحديد موقعي الآن 📍' 
-                    : lang === 'he'
-                    ? 'אפשר גישה וזהה מיקום עכשיו 📍'
-                    : 'Allow Access & Pin Location Now 📍'}
-                </span>
-              </button>
-
-              {/* BUTTON 2: DENY / غير مسموح */}
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    sessionStorage.setItem('systro_location_prompt_dismissed', 'true');
-                  } catch (e) {}
-                  setShowLocationPrompt(false);
-                  triggerToast(
-                    lang === 'ar'
-                      ? 'ℹ️ تم رفض إذن تحديد الموقع التلقائي. يمكنك التحديد يدوياً على الخريطة.'
-                      : 'ℹ️ Automatic location permission declined. You can manually pin on the map.',
-                    'info'
-                  );
-                }}
-                className="w-full py-3.5 px-6 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white font-black text-xs sm:text-sm rounded-2xl border border-slate-700 shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <X className="w-4.5 h-4.5 text-slate-400 shrink-0" />
-                <span>
-                  {lang === 'ar' 
-                    ? 'غير مسموح (سأحدد موقعي يدوياً على الخريطة) ❌' 
-                    : lang === 'he'
-                    ? 'לא מאושר (אבחר מיקום באופן ידני) ❌'
-                    : 'Don\'t Allow (Manual Pin on Map) ❌'}
-                </span>
-              </button>
-            </div>
-
-            {/* Footer security badge */}
-            <div className="pt-2 text-[11px] font-bold text-slate-400 flex items-center justify-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>{lang === 'ar' ? 'حماية وأمان معتمدين 100% لموقعك الجغرافي' : '100% Verified Location Privacy & Protection'}</span>
-            </div>
-
           </div>
         </div>
       )}
@@ -4650,7 +4518,7 @@ export default function App() {
 
       {/* TOP NAVBAR HEADER */}
       <header className="sticky top-0 z-40 bg-[#0A0B10]/95 backdrop-blur-md border-b border-[#1E293B]/70 select-none">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 min-h-[5.25rem] py-2 flex items-center justify-between gap-3">
           
           {/* Logo Brand matching Images */}
           <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
@@ -4702,24 +4570,33 @@ export default function App() {
                 />
               </svg>
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-cyan-400 to-blue-500 drop-shadow-[0_1px_2px_rgba(14,165,233,0.15)]">
-                  {t.logoTitle} <span className="text-sky-400 font-black">{t.logoRescue}</span>
-                </h1>
-                {/* Registered User Account Badge */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] sm:text-[10px] font-black text-amber-300 bg-amber-500/15 border border-amber-500/30 shadow-sm rounded-lg max-w-[180px] truncate" title={loggedInUserName || loggedInUserEmail || (lang === 'ar' ? 'حساب مسجل' : 'Registered Account')}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
-                  <span className="truncate">
-                    {isLoggedIn && loggedInUserName 
-                      ? (lang === 'ar' ? `الحساب: ${loggedInUserName}` : lang === 'he' ? `חשבון: ${loggedInUserName}` : `Account: ${loggedInUserName}`)
-                      : (lang === 'ar' ? 'حساب مسجل' : lang === 'he' ? 'חשבון רשום' : 'Registered Account')}
-                  </span>
-                </div>
-              </div>
-              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-cyan-400/80 block uppercase">
+            <div className="flex flex-col justify-center gap-0.5">
+              <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-cyan-400 to-blue-500 drop-shadow-[0_1px_2px_rgba(14,165,233,0.15)] leading-tight">
+                {t.logoTitle} <span className="text-sky-400 font-black">{t.logoRescue}</span>
+              </h1>
+              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-cyan-400/80 block uppercase leading-none">
                 {t.logoSub}
               </span>
+              {/* User Name Badge Box - Stacked Vertically Under Systro Logo & Title */}
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isLoggedIn) {
+                    setShowProfileModal(true);
+                  } else {
+                    handleRealGoogleSignIn();
+                  }
+                }}
+                className="mt-1 flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-[11px] font-black text-amber-300 bg-amber-500/15 border border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/25 shadow-sm rounded-lg w-fit max-w-[200px] truncate select-none transition-all cursor-pointer"
+                title={isLoggedIn ? (loggedInUserName || loggedInUserEmail) : (lang === 'ar' ? 'اضغط لتسجيل الدخول' : 'Click to sign in')}
+              >
+                <span className={`w-2 h-2 rounded-full shrink-0 ${isLoggedIn ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                <span className="truncate">
+                  {isLoggedIn 
+                    ? (loggedInUserName || loggedInUserEmail || (lang === 'ar' ? 'المستخدم' : 'User'))
+                    : (lang === 'ar' ? '👤 تسجيل الدخول' : lang === 'he' ? '👤 התחבר' : '👤 Sign In')}
+                </span>
+              </div>
             </div>
           </div>
 
