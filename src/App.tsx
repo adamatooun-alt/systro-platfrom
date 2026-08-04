@@ -1489,30 +1489,9 @@ export default function App() {
       }
     } catch (e) {}
 
-    // Snapshot listener to catch if another device logs into this email in Firestore
-    const userDocRef = doc(db, "users", cleanEmail);
-    const unsub = onSnapshot(userDocRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const sidInDb = data.activeSessionId;
-        const isOnlineInDb = data.isOnline !== false;
-
-        if (sidInDb && sidInDb !== currentSessionId && isOnlineInDb) {
-          if (Date.now() - lastLoginTimeRef.current > 15000) {
-            console.warn(`[Firestore Lock] ${cleanEmail} logged in from another device (${sidInDb}). Terminating this session.`);
-            handleLogout(true);
-            setKickedOutNotice(cleanEmail);
-          }
-        }
-      }
-    }, (err) => {
-      console.warn("Session listener snapshot error:", err);
-    });
-
     return () => {
       clearInterval(intervalId);
       if (bc) bc.close();
-      unsub();
     };
   }, [isLoggedIn, loggedInUserEmail, currentSessionId]);
 
@@ -3841,6 +3820,8 @@ export default function App() {
 
     lastLoginTimeRef.current = Date.now();
 
+    setActiveSessionConflict(null);
+
     // 1. Single active device session check for registered user accounts
     if (!isGuestSession && !forceOverrideSession) {
       let isConflict = false;
@@ -3868,28 +3849,6 @@ export default function App() {
         }
       } catch (err) {
         console.warn("Server session conflict check error:", err);
-      }
-
-      // B. Firestore cloud session check (secondary fallback truth)
-      if (!isConflict) {
-        try {
-          const userSnap = await getDoc(doc(db, "users", resolvedEmail));
-          if (userSnap.exists()) {
-            const uData = userSnap.data();
-            if (
-              uData.activeSessionId &&
-              uData.activeSessionId !== currentSessionId &&
-              uData.isOnline !== false &&
-              uData.lastActive &&
-              (Date.now() - uData.lastActive < 45000)
-            ) {
-              isConflict = true;
-              conflictTime = uData.lastActive;
-            }
-          }
-        } catch (err) {
-          console.warn("Firestore session conflict check error:", err);
-        }
       }
 
       if (isConflict) {

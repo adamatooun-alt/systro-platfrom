@@ -232,7 +232,7 @@ async function startServer() {
       deviceName: deviceName || 'Device'
     });
 
-    res.json({ success: true, activeSessionId: sessionId });
+    res.json({ success: true, conflict: false, activeSessionId: sessionId });
   });
 
   // Global persistent store for rescue requests cross-device synchronization
