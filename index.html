@@ -6,6 +6,14 @@
     <title>سيسترو طوارئ | Systro Emergency & Store App</title>
     
     <!-- PWA Web App Manifest & Icons -->
+    <script>
+      // Suppress benign Vite HMR WebSocket warnings in sandboxed dev environment
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && (e.reason.message === 'WebSocket closed without opened.' || String(e.reason).includes('WebSocket'))) {
+          e.preventDefault();
+        }
+      });
+    </script>
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon.svg" />
