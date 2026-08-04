@@ -179,8 +179,21 @@ body,
 .bg-\[\#0A0B10\]\/95,
 .bg-\[\#0A0B10\]\/90,
 .bg-\[\#0A0B10\]\/75,
+.bg-\[\#0A0B12\],
+.bg-\[\#0A0C14\],
+.bg-\[\#0A0D14\],
+.bg-\[\#0D0F1A\],
+.bg-\[\#0C0E17\],
 .bg-\[\#0E0F17\],
-.bg-\[\#0A0D18\],
+.bg-\[\#0E1322\],
+.bg-\[\#121522\],
+.bg-\[\#121625\],
+.bg-\[\#090C15\],
+.bg-\[\#0D111E\],
+.bg-\[\#031A17\],
+.bg-\[\#051E1A\],
+.bg-\[\#0B1513\],
+.bg-\[\#0f0f10\],
 .bg-slate-900,
 .bg-slate-950,
 .bg-gray-900,
@@ -193,21 +206,62 @@ body,
   border-color: #FED7AA !important; /* warm orange-200 border */
 }
 
-/* Inner tables, interactive lists, details blocks, notification items, custom tabs - Peach cream white */
+/* Inner tables, interactive lists, details blocks, notification items, custom tabs, radar maps - Peach cream white */
 .bg-\[\#0F1424\],
 .bg-\[\#0F1424\]\/60,
 .bg-\[\#0F1424\]\/90,
 .bg-\[\#0F1424\]\/95,
-.bg-\[\#0E1322\],
+.bg-\[\#0B0F19\],
+.bg-\[\#0B0E17\],
+.bg-\[\#050814\],
+.bg-\[\#05060A\],
+.bg-\[\#050609\],
+.bg-\[\#05070C\],
+.bg-\[\#07080E\],
+.bg-\[\#0F1017\],
+.bg-\[\#111622\],
 .bg-\[\#111827\],
 .bg-\[\#111827\]\/60,
 .bg-\[\#111827\]\/85,
+.bg-\[\#131a30\],
+.bg-\[\#161C33\],
+.bg-\[\#171C2F\],
+.bg-\[\#1A202C\],
+.bg-\[\#1A2035\],
+.bg-\[\#1E253F\],
 .bg-\[\#1E293B\],
 .bg-\[\#1F2937\],
 .bg-\[\#334155\],
+.bg-\[\#151D33\],
+.bg-\[\#050505\],
 .bg-slate-900\/40 {
   background-color: #FFF9F2 !important;
   border-color: #FFE8CC !important;
+}
+
+/* Specialized notification card highlights */
+.bg-\[\#0F291E\] {
+  background-color: #ECFDF5 !important;
+  border-color: #A7F3D0 !important;
+}
+
+.bg-\[\#1E1F30\] {
+  background-color: #EFF6FF !important;
+  border-color: #BFDBFE !important;
+}
+
+/* Light & cheerful overrides for dark gradient banners (e.g., Tech Registration Banner, Workspace Header) */
+[class*="from-emerald-950"],
+[class*="from-[#0D1E16]"] {
+  background: linear-gradient(to right, #ECFDF5, #F0FDF4, #FFFFFF) !important;
+  border-color: #6EE7B7 !important;
+}
+
+[class*="from-amber-950"],
+[class*="from-[#1A140B]"],
+[class*="from-[#0D111E]"] {
+  background: linear-gradient(to right, #FFF7ED, #FFEDD5, #FFFFFF) !important;
+  border-color: #FDBA74 !important;
 }
 
 /* Input fields overrides */

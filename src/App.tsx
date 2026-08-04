@@ -6754,7 +6754,7 @@ export default function App() {
                                 {/* Select bid */}
                                 <button 
                                   onClick={() => handleAcceptBid(bid)}
-                                  className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl transition-all"
+                                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-700"
                                 >
                                   {t.simAcceptBid}
                                 </button>
