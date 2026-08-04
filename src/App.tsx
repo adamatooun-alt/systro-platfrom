@@ -5049,66 +5049,44 @@ export default function App() {
             </div>
           </div>
 
-          {/* TECHNICIAN REGISTRATION & AVAILABILITY STATUS CONTROL BANNER */}
-          <div className={`p-5 rounded-3xl border-2 transition-all shadow-xl select-none flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
-            (activeTechDoc?.isOnline ?? false)
-              ? 'bg-gradient-to-r from-emerald-950/80 via-[#0D1E16] to-[#0A0B10] border-emerald-500/60 shadow-emerald-950/30'
-              : 'bg-gradient-to-r from-amber-950/40 via-[#1A140B] to-[#0A0B10] border-amber-500/40 shadow-amber-950/20'
-          }`}>
-            <div className="flex items-start gap-3.5">
-              <div className={`p-3 rounded-2xl shrink-0 border mt-0.5 ${
-                (activeTechDoc?.isOnline ?? false) 
-                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse'
-                  : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-              }`}>
-                <UserCheck className="w-6 h-6" />
-              </div>
-              <div className="space-y-1 text-right">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm md:text-base font-black text-white">
-                    {lang === 'ar' 
-                      ? 'هل تريد أن تكون فني مسجل ومتاح للعمل بالمنصة؟' 
-                      : 'Do you want to be a registered active technician on the platform?'}
-                  </h3>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                    (activeTechDoc?.isOnline ?? false)
-                      ? 'bg-emerald-500 text-black'
-                      : 'bg-gray-800 text-gray-400 border border-gray-700'
-                  }`}>
-                    {(activeTechDoc?.isOnline ?? false) 
-                      ? (lang === 'ar' ? 'فني مسجل ونشط 🟢' : 'Registered & Active 🟢')
-                      : (lang === 'ar' ? 'غير متاح (متوقف كالمعتاد) 🔴' : 'Inactive (Offline) 🔴')}
-                  </span>
+          {/* TECHNICIAN ONLINE STATUS BANNER (Only displayed when active) */}
+          {(activeTechDoc?.isOnline ?? false) && (
+            <div className="p-5 rounded-3xl border-2 transition-all shadow-xl select-none flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-950/80 via-[#0D1E16] to-[#0A0B10] border-emerald-500/60 shadow-emerald-950/30">
+              <div className="flex items-start gap-3.5">
+                <div className="p-3 rounded-2xl shrink-0 border mt-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse">
+                  <UserCheck className="w-6 h-6" />
                 </div>
-                <p className="text-xs text-gray-300 font-semibold leading-relaxed">
-                  {lang === 'ar'
-                    ? ((activeTechDoc?.isOnline ?? false)
-                        ? 'أنت الآن مسجل ومتاح بالشبكة! يتم بث بلاغات الطوارئ لك وتظهر موقعك على الخريطة للزبائن لتلبية طلباتهم.'
-                        : 'كالمعتاد، حسابك غير نشط كفني حالياً حتى تقرر العمل. لتلقي طلبات الزبائن وتلبية بلاغات الإنقاذ، قم بتفعيل الخيار.')
-                    : ((activeTechDoc?.isOnline ?? false)
-                        ? 'You are registered & online! Receiving live emergency requests.'
-                        : 'By default, tech work mode is OFF. Enable this option whenever you want to work & receive jobs.')}
-                </p>
+                <div className="space-y-1 text-right rtl:text-right ltr:text-left">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm md:text-base font-black text-white">
+                      {lang === 'ar' 
+                        ? 'حساب الفني نشط ومتاح بالشبكة للعمل وتتبع المهمات 🟢' 
+                        : 'Technician Account Active & Online 🟢'}
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-black">
+                      {lang === 'ar' ? 'فني مسجل ونشط 🟢' : 'Registered & Active 🟢'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 font-semibold leading-relaxed">
+                    {lang === 'ar'
+                      ? 'أنت الآن مسجل ومتاح بالشبكة! يتم بث بلاغات الطوارئ لك وتظهر موقعك على الخريطة للزبائن لتلبية طلباتهم فوراً.'
+                      : 'You are registered & online! Receiving live emergency requests.'}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={handleToggleTechMode}
-              className={`px-6 py-3.5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer flex items-center gap-2 shadow-lg shrink-0 w-full md:w-auto justify-center ${
-                (activeTechDoc?.isOnline ?? false)
-                  ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
-                  : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-amber-500/20 animate-bounce'
-              }`}
-            >
-              <Power className="w-4 h-4" />
-              <span>
-                {lang === 'ar'
-                  ? ((activeTechDoc?.isOnline ?? false) ? 'إيقاف وضع الفني (التحويل لغير متاح)' : 'تفعيل: أريد أن أكون فني مسجل ⚡')
-                  : ((activeTechDoc?.isOnline ?? false) ? 'Deactivate Tech Mode' : 'Enable Active Tech Mode ⚡')}
-              </span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={handleToggleTechMode}
+                className="px-6 py-3.5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer flex items-center gap-2 shadow-lg shrink-0 w-full md:w-auto justify-center bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40"
+              >
+                <Power className="w-4 h-4 text-red-400" />
+                <span>
+                  {lang === 'ar' ? 'إيقاف وضع الفني (التحويل لغير متاح) 🔴' : 'Deactivate Tech Mode (Go Offline) 🔴'}
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* Dynamic grid split */}
           {(activeTechDoc?.isOnline ?? false) ? (
@@ -7326,13 +7304,13 @@ export default function App() {
                 </span>
                 <h3 className="text-xl md:text-2xl font-black text-white">
                   {lang === 'ar' 
-                    ? 'قم بتفعيل حساب الفني ودخول الخدمة لعرض اللوحة وتتبع المهمات 🛠️' 
+                    ? 'هل تريد أن تكون فني مسجل ودخول الخدمة لعرض اللوحة وتتبع المهمات؟ 🛠️' 
                     : 'Activate Technician Account & Enter Service to Reveal Dashboard & Track Tasks 🛠️'}
                 </h3>
                 <p className="text-xs md:text-sm text-gray-300 font-semibold leading-relaxed">
                   {lang === 'ar'
-                    ? 'كالمعتاد، حسابك غير نشط كفني حالياً لضمان استقلالية حسابك وسلامة البيانات. بتفعيل زر "تفعيل حساب الفني ودخول الخدمة" بالأعلى، تظهر لك خريطة بلاغات الطوارئ المباشرة، قائمة الطلبات، وتتبع المهمات والعمليات فوراً.'
-                    : 'Your technician account is currently off-duty. Click the activation button above to enter active service and unlock live emergency alerts, radar map, and task tracking.'}
+                    ? 'كالمعتاد، حسابك غير نشط كفني حالياً لضمان استقلالية حسابك وسلامة البيانات. اضغط على زر التفعيل أدناه لتسجيل الدخول كفني نشط؛ لتظهر لك خريطة بلاغات الطوارئ المباشرة، استقبال طلبات الزبائن، وتتبع المهمات والعمليات فوراً.'
+                    : 'Your technician account is currently off-duty. Click the button below to enter active service and unlock live emergency alerts, radar map, and task tracking.'}
                 </p>
               </div>
 
@@ -7340,7 +7318,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleToggleTechMode}
-                  className="px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-black font-black text-sm rounded-2xl shadow-xl shadow-amber-500/25 transition-all cursor-pointer inline-flex items-center gap-3 active:scale-95"
+                  className="px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-black font-black text-sm rounded-2xl shadow-xl shadow-amber-500/25 transition-all cursor-pointer inline-flex items-center gap-3 active:scale-95 animate-bounce"
                 >
                   <Power className="w-5 h-5" />
                   <span>
