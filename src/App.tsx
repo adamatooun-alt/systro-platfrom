@@ -4388,12 +4388,12 @@ export default function App() {
             }
             setActiveNotification(null);
           }}
-          className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md bg-[#0F1424]/95 border border-amber-500/30 shadow-[0_0_25px_rgba(245,158,11,0.25)] rounded-2xl p-4 flex items-start gap-3 cursor-pointer backdrop-blur-md transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] select-none group animate-slide-down"
+          className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md bg-white border-2 border-amber-400 shadow-2xl rounded-2xl p-4 flex items-start gap-3 cursor-pointer backdrop-blur-md transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] select-none group animate-slide-down text-slate-950"
           style={{ direction: lang === 'ar' ? 'rtl' : 'ltr' }}
         >
           {/* Glowing dot & app avatar */}
           <div className="relative shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-xl font-bold shadow-md text-black">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-xl font-bold shadow-md text-slate-950">
               {activeNotification.type === 'new_request' ? '🚨' :
                activeNotification.type === 'bid_submitted' ? '💸' :
                activeNotification.type === 'bid_accepted' ? '🎉' :
@@ -4411,21 +4411,21 @@ export default function App() {
           {/* Text content */}
           <div className="flex-grow min-w-0 pr-1">
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-[10px] font-black text-amber-500 tracking-wider uppercase font-mono">
+              <span className="text-[10px] font-black text-amber-700 tracking-wider uppercase font-mono">
                 {lang === 'ar' ? 'إشعار فوري ذكي (FCM)' : 'Smart Instant Push (FCM)'}
               </span>
-              <span className="text-[9px] text-gray-500 font-bold">
+              <span className="text-[9px] text-slate-500 font-black">
                 {lang === 'ar' ? 'الآن' : 'Now'}
               </span>
             </div>
-            <h4 className="text-xs sm:text-sm font-black text-white truncate mb-0.5">
+            <h4 className="text-xs sm:text-sm font-black text-slate-950 truncate mb-0.5">
               {lang === 'ar' ? activeNotification.titleAr : activeNotification.titleEn}
             </h4>
-            <p className="text-xs text-gray-300 line-clamp-2 leading-relaxed font-semibold">
+            <p className="text-xs text-slate-800 line-clamp-2 leading-relaxed font-extrabold">
               {lang === 'ar' ? activeNotification.bodyAr : activeNotification.bodyEn}
             </p>
             {activeNotification.targetId && (
-              <div className="mt-2 flex items-center gap-1 text-[10px] font-black text-amber-400 group-hover:text-amber-300 transition-colors">
+              <div className="mt-2 flex items-center gap-1 text-[10px] font-black text-amber-800 group-hover:text-amber-900 transition-colors">
                 <span>{lang === 'ar' ? 'اضغط للذهاب للخريطة والمهمة' : 'Tap to focus active request'}</span>
                 <span>➔</span>
               </div>
@@ -4438,7 +4438,7 @@ export default function App() {
               e.stopPropagation();
               setActiveNotification(null);
             }}
-            className="shrink-0 p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-all cursor-pointer"
+            className="shrink-0 p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-950 transition-all cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -4450,44 +4450,44 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex justify-end" style={{ direction: lang === 'ar' ? 'rtl' : 'ltr' }}>
           {/* Backdrop */}
           <div 
-            className="absolute inset-0 bg-black/65 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity"
             onClick={() => setIsNotificationCenterOpen(false)}
           />
 
           {/* Drawer Body */}
-          <div className="relative w-full max-w-md h-full bg-[#070A13] border-l border-gray-800 shadow-2xl flex flex-col z-10 animate-slide-left">
+          <div className="relative w-full max-w-md h-full bg-white border-l border-slate-200 shadow-2xl flex flex-col z-10 animate-slide-left text-slate-950">
             {/* Header */}
-            <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-[#0A0D18]">
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                  <Bell className="w-4.5 h-4.5 text-amber-500" />
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+                  <Bell className="w-4.5 h-4.5 text-amber-700" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-black text-white">
+                  <h3 className="text-sm sm:text-base font-black text-slate-950">
                     {lang === 'ar' ? 'إشعارات سيسترو الذكية' : 'Systro Push Center'}
                   </h3>
-                  <span className="text-[10px] font-mono font-bold text-gray-500 uppercase block tracking-wider">
+                  <span className="text-[10px] font-mono font-black text-slate-500 uppercase block tracking-wider">
                     Firebase Cloud Messaging (FCM)
                   </span>
                 </div>
               </div>
               <button 
                 onClick={() => setIsNotificationCenterOpen(false)}
-                className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white transition-all cursor-pointer"
+                className="p-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-950 hover:bg-slate-100 transition-all cursor-pointer"
               >
                 <X className="w-4.5 h-4.5" />
               </button>
             </div>
 
             {/* Quick Permissions & Simulator Controls */}
-            <div className="p-4 bg-[#0A0D18]/60 border-b border-gray-800/80 space-y-3.5">
+            <div className="p-4 bg-slate-50/80 border-b border-slate-200 space-y-3.5">
               {/* Native Browser Permissions */}
-              <div className="flex items-center justify-between gap-3 p-3 bg-[#0F1424] border border-gray-800/60 rounded-xl">
+              <div className="flex items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <div className="min-w-0 flex-1">
-                  <span className="text-[11px] font-black text-white block mb-0.5">
+                  <span className="text-[11px] font-black text-slate-950 block mb-0.5">
                     {lang === 'ar' ? 'إشعارات المتصفح لسطح المكتب' : 'HTML5 Desktop Notifications'}
                   </span>
-                  <p className="text-[10px] text-gray-500 truncate">
+                  <p className="text-[10px] text-slate-600 font-bold truncate">
                     {browserNotificationPermission === 'granted' 
                       ? (lang === 'ar' ? '✓ الإشعارات مفعّلة في الخلفية' : '✓ Notifications allowed in background')
                       : (lang === 'ar' ? 'مغلقة، اضغط للتفعيل والحصول على تنبيهات' : 'Disabled, click to allow permission')}
@@ -4507,12 +4507,12 @@ export default function App() {
                         }
                       }
                     }}
-                    className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-[#070A13] text-[10px] font-black rounded-lg transition-all cursor-pointer shrink-0"
+                    className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-black rounded-lg transition-all cursor-pointer shrink-0 shadow-sm"
                   >
                     {lang === 'ar' ? 'تفعيل الآن' : 'Enable'}
                   </button>
                 ) : (
-                  <span className="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/20">
+                  <span className="px-2.5 py-1.5 bg-emerald-500/15 text-emerald-800 text-[10px] font-black rounded-lg border border-emerald-500/30">
                     {lang === 'ar' ? 'مفعّلة' : 'Active'}
                   </span>
                 )}
@@ -4523,14 +4523,14 @@ export default function App() {
             <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
               {notifications.length === 0 ? (
                 <div className="py-12 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto text-gray-600">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto text-slate-500">
                     <BellOff className="w-6 h-6" />
                   </div>
                   <div className="space-y-1">
-                    <span className="text-xs sm:text-sm font-black text-gray-400 block">
+                    <span className="text-xs sm:text-sm font-black text-slate-800 block">
                       {lang === 'ar' ? 'صندوق الإشعارات فارغ' : 'Your inbox is clear'}
                     </span>
-                    <p className="text-[11px] text-gray-500 max-w-[240px] leading-relaxed mx-auto">
+                    <p className="text-[11px] text-slate-600 max-w-[240px] leading-relaxed mx-auto font-bold">
                       {lang === 'ar' 
                         ? 'لا توجد أي إشعارات سابقة حالياً. بمجرد إرسال طلب جديد أو تلقي عرض فستظهر هنا تلقائياً في نفس اللحظة.' 
                         : 'No previous notifications available. New breakdown requests and technician bids will appear here instantly.'}
@@ -4558,12 +4558,12 @@ export default function App() {
                     }}
                     className={`p-3.5 rounded-xl border transition-all flex items-start gap-3 cursor-pointer group ${
                       n.isRead 
-                        ? 'bg-slate-900/40 border-gray-950 hover:bg-slate-900 hover:border-gray-800 text-gray-300' 
-                        : 'bg-[#0F1424]/90 border-amber-500/20 hover:border-amber-500/40 text-white shadow-md shadow-amber-500/5'
+                        ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-800' 
+                        : 'bg-amber-500/10 border-2 border-amber-400/50 hover:border-amber-500 text-slate-950 shadow-md'
                     }`}
                   >
                     {/* Icon */}
-                    <div className="w-8.5 h-8.5 rounded-xl bg-slate-950 flex items-center justify-center text-base shrink-0 border border-gray-800/80 group-hover:scale-110 transition-transform">
+                    <div className="w-8.5 h-8.5 rounded-xl bg-amber-500/20 flex items-center justify-center text-base shrink-0 border border-amber-500/30 group-hover:scale-110 transition-transform">
                       {n.type === 'new_request' ? '🚨' :
                        n.type === 'bid_submitted' ? '💸' :
                        n.type === 'bid_accepted' ? '🎉' :
@@ -4576,22 +4576,22 @@ export default function App() {
                     {/* Body text */}
                     <div className="flex-grow min-w-0 space-y-1">
                       <div className="flex items-center justify-between gap-1.5">
-                        <h4 className="text-xs font-black truncate leading-tight group-hover:text-amber-400 transition-colors">
+                        <h4 className="text-xs font-black truncate leading-tight text-slate-950 group-hover:text-amber-800 transition-colors">
                           {lang === 'ar' ? n.titleAr : n.titleEn}
                         </h4>
                         {!n.isRead && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                          <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 animate-pulse"></span>
                         )}
                       </div>
-                      <p className="text-[11px] font-semibold text-gray-400 leading-relaxed font-sans line-clamp-3">
+                      <p className="text-[11px] font-extrabold text-slate-700 leading-relaxed font-sans line-clamp-3">
                         {lang === 'ar' ? n.bodyAr : n.bodyEn}
                       </p>
-                      <div className="flex items-center justify-between gap-2 pt-1.5 text-[9px] font-bold text-gray-500">
+                      <div className="flex items-center justify-between gap-2 pt-1.5 text-[9px] font-black text-slate-500">
                         <span>
                           {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </span>
                         {n.targetId && (
-                          <span className="text-amber-500 group-hover:underline flex items-center gap-0.5">
+                          <span className="text-amber-700 font-black group-hover:underline flex items-center gap-0.5">
                             {lang === 'ar' ? 'عرض المهمة الخريطة ➔' : 'View map task ➔'}
                           </span>
                         )}
@@ -6123,7 +6123,7 @@ export default function App() {
                             <button
                               type="button"
                               onClick={handleTestPublishTask}
-                              className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95"
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-emerald-700"
                               title={lang === 'ar' ? 'اختبار نشر مهمة جديدة وتعميمها للفنيين' : 'Test publishing & broadcasting task'}
                             >
                               <span>🧪 {lang === 'ar' ? 'نشر مهمة اختبار 🚀' : 'Test Publish Task 🚀'}</span>
@@ -6132,11 +6132,11 @@ export default function App() {
                             <button
                               type="button"
                               onClick={handleManualRefreshRequests}
-                              className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-amber-600 shrink-0"
                               title={lang === 'ar' ? 'تحديث وتفقد البلاغات الحية الآن' : 'Refresh live alerts now'}
                             >
-                              <RefreshCw className="w-3 h-3 text-amber-400" />
-                              <span>{lang === 'ar' ? 'تحديث البلاغات 🔄' : 'Refresh 🔄'}</span>
+                              <RefreshCw className="w-3.5 h-3.5 text-slate-950" />
+                              <span className="text-slate-950">{lang === 'ar' ? 'تحديث البلاغات 🔄' : 'Refresh 🔄'}</span>
                             </button>
                           </div>
                         </div>

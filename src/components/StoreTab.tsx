@@ -413,18 +413,18 @@ export const StoreTab: React.FC<StoreTabProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in space-y-8 pb-24">
       
       {/* Top Banner Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-amber-950 to-slate-900 border border-amber-500/20 shadow-2xl p-6 sm:p-10 text-white">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-orange-500/15 via-amber-500/20 to-orange-500/15 border-2 border-amber-400/60 shadow-xl p-6 sm:p-10 text-slate-950">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-amber-400/20 rounded-full blur-3xl pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-3 max-w-2xl text-right rtl:text-right ltr:text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold tracking-wide select-none">
-              <ShoppingBag className="w-4 h-4 text-amber-400 animate-bounce" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-900 text-xs font-black tracking-wide select-none shadow-sm">
+              <ShoppingBag className="w-4 h-4 text-amber-700 animate-bounce" />
               <span>{lang === 'ar' ? 'متجر سيسترو الرسمي لقطع الغيار والمعدات' : 'Systro Official Auto Parts & Equipment Store'}</span>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-950 leading-tight">
               {lang === 'ar' ? 'المعدات، البطاريات ومستلزمات الطوارئ 🛠️' : 'Auto Parts, Batteries & Emergency Gear 🛠️'}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-800 font-extrabold leading-relaxed">
               {lang === 'ar' 
                 ? 'تصفح أفضل قطع الغيار، البطاريات المضمونة، وأدوات الإنقاذ مع خدمة التوصيل المباشر أو التركيب بواسطة فنيي سيسترو المعتمدين.' 
                 : 'Browse genuine auto parts, guaranteed batteries, and rescue equipment with fast delivery or installation by verified technicians.'}
@@ -436,10 +436,10 @@ export const StoreTab: React.FC<StoreTabProps> = ({
             {/* Cart Trigger Button */}
             <button
               onClick={() => setIsCartOpen(true)}
-              className="relative px-5 py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-2xl shadow-xl shadow-amber-500/20 transition-all flex items-center gap-2.5 text-xs sm:text-sm cursor-pointer hover:scale-105 active:scale-95"
+              className="relative px-5 py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-2xl shadow-xl shadow-amber-500/20 transition-all flex items-center gap-2.5 text-xs sm:text-sm cursor-pointer hover:scale-105 active:scale-95 border border-amber-600/30"
             >
-              <ShoppingCart className="w-5 h-5" />
-              <span>{lang === 'ar' ? 'سلة المشتريات' : 'Shopping Cart'}</span>
+              <ShoppingCart className="w-5 h-5 text-slate-950" />
+              <span className="text-slate-950">{lang === 'ar' ? 'سلة المشتريات' : 'Shopping Cart'}</span>
               {cartItemCount > 0 && (
                 <span className="w-6 h-6 bg-slate-950 text-amber-400 rounded-full text-xs font-black flex items-center justify-center animate-pulse">
                   {cartItemCount}
@@ -450,12 +450,12 @@ export const StoreTab: React.FC<StoreTabProps> = ({
             {/* My Orders Button */}
             <button
               onClick={() => setIsMyOrdersOpen(true)}
-              className="px-4 py-3.5 bg-slate-800/90 hover:bg-slate-800 text-white border border-slate-700 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
+              className="px-4 py-3.5 bg-white hover:bg-slate-50 text-slate-950 border-2 border-slate-300 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
             >
-              <Package className="w-4 h-4 text-amber-400" />
-              <span>{lang === 'ar' ? 'طلباتي وسجل الشراء 📦' : 'My Orders 📦'}</span>
+              <Package className="w-4 h-4 text-amber-600" />
+              <span className="text-slate-950">{lang === 'ar' ? 'طلباتي وسجل الشراء 📦' : 'My Orders 📦'}</span>
               {allOrders.length > 0 && (
-                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full text-[10px] font-mono">
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-900 rounded-full text-[10px] font-mono font-black">
                   {allOrders.length}
                 </span>
               )}
@@ -465,31 +465,31 @@ export const StoreTab: React.FC<StoreTabProps> = ({
             {isAdminUnlocked && onNavigateToAdmin && (
               <button
                 onClick={onNavigateToAdmin}
-                className="px-4 py-3.5 bg-slate-800/80 hover:bg-slate-800 text-amber-300 border border-amber-500/30 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
+                className="px-4 py-3.5 bg-white hover:bg-slate-50 text-slate-950 border-2 border-amber-500/40 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-md"
               >
-                <Plus className="w-4 h-4 text-amber-400" />
-                <span>{lang === 'ar' ? 'إدارة المنتجات باللوحة ⚙️' : 'Manage Products ⚙️'}</span>
+                <Plus className="w-4 h-4 text-amber-600" />
+                <span className="text-slate-950">{lang === 'ar' ? 'إدارة المنتجات باللوحة ⚙️' : 'Manage Products ⚙️'}</span>
               </button>
             )}
           </div>
         </div>
 
         {/* Feature Badges */}
-        <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-bold text-slate-300">
+        <div className="mt-8 pt-6 border-t border-amber-900/15 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-black text-slate-900">
           <div className="flex items-center gap-2.5">
-            <Truck className="w-4 h-4 text-amber-400 shrink-0" />
+            <Truck className="w-4 h-4 text-amber-600 shrink-0" />
             <span>{lang === 'ar' ? 'توصيل وتوصيل فوري' : 'Express Local Delivery'}</span>
           </div>
           <div className="flex items-center gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{lang === 'ar' ? 'منتجات أصلية مع ضمان' : 'Original Guaranteed Items'}</span>
           </div>
           <div className="flex items-center gap-2.5">
-            <Package className="w-4 h-4 text-amber-400 shrink-0" />
+            <Package className="w-4 h-4 text-amber-600 shrink-0" />
             <span>{lang === 'ar' ? 'تركيب مع الفنيين' : 'Tech Installation Option'}</span>
           </div>
           <div className="flex items-center gap-2.5">
-            <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
+            <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{lang === 'ar' ? 'طلب مباشر وحفظ التفاصيل' : 'Direct Saved Ordering'}</span>
           </div>
         </div>

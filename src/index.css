@@ -161,51 +161,60 @@ button, .btn {
    PREMIUM CHEERFUL BRIGHT LIGHT THEME OVERRIDES (WHITE THEME)
    ========================================================= */
 
-/* Global backgrounds and layout wrappers - Warm premium orange background */
+/* Global backgrounds and layout wrappers - Warm bright orange/cream background */
 body, 
 .min-h-screen,
 .bg-\[\#050505\],
 .bg-\[\#050505\]\/95,
 #support-contact-section,
-.bg-\[\#0D0F1A\] {
+.bg-\[\#0D0F1A\],
+.bg-\[\#070A13\] {
   background: radial-gradient(circle at 50% 0%, #FFF5E6 0%, #FFF7ED 50%, #FFEDD5 100%) !important;
   background-color: #FFF7ED !important;
-  color: #431407 !important; /* deep warm brown for maximum readability */
+  color: #0F172A !important; /* deep slate for maximum readability */
 }
 
-/* Crisp white cards, components, sections, and modals with warm orange borders & shadows */
+/* Crisp white cards, drawers, components, sections, and modals with warm orange borders & shadows */
 .bg-\[\#0A0B10\],
 .bg-\[\#0A0B10\]\/95,
 .bg-\[\#0A0B10\]\/90,
 .bg-\[\#0A0B10\]\/75,
 .bg-\[\#0E0F17\],
+.bg-\[\#0A0D18\],
 .bg-slate-900,
+.bg-slate-950,
 .bg-gray-900,
-.bg-black\/40 {
+.bg-gray-950,
+.bg-black\/40,
+.bg-black\/65,
+.bg-black\/80 {
   background-color: #FFFFFF !important;
   box-shadow: 0 12px 35px -8px rgba(234, 88, 12, 0.08), 0 4px 12px -3px rgba(234, 88, 12, 0.04) !important;
-  border-color: #FFD8A8 !important; /* warm orange border */
+  border-color: #FED7AA !important; /* warm orange-200 border */
 }
 
-/* Inner tables, interactive lists, details blocks, custom tabs - Peach cream white */
+/* Inner tables, interactive lists, details blocks, notification items, custom tabs - Peach cream white */
 .bg-\[\#0F1424\],
 .bg-\[\#0F1424\]\/60,
+.bg-\[\#0F1424\]\/90,
+.bg-\[\#0F1424\]\/95,
 .bg-\[\#0E1322\],
 .bg-\[\#111827\],
 .bg-\[\#111827\]\/60,
 .bg-\[\#111827\]\/85,
 .bg-\[\#1E293B\],
 .bg-\[\#1F2937\],
-.bg-\[\#334155\] {
+.bg-\[\#334155\],
+.bg-slate-900\/40 {
   background-color: #FFF9F2 !important;
   border-color: #FFE8CC !important;
 }
 
 /* Input fields overrides */
 input, select, textarea {
-  background-color: #FFFFFF;
-  border-color: #CBD5E1;
-  color: #1E293B !important;
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
 }
 input:disabled, select:disabled, textarea:disabled {
   background-color: #F1F5F9 !important;
@@ -220,7 +229,7 @@ input:focus, select:focus, textarea:focus {
 /* Header and navigation bar styles */
 header.sticky,
 header {
-  background-color: rgba(255, 247, 237, 0.85) !important; /* light warm orange translucent */
+  background-color: rgba(255, 247, 237, 0.92) !important; /* light warm orange translucent */
   backdrop-filter: blur(12px) !important;
   border-bottom: 1px solid #FED7AA !important; /* orange-200 */
 }
@@ -244,17 +253,23 @@ footer.border-t {
 }
 
 /* Headings and primary text colors - Deep Premium Slate for Maximum Readability */
-h1, h2, h3, h4, h5, h6,
-.text-white,
-.text-slate-50,
-.text-slate-100,
-.text-slate-200,
-.text-slate-300,
-.text-gray-100 {
+h1, h2, h3, h4, h5, h6 {
+  color: #0F172A !important;
+}
+
+/* Primary dark text classes */
+.text-slate-900,
+.text-slate-800,
+.text-gray-900,
+.text-gray-800 {
   color: #0F172A !important;
 }
 
 /* Secondary text colors - Readable Slate */
+.text-slate-700,
+.text-slate-600,
+.text-gray-700,
+.text-gray-600,
 .text-\[\#E2E8F0\],
 .text-gray-200,
 .text-gray-300,
@@ -264,8 +279,32 @@ h1, h2, h3, h4, h5, h6,
 
 /* Subtext colors */
 .text-gray-400,
-.text-gray-500 {
+.text-gray-500,
+.text-slate-500 {
   color: #475569 !important;
+}
+
+/* Text white inside light components default to deep slate, BUT preserved white on dark buttons/badges below */
+.text-white,
+.text-slate-50,
+.text-slate-100,
+.text-slate-200,
+.text-slate-300,
+.text-gray-100 {
+  color: #0F172A !important;
+}
+
+/* Explicitly preserve TRUE WHITE text on dark buttons, dark badges, dark cards & dark tooltips */
+.bg-orange-500,
+.bg-orange-600,
+.bg-emerald-600,
+.bg-blue-600,
+.bg-red-600,
+.bg-slate-900.text-white,
+.bg-black.text-white,
+.bg-amber-600,
+.bg-slate-800 {
+  color: #FFFFFF !important;
 }
 
 /* Specific text color hover states for navigation links */
@@ -282,7 +321,8 @@ h1, h2, h3, h4, h5, h6,
   color: #B45309 !important;
 }
 
-.text-amber-500 {
+.text-amber-500,
+.text-amber-600 {
   color: #D97706 !important;
 }
 
@@ -297,32 +337,22 @@ h1, h2, h3, h4, h5, h6,
   font-weight: 800 !important;
 }
 
-/* Preserve white text on dark/vibrant orange, emerald, blue, red buttons */
-.bg-orange-500,
-.bg-orange-600,
-.bg-emerald-600,
-.bg-blue-600,
-.bg-red-600,
-.bg-black,
-.bg-gradient-to-r.from-orange-500 {
-  color: #FFFFFF !important;
-}
-
+/* Preserve white text inside dark button children */
 .bg-orange-500 *,
 .bg-orange-600 *,
 .bg-emerald-600 *,
 .bg-blue-600 *,
 .bg-red-600 *,
 .bg-black *,
-.bg-gradient-to-r.from-orange-500 * {
+.bg-slate-800 * {
   color: #FFFFFF !important;
 }
 
 /* Fix active and inactive colors for bottom navbar (Mobile) */
 .fixed.bottom-0 {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border-top: 1px solid #E2E8F0 !important;
-  box-shadow: 0 -4px 15px rgba(148, 163, 184, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border-top: 1px solid #FED7AA !important;
+  box-shadow: 0 -4px 15px rgba(234, 88, 12, 0.08) !important;
 }
 
 /* Ambient glow accents */
