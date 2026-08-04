@@ -6,10 +6,12 @@ import {
   DollarSign, Navigation, RefreshCw, UserCheck
 } from 'lucide-react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
+import { PublicGroupChat } from './PublicGroupChat';
 
 interface ServicesTabProps {
   lang: 'ar' | 'en' | 'he';
   isLoggedIn: boolean;
+  userRole?: 'client' | 'technician' | 'admin' | null;
   servicesList: Array<{
     id: ServiceType;
     name: string;
@@ -121,7 +123,8 @@ export default function ServicesTab({
   handleRatingSubmit,
   currentSessionId,
   loggedInUserEmail,
-  loggedInUserName
+  loggedInUserName,
+  userRole
 }: ServicesTabProps) {
 
   // Active customer request object if any
@@ -556,6 +559,17 @@ export default function ServicesTab({
             );
           })}
         </div>
+      </div>
+
+      {/* Live Public Group Chat section at bottom of Services Tab */}
+      <div className="pt-8 border-t border-gray-900">
+        <PublicGroupChat 
+          lang={lang} 
+          currentUserRole={userRole || 'client'}
+          currentUserName={loggedInUserName || (lang === 'ar' ? 'مستخدم' : 'User')}
+          currentUserEmail={loggedInUserEmail}
+          currentUserAvatar={userAvatar}
+        />
       </div>
 
     </div>

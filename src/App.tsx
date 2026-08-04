@@ -4956,6 +4956,7 @@ export default function App() {
         <ServicesTab
           lang={lang}
           isLoggedIn={isLoggedIn}
+          userRole={userRole}
           servicesList={servicesList}
           dbTechnicians={dbTechnicians}
           triggerToast={triggerToast}
