@@ -446,6 +446,96 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // Global 24-Hour Retention Public Group Chat for all accounts and devices
+  const PUBLIC_CHAT_FILE_PATH = path.join(process.cwd(), 'data', 'public_group_chat.json');
+  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+  const globalPublicGroupChatMessages = new Map<string, any>();
+
+  const filter24HoursServer = (list: any[]) => {
+    const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
+    return list.filter(m => m && (m.createdTime || 0) >= cutoff);
+  };
+
+  const savePublicChatToFile = () => {
+    try {
+      const dir = path.dirname(PUBLIC_CHAT_FILE_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const list = filter24HoursServer(Array.from(globalPublicGroupChatMessages.values()));
+      list.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
+      fs.writeFileSync(PUBLIC_CHAT_FILE_PATH, JSON.stringify(list, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Notice saving public chat file:', err);
+    }
+  };
+
+  const loadPublicChatFromFile = () => {
+    try {
+      if (fs.existsSync(PUBLIC_CHAT_FILE_PATH)) {
+        const raw = fs.readFileSync(PUBLIC_CHAT_FILE_PATH, 'utf-8');
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          const valid = filter24HoursServer(list);
+          valid.forEach(m => {
+            if (m && (m.id || m.createdTime)) {
+              const key = m.id || `${m.createdTime}_${m.senderName}`;
+              globalPublicGroupChatMessages.set(key, m);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Notice loading public chat file:', err);
+    }
+
+    // Seed default welcome messages if empty
+    if (globalPublicGroupChatMessages.size === 0) {
+      const now = Date.now();
+      const defaultInitial = [
+        {
+          id: 'welcome-01',
+          senderName: 'إدارة سيسترو (البث المباشر)',
+          senderRole: 'admin',
+          text: '👋 أهلاً بكم في غرفة المحادثة المباشرة العامة! القناة مفتوحة ومتاحة لجميع الزبائن والفنيين والإدارة للتواصل فوراً (تُحفظ الرسائل لمدة 24 ساعة).',
+          timestamp: new Date(now - 1800000).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+          createdTime: now - 1800000
+        },
+        {
+          id: 'welcome-02',
+          senderName: 'المهندس أحمد (فني معتمد)',
+          senderRole: 'technician',
+          senderAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120',
+          text: '🛠️ متواجد الآن وجاهز لتقديم خدمات الصيانة والسحب الطارئ في جميع المناطق!',
+          timestamp: new Date(now - 900000).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+          createdTime: now - 900000
+        }
+      ];
+      defaultInitial.forEach(m => globalPublicGroupChatMessages.set(m.id, m));
+      savePublicChatToFile();
+    }
+  };
+
+  loadPublicChatFromFile();
+
+  // GET /api/public-group-chat
+  app.get('/api/public-group-chat', (req, res) => {
+    const valid = filter24HoursServer(Array.from(globalPublicGroupChatMessages.values()));
+    valid.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
+    res.json({ success: true, count: valid.length, messages: valid });
+  });
+
+  // POST /api/public-group-chat
+  app.post('/api/public-group-chat', (req, res) => {
+    const { message } = req.body;
+    if (message && (message.id || message.createdTime)) {
+      const key = message.id || `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      globalPublicGroupChatMessages.set(key, { ...message, id: key });
+      savePublicChatToFile();
+    }
+    const valid = filter24HoursServer(Array.from(globalPublicGroupChatMessages.values()));
+    valid.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
+    res.json({ success: true, count: valid.length, messages: valid });
+  });
+
   app.post('/api/user-session/heartbeat', (req, res) => {
     const { email, sessionId } = req.body;
     if (!email || !sessionId) {

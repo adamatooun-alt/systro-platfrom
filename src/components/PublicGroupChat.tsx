@@ -136,6 +136,31 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
     const initialMsgs = loadFromLocalStorage();
     setMessages(initialMsgs);
 
+    // Helper to fetch latest global messages from server API
+    const fetchServerMessages = async () => {
+      try {
+        const res = await fetch('/api/public-group-chat');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.messages)) {
+            setMessages(prev => {
+              const merged = mergeAndSortMessages(prev, data.messages);
+              saveToLocalStorage(merged);
+              return merged;
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Server chat fetch notice:', e);
+      }
+    };
+
+    // Initial server fetch
+    fetchServerMessages();
+
+    // Fast polling interval (every 2.5 seconds) for instant cross-device sync
+    const serverPollInterval = setInterval(fetchServerMessages, 2500);
+
     // 2. Setup BroadcastChannel for cross-tab instant messaging
     try {
       if ('BroadcastChannel' in window) {
@@ -186,11 +211,11 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
     };
     window.addEventListener('systro_chat_update', handleCustomWindowChat);
 
-    // 5. Setup Firestore Realtime Subscription
+    // 5. Setup Firestore Realtime Subscription (as additional secondary stream)
     let unsubscribeFirestore = () => {};
     try {
       const chatRef = collection(db, 'public_group_chat');
-      const q = query(chatRef, orderBy('createdTime', 'asc'), limit(150));
+      const q = query(chatRef, limit(150));
 
       unsubscribeFirestore = onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
@@ -234,6 +259,7 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
     }, 60000); // Check every minute
 
     return () => {
+      clearInterval(serverPollInterval);
       unsubscribeFirestore();
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('systro_chat_update', handleCustomWindowChat);
@@ -308,7 +334,32 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
       inputRef.current?.focus();
     }, 80);
 
-    // 2. Non-blocking Async Sync with Cloud Firestore
+    // 2. Global Server API POST sync for all accounts & devices
+    try {
+      fetch('/api/public-group-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: newMsgObj })
+      }).then(res => {
+        if (res.ok) {
+          return res.json();
+        }
+      }).then(data => {
+        if (data && Array.isArray(data.messages)) {
+          setMessages(prev => {
+            const merged = mergeAndSortMessages(prev, data.messages);
+            saveToLocalStorage(merged);
+            return merged;
+          });
+        }
+      }).catch(err => {
+        console.warn('Server chat POST notice:', err);
+      });
+    } catch (err) {
+      console.warn('Server chat dispatch notice:', err);
+    }
+
+    // 3. Secondary background sync with Cloud Firestore
     try {
       addDoc(collection(db, 'public_group_chat'), {
         senderName: newMsgObj.senderName,
