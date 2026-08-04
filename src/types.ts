@@ -149,6 +149,17 @@ export interface StoreOrderItem {
   image: string;
 }
 
+export interface PublicGroupMessage {
+  id: string;
+  senderName: string;
+  senderEmail?: string;
+  senderRole: 'client' | 'technician' | 'admin';
+  senderAvatar?: string;
+  text: string;
+  timestamp: string;
+  createdTime?: number;
+}
+
 export type StoreOrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 export interface StoreOrder {

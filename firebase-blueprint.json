@@ -173,6 +173,22 @@
           }
         }
       }
+    },
+    "public_group_chat": {
+      "description": "Real-time open broadcast group chat for technicians, clients, and admin",
+      "documents": {
+        "messageId": {
+          "fields": {
+            "senderName": { "type": "string" },
+            "senderEmail": { "type": "string" },
+            "senderRole": { "type": "string" },
+            "senderAvatar": { "type": "string" },
+            "text": { "type": "string" },
+            "timestamp": { "type": "string" },
+            "createdTime": { "type": "number" }
+          }
+        }
+      }
     }
   }
 }

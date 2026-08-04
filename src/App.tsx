@@ -104,6 +104,7 @@ import { AdminPanel } from './components/AdminPanel';
 import TaxiTab from './components/TaxiTab';
 import { StoreTab } from './components/StoreTab';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
+import { PublicGroupChat } from './components/PublicGroupChat';
 
 enum OperationType {
   CREATE = 'create',
@@ -6622,7 +6623,18 @@ export default function App() {
                   })()}
                 </div>
 
-                    </div>
+                {/* Live Public Group Chat section at bottom of Technician Panel */}
+                <div className="mt-8 pt-6 border-t border-gray-900">
+                  <PublicGroupChat 
+                    lang={lang} 
+                    currentUserRole={userRole || 'technician'}
+                    currentUserName={loggedInUserName || profileNameInput || (lang === 'ar' ? 'فني معتمد' : 'Technician')}
+                    currentUserEmail={loggedInUserEmail}
+                    currentUserAvatar={userAvatar}
+                  />
+                </div>
+
+              </div>
                     {false ? (
                       <>
                         {simStatus === 'idle' && (
@@ -7439,6 +7451,17 @@ export default function App() {
                   )}
                 </>
               ) : null}
+
+              {/* Live Public Group Chat section at bottom of Client Panel */}
+              <div className="mt-8 pt-6 border-t border-gray-900">
+                <PublicGroupChat 
+                  lang={lang} 
+                  currentUserRole={userRole || 'client'}
+                  currentUserName={loggedInUserName || profileNameInput || (lang === 'ar' ? 'زبون' : 'Client')}
+                  currentUserEmail={loggedInUserEmail}
+                  currentUserAvatar={userAvatar}
+                />
+              </div>
             </div>
           </div>
           ) : (
