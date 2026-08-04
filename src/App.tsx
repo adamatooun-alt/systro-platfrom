@@ -556,6 +556,7 @@ export default function App() {
   const [dbServices, setDbServices] = useState<any[]>([]);
   const [dbTechnicians, setDbTechnicians] = useState<Technician[]>([]);
   const [showMyOwnRequestsInTechList, setShowMyOwnRequestsInTechList] = useState<boolean>(true);
+  const [techTaskCategoryTab, setTechTaskCategoryTab] = useState<'all' | 'rescue' | 'tasks'>('all');
 
   // Modals / Form inputs for Service Provider Registries
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
@@ -6047,119 +6048,192 @@ export default function App() {
 
                       {/* Active client requests & task orders dispatch queue */}
                       <div id="technician-rescue-alerts-list" className="space-y-4">
-                        <div className="border-b border-gray-900 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0A0D18] p-4 rounded-2xl border border-amber-500/20 shadow-md">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-black text-white tracking-wide flex items-center gap-2">
-                                <Briefcase className="w-4 h-4 text-amber-400" />
-                                <span>{lang === 'ar' ? '📋 قائمة المهمات والطلبات الحية المتاحة للفنيين:' : '📋 Live Task Orders Dispatch Queue:'}</span>
-                              </h4>
-                              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono">
-                                {allRequests.filter(isPendingForTechnician).length} {lang === 'ar' ? 'مهمة' : 'TASKS'}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-gray-400 mt-1 font-semibold">
-                              {lang === 'ar' ? 'جميع الطلبات والمهمات التي ينشرها الزبائن يتم تعميمها فوراً وفي الوقت الحقيقي لجميع الفنيين المتصلين بالشبكة.' : 'All client requests published are automatically broadcasted in real time to all active technicians.'}
-                            </p>
-                          </div>
+                        {(() => {
+                          const pendingTechTasks = allRequests.filter(isPendingForTechnician);
+                          const isRescueTaskItem = (r: RescueRequest) => r.serviceType === 'towing' || r.serviceType === 'battery' || Boolean(r.isEmergency);
+                          const rescueList = pendingTechTasks.filter(isRescueTaskItem);
+                          const generalList = pendingTechTasks.filter(r => !isRescueTaskItem(r));
+                          const currentDisplayedTasks = techTaskCategoryTab === 'rescue' 
+                            ? rescueList 
+                            : techTaskCategoryTab === 'tasks' 
+                            ? generalList 
+                            : pendingTechTasks;
 
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => setShowMyOwnRequestsInTechList(prev => !prev)}
-                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer border ${
-                                showMyOwnRequestsInTechList 
-                                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/35 hover:bg-amber-500/25' 
-                                  : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'
-                              }`}
-                              title={lang === 'ar' ? 'تبديل إظهار الطلبات التي أنشأتها أنت كزبون في لوحة الفني' : 'Toggle showing requests created by you'}
-                            >
-                              <span>{showMyOwnRequestsInTechList ? (lang === 'ar' ? '👁️ إظهار طلباتي كزبون' : '👁️ Show My Client Tasks') : (lang === 'ar' ? '🙈 إخفاء طلباتي كزبون' : '🙈 Hide My Client Tasks')}</span>
-                            </button>
+                          return (
+                            <>
+                              <div className="border-b border-gray-900 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0A0D18] p-4 rounded-2xl border border-amber-500/20 shadow-md">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-sm font-black text-white tracking-wide flex items-center gap-2">
+                                      <Briefcase className="w-4 h-4 text-amber-400" />
+                                      <span>{lang === 'ar' ? '📋 رادار وبوابة استعراض المهمات والطلبات:' : '📋 Task Orders & Rescue Dispatch Radar:'}</span>
+                                    </h4>
+                                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono">
+                                      {pendingTechTasks.length} {lang === 'ar' ? 'مهمة حية' : 'LIVE TASKS'}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-gray-400 mt-1 font-semibold">
+                                    {lang === 'ar' ? 'تم تنظيم وتصنيف المهمات في قائمة الإنقاذ والإنعاش الفوري وقائمة المهام والخدمات العامة.' : 'Tasks organized into Emergency Rescue List & General Task Orders List.'}
+                                  </p>
 
-                            <button
-                              type="button"
-                              onClick={handleTestPublishTask}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-emerald-500"
-                              title={lang === 'ar' ? 'اختبار نشر مهمة جديدة من قبل زبون وتعميمها فوراً لكافة الفنيين' : 'Test publishing & broadcasting task'}
-                            >
-                              <span>🧪 {lang === 'ar' ? 'نشر مهمة تجريبية 🚀' : 'Test Publish Task 🚀'}</span>
-                            </button>
+                                  {/* Dual Task Lists Selector Tabs */}
+                                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => setTechTaskCategoryTab('all')}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border ${
+                                        techTaskCategoryTab === 'all'
+                                          ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                                          : 'bg-[#111625] text-gray-300 border-gray-800 hover:border-gray-700'
+                                      }`}
+                                    >
+                                      <span>🌐 {lang === 'ar' ? 'جميع المهمات المذاعة' : 'All Tasks'}</span>
+                                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${techTaskCategoryTab === 'all' ? 'bg-slate-950 text-amber-300' : 'bg-gray-800 text-gray-300'}`}>
+                                        {pendingTechTasks.length}
+                                      </span>
+                                    </button>
 
-                            <button
-                              type="button"
-                              onClick={handleManualRefreshRequests}
-                              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-amber-600 shrink-0"
-                              title={lang === 'ar' ? 'تحديث وتفقد قائمة المهمات الآن' : 'Refresh live task orders now'}
-                            >
-                              <RefreshCw className="w-3.5 h-3.5 text-slate-950" />
-                              <span className="text-slate-950">{lang === 'ar' ? 'تحديث المهمات 🔄' : 'Refresh Tasks 🔄'}</span>
-                            </button>
-                          </div>
-                        </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setTechTaskCategoryTab('rescue')}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border ${
+                                        techTaskCategoryTab === 'rescue'
+                                          ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-950/40'
+                                          : 'bg-red-950/20 text-red-300 border-red-900/40 hover:bg-red-950/40'
+                                      }`}
+                                    >
+                                      <span>🚨 {lang === 'ar' ? 'قائمة الإنقاذ والإنعاش' : 'Rescue Tasks List'}</span>
+                                      <span className="px-1.5 py-0.2 bg-red-900/80 text-red-200 rounded-full text-[10px] font-mono">
+                                        {rescueList.length}
+                                      </span>
+                                    </button>
 
-                        {allRequests.filter(isPendingForTechnician).length === 0 ? (
-                          <div className="p-8 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-3">
-                            <div className="w-12 h-12 bg-gray-900 text-gray-500 rounded-full flex items-center justify-center mx-auto border border-gray-800">
-                              <Briefcase className="w-6 h-6" />
-                            </div>
-                            <span className="text-xs text-gray-400 font-bold block">{lang === 'ar' ? 'لا توجد مهمات أو طلبات معلقة حالياً على الطريق. جميع السائقين والمركبات تسير بسلام! 👍' : 'No active client task orders. Drivers & vehicles are safe! 👍'}</span>
-                            <div className="flex items-center justify-center gap-2 pt-2">
-                              <button
-                                type="button"
-                                onClick={handleTestPublishTask}
-                                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-lg active:scale-95 inline-flex items-center gap-1.5"
-                              >
-                                <span>🧪 {lang === 'ar' ? 'إجراء تجربة نشر مهمة زبون 🚀' : 'Test Publish Client Task 🚀'}</span>
-                              </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setTechTaskCategoryTab('tasks')}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border ${
+                                        techTaskCategoryTab === 'tasks'
+                                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-950/40'
+                                          : 'bg-emerald-950/20 text-emerald-300 border-emerald-900/40 hover:bg-emerald-950/40'
+                                      }`}
+                                    >
+                                      <span>📋 {lang === 'ar' ? 'قائمة ظهور واستعراض المهام' : 'General Task Orders List'}</span>
+                                      <span className="px-1.5 py-0.2 bg-emerald-900/80 text-emerald-200 rounded-full text-[10px] font-mono">
+                                        {generalList.length}
+                                      </span>
+                                    </button>
+                                  </div>
+                                </div>
 
-                              <button
-                                type="button"
-                                onClick={handleManualRefreshRequests}
-                                className="px-3.5 py-2 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
-                              >
-                                <RefreshCw className="w-3.5 h-3.5" />
-                                <span>{lang === 'ar' ? 'فحص المهمات 🔄' : 'Check Tasks 🔄'}</span>
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-4 font-sans">
-                            {allRequests.filter(isPendingForTechnician).map(req => {
-                              const isSelected = selectedBidRequest?.id === req.id;
-                              const isMine = isMyOwnClientRequest(req);
-                              const serviceTitle = req.serviceType === 'taxi' 
-                                ? (lang === 'ar' ? '🚕 توصيل تكسي خاص و VIP' : '🚕 Special VIP Taxi Ride') 
-                                : getServiceArName(req.serviceType);
+                                <div className="flex items-center gap-2 shrink-0 flex-wrap self-start sm:self-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowMyOwnRequestsInTechList(prev => !prev)}
+                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                                      showMyOwnRequestsInTechList 
+                                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/35 hover:bg-amber-500/25' 
+                                        : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'
+                                    }`}
+                                    title={lang === 'ar' ? 'تبديل إظهار الطلبات التي أنشأتها أنت كزبون في لوحة الفني' : 'Toggle showing requests created by you'}
+                                  >
+                                    <span>{showMyOwnRequestsInTechList ? (lang === 'ar' ? '👁️ إظهار طلباتي كزبون' : '👁️ Show My Client Tasks') : (lang === 'ar' ? '🙈 إخفاء طلباتي كزبون' : '🙈 Hide My Client Tasks')}</span>
+                                  </button>
 
-                              return (
-                                <div key={req.id} className={`p-5 rounded-2xl border transition-all ${isSelected ? 'bg-[#0F1424] border-amber-500 shadow-xl' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800 shadow-md'}`}>
-                                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="text-right rtl:text-right ltr:text-left space-y-1.5 flex-1">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        {isMine ? (
-                                          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase">
-                                            {lang === 'ar' ? '👤 مهمتك المنشورة (مذاعة حية لكافة الفنيين 📡)' : '👤 Your Published Task (Broadcast Live to Techs 📡)'}
-                                          </span>
-                                        ) : (
-                                          <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1">
-                                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                                            <span>{lang === 'ar' ? '🟢 مهمة جديدة من عميل' : '🟢 NEW LIVE CLIENT TASK'}</span>
-                                          </span>
-                                        )}
-                                        <span className="text-[10px] text-gray-500 font-mono">
-                                          ID: #{req.id.substring(0, 10)}
-                                        </span>
-                                      </div>
+                                  <button
+                                    type="button"
+                                    onClick={handleTestPublishTask}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-emerald-500"
+                                    title={lang === 'ar' ? 'اختبار نشر مهمة جديدة من قبل زبون وتعميمها فوراً لكافة الفنيين' : 'Test publishing & broadcasting task'}
+                                  >
+                                    <span>🧪 {lang === 'ar' ? 'نشر مهمة تجريبية 🚀' : 'Test Publish Task 🚀'}</span>
+                                  </button>
 
-                                      <div className="flex items-center gap-2 pt-0.5">
-                                        <h5 className="text-sm font-black text-white">{req.clientName}</h5>
-                                        {req.clientPhone && (
-                                          <a href={`tel:${req.clientPhone}`} className="text-[10px] text-amber-400 hover:underline font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                                            📞 {req.clientPhone}
-                                          </a>
-                                        )}
-                                      </div>
+                                  <button
+                                    type="button"
+                                    onClick={handleManualRefreshRequests}
+                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-amber-600 shrink-0"
+                                    title={lang === 'ar' ? 'تحديث وتفقد قائمة المهمات الآن' : 'Refresh live task orders now'}
+                                  >
+                                    <RefreshCw className="w-3.5 h-3.5 text-slate-950" />
+                                    <span className="text-slate-950">{lang === 'ar' ? 'تحديث المهمات 🔄' : 'Refresh Tasks 🔄'}</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {currentDisplayedTasks.length === 0 ? (
+                                <div className="p-8 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-3">
+                                  <div className="w-12 h-12 bg-gray-900 text-gray-500 rounded-full flex items-center justify-center mx-auto border border-gray-800">
+                                    <Briefcase className="w-6 h-6" />
+                                  </div>
+                                  <span className="text-xs text-gray-400 font-bold block">
+                                    {techTaskCategoryTab === 'rescue'
+                                      ? (lang === 'ar' ? '🚨 لا توجد بلاغات إنقاذ أو إنعاش طارئة حالياً في القائمة. جميع الطريق آمن! 👍' : 'No emergency rescue tasks pending! 👍')
+                                      : techTaskCategoryTab === 'tasks'
+                                      ? (lang === 'ar' ? '📋 لا توجد طلبات مهمات أو خدمات عامة معلقة حالياً.' : 'No general task orders pending! 👍')
+                                      : (lang === 'ar' ? 'لا توجد مهمات أو طلبات معلقة حالياً على الطريق. جميع السائقين والمركبات تسير بسلام! 👍' : 'No active client task orders. Drivers & vehicles are safe! 👍')}
+                                  </span>
+                                  <div className="flex items-center justify-center gap-2 pt-2">
+                                    <button
+                                      type="button"
+                                      onClick={handleTestPublishTask}
+                                      className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-lg active:scale-95 inline-flex items-center gap-1.5"
+                                    >
+                                      <span>🧪 {lang === 'ar' ? 'إجراء تجربة نشر مهمة زبون 🚀' : 'Test Publish Client Task 🚀'}</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={handleManualRefreshRequests}
+                                      className="px-3.5 py-2 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
+                                    >
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                      <span>{lang === 'ar' ? 'فحص المهمات 🔄' : 'Check Tasks 🔄'}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="space-y-4 font-sans">
+                                  {currentDisplayedTasks.map(req => {
+                                    const isSelected = selectedBidRequest?.id === req.id;
+                                    const isMine = isMyOwnClientRequest(req);
+                                    const isRescue = isRescueTaskItem(req);
+                                    const serviceTitle = req.serviceType === 'taxi' 
+                                      ? (lang === 'ar' ? '🚕 توصيل تكسي خاص و VIP' : '🚕 Special VIP Taxi Ride') 
+                                      : getServiceArName(req.serviceType);
+
+                                    return (
+                                      <div key={req.id} className={`p-5 rounded-2xl border transition-all ${isSelected ? 'bg-[#0F1424] border-amber-500 shadow-xl' : isRescue ? 'bg-[#140A0C] border-red-900/60 hover:border-red-700/80 shadow-md' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800 shadow-md'}`}>
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                          <div className="text-right rtl:text-right ltr:text-left space-y-1.5 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              {isMine ? (
+                                                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                                                  {lang === 'ar' ? '👤 مهمتك المنشورة (مذاعة حية لكافة الفنيين 📡)' : '👤 Your Published Task (Broadcast Live to Techs 📡)'}
+                                                </span>
+                                              ) : isRescue ? (
+                                                <span className="bg-red-500/20 text-red-300 border border-red-500/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1 animate-pulse">
+                                                  <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping"></span>
+                                                  <span>{lang === 'ar' ? '🚨 قائمة الإنقاذ والإنعاش الطارئ' : '🚨 EMERGENCY RESCUE ALERT'}</span>
+                                                </span>
+                                              ) : (
+                                                <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1">
+                                                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
+                                                  <span>{lang === 'ar' ? '📋 قائمة المهمات والخدمات العامة' : '📋 GENERAL SERVICE TASK'}</span>
+                                                </span>
+                                              )}
+                                              <span className="text-[10px] text-gray-500 font-mono">
+                                                ID: #{req.id.substring(0, 10)}
+                                              </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 pt-0.5">
+                                              <h5 className="text-sm font-black text-white">{req.clientName}</h5>
+                                              {req.clientPhone && (
+                                                <a href={`tel:${req.clientPhone}`} className="text-[10px] text-amber-400 hover:underline font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                                                  📞 {req.clientPhone}
+                                                </a>
+                                              )}
+                                            </div>
 
                                       <div className="text-xs text-gray-300 font-extrabold flex items-center gap-1.5">
                                         <span>{lang === 'ar' ? 'نوع المهمة المطلوبة:' : 'Requested Task:'}</span>
@@ -6543,7 +6617,10 @@ export default function App() {
                             })}
                           </div>
                         )}
-                      </div>
+                      </>
+                    );
+                  })()}
+                </div>
 
                     </div>
                     {false ? (

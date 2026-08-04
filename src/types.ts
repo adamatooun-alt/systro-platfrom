@@ -50,6 +50,7 @@ export interface RescueRequest {
   timestamp: string;
   pickupLocation?: string;
   dropoffLocation?: string;
+  isEmergency?: boolean;
   payerType?: 'client' | 'technician';
   paymentMethod?: 'gpay' | 'card' | 'whatsapp' | 'commission';
   commissionAmount?: number;
