@@ -44,7 +44,7 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
   const [messages, setMessages] = useState<PublicGroupMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
@@ -270,9 +270,11 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
     };
   }, [lang]);
 
-  // Auto scroll to bottom when messages update
+  // Auto scroll inside the chat container without affecting outer page scroll
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -490,7 +492,10 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
       </div>
 
       {/* Messages Display Stream */}
-      <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 h-72 md:h-80 overflow-y-auto space-y-3.5 shadow-inner relative z-10">
+      <div 
+        ref={messagesContainerRef}
+        className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 h-72 md:h-80 overflow-y-auto space-y-3.5 shadow-inner relative z-10"
+      >
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-500 font-bold text-center gap-2">
             <Radio className="w-8 h-8 text-amber-500 animate-pulse" />
@@ -576,7 +581,6 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
             );
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Send Message Input Controls */}
