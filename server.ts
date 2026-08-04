@@ -330,43 +330,23 @@ async function startServer() {
   loadBidsFromFile();
   loadChatsFromFile();
 
-  // Ensure old default seed request is purged
-  if (globalRescueRequestsMap.has("req-seed-101")) {
-    globalRescueRequestsMap.delete("req-seed-101");
-    saveRequestsToFile();
-  }
-
-  // Ensure an active live test request exists for instant testing
-  if (globalRescueRequestsMap.size === 0) {
-    const testReq = {
-      id: "req-test-live-101",
-      clientName: "عميل تجريبي - اختبار النشر",
-      clientPhone: "+972 59-999-8888",
-      requestedBy: "test.client@systro.live",
-      sessionId: "test-session-101",
-      locationLat: 31.9038,
-      locationLng: 35.2034,
-      locationName: "Al-Quds St",
-      arLocationName: "شارع القدس الرئيسي - رام الله",
-      serviceType: "towing",
-      description: "🚨 [مهمة اختبار تجريبية] سحب مركبة تعطلت بالمحرك وحاجة لتدخل فني عاجل",
-      status: "pending_bids",
-      escrowAmount: 0,
-      approximatePrice: 180,
-      selectedTechnicianId: null,
-      timestamp: new Date().toISOString()
-    };
-    globalRescueRequestsMap.set(testReq.id, testReq);
-    saveRequestsToFile();
-  }
+  // Ensure old default seed requests are purged
+  ["req-seed-101", "req-test-live-101"].forEach(seedId => {
+    if (globalRescueRequestsMap.has(seedId)) {
+      globalRescueRequestsMap.delete(seedId);
+    }
+  });
+  saveRequestsToFile();
 
   // GET /api/requests
   app.get('/api/requests', (req, res) => {
-    if (globalRescueRequestsMap.has("req-seed-101")) {
-      globalRescueRequestsMap.delete("req-seed-101");
-      saveRequestsToFile();
-    }
-    const list = Array.from(globalRescueRequestsMap.values()).filter(r => r && r.id !== 'req-seed-101');
+    ["req-seed-101", "req-test-live-101"].forEach(seedId => {
+      if (globalRescueRequestsMap.has(seedId)) {
+        globalRescueRequestsMap.delete(seedId);
+      }
+    });
+    saveRequestsToFile();
+    const list = Array.from(globalRescueRequestsMap.values()).filter(r => r && r.id !== 'req-seed-101' && r.id !== 'req-test-live-101');
     list.sort((a, b) => {
       const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
       const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;

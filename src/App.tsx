@@ -798,8 +798,8 @@ export default function App() {
   // Helper to determine if a request is open AND should be visible to technicians
   const isPendingForTechnician = useCallback((req: RescueRequest) => {
     if (!req) return false;
-    // Exclude default seed/demo request
-    if (req.id === 'req-seed-101') {
+    // Exclude default seed/demo requests
+    if (req.id === 'req-seed-101' || req.id === 'req-test-live-101') {
       return false;
     }
     if (!isPendingRequest(req)) return false;
@@ -909,21 +909,21 @@ export default function App() {
 
   const handleTestPublishTask = async () => {
     try {
-      const testReqId = `req-test-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const testReqId = `req-live-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
       const testLoc = pinnedLocation || { lat: 31.9038, lng: 35.2034 };
       
       const testReqObj: RescueRequest = {
         id: testReqId,
-        clientName: lang === 'ar' ? 'عميل تجريبي - اختبار النشر' : 'Test Client - Dispatch Check',
+        clientName: loggedInUserName || (lang === 'ar' ? 'عميل مسجل' : 'Registered Client'),
         clientPhone: phoneNumber || "+972 59-999-8888",
-        requestedBy: loggedInUserEmail || 'test.client@systro.live',
-        sessionId: currentSessionId || 'test-session',
+        requestedBy: loggedInUserEmail || 'client@systro.live',
+        sessionId: currentSessionId || 'session-live',
         locationLat: testLoc.lat,
         locationLng: testLoc.lng,
         locationName: "Al-Quds St",
         arLocationName: "شارع القدس الرئيسي - رام الله",
         serviceType: 'towing',
-        description: lang === 'ar' ? '🚨 [مهمة اختبار تجريبية] سحب مركبة تعطلت بالمحرك وحاجة لتدخل فني عاجل' : '🚨 [TEST TASK DISPATCH] Vehicle engine breakdown needing urgent towing',
+        description: lang === 'ar' ? '🚨 [طلب إنقاذ طارئ] سحب مركبة تعطلت بالمحرك وحاجة لتدخل فني عاجل' : '🚨 [EMERGENCY RESCUE] Vehicle engine breakdown needing urgent towing',
         status: "pending_bids",
         escrowAmount: 0,
         approximatePrice: 180,
@@ -2227,15 +2227,6 @@ export default function App() {
             role: 'technician',
             phone: '+972 59-888-2233',
             avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120',
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 'client.demo@systro.live',
-            email: 'client.demo@systro.live',
-            name: 'عميل تجريبي سيسترو',
-            role: 'client',
-            phone: '+972 59-000-1111',
-            avatar: '',
             createdAt: new Date().toISOString()
           }
         ];
