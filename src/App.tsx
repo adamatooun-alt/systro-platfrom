@@ -4690,13 +4690,6 @@ export default function App() {
               onClick={() => {
                 setUserRole('technician');
                 sessionStorage.setItem('systro_user_role', 'technician');
-                const cleanEmail = (loggedInUserEmail || sessionStorage.getItem('systro_user_email') || '').trim().toLowerCase();
-                if (cleanEmail) {
-                  sessionStorage.setItem(`systro_tech_is_online_${cleanEmail}`, 'true');
-                } else {
-                  sessionStorage.setItem('systro_tech_is_online', 'true');
-                }
-                setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: true, isAvailable: true }));
                 setActiveTab('simulator');
               }}
               className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
@@ -5118,7 +5111,8 @@ export default function App() {
           </div>
 
           {/* Dynamic grid split */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {(activeTechDoc?.isOnline ?? false) ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             {/* Left Column: Technician Live Emergency Radar Map */}
             <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
@@ -7319,6 +7313,45 @@ export default function App() {
               ) : null}
             </div>
           </div>
+          ) : (
+            <div className="p-8 md:p-12 bg-[#0F1424]/90 border-2 border-amber-500/30 rounded-3xl text-center space-y-6 shadow-2xl relative overflow-hidden my-4 select-none animate-fade-in">
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="w-20 h-20 bg-amber-500/10 border-2 border-amber-500/30 rounded-3xl flex items-center justify-center mx-auto text-amber-400 shadow-inner">
+                <Power className="w-10 h-10 animate-pulse" />
+              </div>
+
+              <div className="max-w-xl mx-auto space-y-3">
+                <span className="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-full text-xs font-black uppercase tracking-wider inline-block">
+                  {lang === 'ar' ? '🔒 اللوحة مخفية - حساب الفني غير مفعّل' : '🔒 Panel Hidden - Tech Account Inactive'}
+                </span>
+                <h3 className="text-xl md:text-2xl font-black text-white">
+                  {lang === 'ar' 
+                    ? 'قم بتفعيل حساب الفني ودخول الخدمة لعرض اللوحة وتتبع المهمات 🛠️' 
+                    : 'Activate Technician Account & Enter Service to Reveal Dashboard & Track Tasks 🛠️'}
+                </h3>
+                <p className="text-xs md:text-sm text-gray-300 font-semibold leading-relaxed">
+                  {lang === 'ar'
+                    ? 'كالمعتاد، حسابك غير نشط كفني حالياً لضمان استقلالية حسابك وسلامة البيانات. بتفعيل زر "تفعيل حساب الفني ودخول الخدمة" بالأعلى، تظهر لك خريطة بلاغات الطوارئ المباشرة، قائمة الطلبات، وتتبع المهمات والعمليات فوراً.'
+                    : 'Your technician account is currently off-duty. Click the activation button above to enter active service and unlock live emergency alerts, radar map, and task tracking.'}
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleToggleTechMode}
+                  className="px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-black font-black text-sm rounded-2xl shadow-xl shadow-amber-500/25 transition-all cursor-pointer inline-flex items-center gap-3 active:scale-95"
+                >
+                  <Power className="w-5 h-5" />
+                  <span>
+                    {lang === 'ar'
+                      ? 'تفعيل: أريد أن أكون فني مسجل ودخول الخدمة الآن ⚡'
+                      : 'Activate: Enable Active Tech Mode & Enter Service Now ⚡'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
