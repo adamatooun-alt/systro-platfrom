@@ -799,7 +799,7 @@ export default function App() {
   const isPendingForTechnician = useCallback((req: RescueRequest) => {
     if (!req) return false;
     // Exclude default seed/demo request
-    if (req.id === 'req-seed-101' || req.requestedBy === 'ahmed.m@gmail.com' || (req.clientName && req.clientName.includes('أحمد المحمود'))) {
+    if (req.id === 'req-seed-101') {
       return false;
     }
     if (!isPendingRequest(req)) return false;
@@ -861,7 +861,7 @@ export default function App() {
         const mergedMap = new Map<string, RescueRequest>();
         // 1. Populate from server snapshot & API (excluding seed request)
         map.forEach((val, key) => {
-          if (key !== 'req-seed-101' && val.requestedBy !== 'ahmed.m@gmail.com') {
+          if (key !== 'req-seed-101') {
             mergedMap.set(key, val);
           }
         });
@@ -1626,7 +1626,7 @@ export default function App() {
             }
           }
         });
-        const list = Array.from(map.values()).filter(r => r && r.id !== 'req-seed-101' && r.requestedBy !== 'ahmed.m@gmail.com');
+        const list = Array.from(map.values()).filter(r => r && r.id !== 'req-seed-101');
         list.sort((a, b) => {
           const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
           const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;

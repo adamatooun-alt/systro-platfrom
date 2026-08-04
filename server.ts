@@ -366,7 +366,7 @@ async function startServer() {
       globalRescueRequestsMap.delete("req-seed-101");
       saveRequestsToFile();
     }
-    const list = Array.from(globalRescueRequestsMap.values()).filter(r => r && r.id !== 'req-seed-101' && r.requestedBy !== 'ahmed.m@gmail.com');
+    const list = Array.from(globalRescueRequestsMap.values()).filter(r => r && r.id !== 'req-seed-101');
     list.sort((a, b) => {
       const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
       const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
