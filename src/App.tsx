@@ -792,6 +792,10 @@ export default function App() {
     if (isLoggedIn && loggedInUserEmail && loggedInUserEmail.trim() !== '' && req.requestedBy === loggedInUserEmail) {
       return true;
     }
+    const activeReqId = sessionStorage.getItem('systro_active_request_id') || localStorage.getItem('systro_active_request_id');
+    if (activeReqId && req.id === activeReqId) {
+      return true;
+    }
     return false;
   }, [isLoggedIn, loggedInUserEmail]);
 
@@ -804,13 +808,16 @@ export default function App() {
     }
     if (!isPendingRequest(req)) return false;
 
-    // If currently acting/logged in as a technician, show ALL active pending requests!
-    if (userRole === 'technician') {
+    // If currently acting or logged in as a technician, show ALL active pending requests!
+    const isTechMode = userRole === 'technician' || sessionStorage.getItem('systro_user_role') === 'technician';
+    if (isTechMode) {
       return true;
     }
 
     // For client/guest view, do not show own client request in technician lists
-    if (isMyOwnClientRequest(req)) return false;
+    if (isMyOwnClientRequest(req)) {
+      return false;
+    }
 
     return true;
   }, [isPendingRequest, isMyOwnClientRequest, userRole]);
@@ -851,8 +858,8 @@ export default function App() {
           map.set(r.id, r);
         } else {
           const existing = map.get(r.id)!;
-          // Priority fix: Firestore server data (existing) takes precedence over API cache (r)
-          map.set(r.id, { ...r, ...existing });
+          // Priority fix: merge fresh API updates onto existing state
+          map.set(r.id, { ...existing, ...r });
         }
       });
 
@@ -1612,7 +1619,7 @@ export default function App() {
             map.set(r.id, r);
           } else {
             const existing = map.get(r.id)!;
-            map.set(r.id, { ...r, ...existing });
+            map.set(r.id, { ...existing, ...r });
           }
         });
         // 3. Keep optimistic local requests created in recent state
