@@ -76,6 +76,7 @@ import {
   Save,
   Hammer,
   HelpCircle,
+  Briefcase,
   ShoppingBag,
   Droplets,
   Wind,
@@ -4894,17 +4895,17 @@ export default function App() {
         </div>
       </header>
 
-      {/* Real-time Global Emergency Rescue Bar (Visible ONLY for Technicians when open alerts exist from other drivers) */}
+      {/* Real-time Task Orders Bar (Visible ONLY for Technicians when open client task requests exist) */}
       {userRole === 'technician' && allRequests.filter(isPendingForTechnician).length > 0 && (
-        <div className="bg-gradient-to-r from-red-600 via-amber-600 to-red-600 text-white px-4 py-2.5 shadow-lg flex items-center justify-between gap-3 text-xs font-black animate-pulse select-none z-30 sticky top-20 border-b border-red-500/40">
+        <div className="bg-gradient-to-r from-slate-900 via-amber-950/80 to-slate-900 text-amber-300 px-4 py-2 shadow-lg flex items-center justify-between gap-3 text-xs font-bold select-none z-30 sticky top-20 border-b border-amber-500/30">
           <div className="flex items-center gap-2 max-w-4xl truncate">
-            <span className="bg-white text-red-600 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black shrink-0 animate-bounce shadow">
-              🚨 {lang === 'ar' ? 'إنذار استغاثة حي' : 'LIVE DISPATCH'}
+            <span className="bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black shrink-0 shadow">
+              📋 {lang === 'ar' ? 'مهمة جديدة' : 'NEW TASK'}
             </span>
-            <span className="truncate">
+            <span className="truncate text-white text-[11px]">
               {lang === 'ar' 
-                ? `يوجد (${allRequests.filter(isPendingForTechnician).length}) نداء استغاثة طارئ نشط حالياً بانتظار استجابة الفنيين!` 
-                : `There are (${allRequests.filter(isPendingForTechnician).length}) active emergency alerts waiting for technician response!`}
+                ? `يوجد (${allRequests.filter(isPendingForTechnician).length}) مهمة/طلب خدمات نشط بانتظار استجابة وتأكيد عروض الفنيين!` 
+                : `There are (${allRequests.filter(isPendingForTechnician).length}) active task orders awaiting technician response!`}
             </span>
           </div>
 
@@ -4912,12 +4913,12 @@ export default function App() {
             onClick={() => {
               setUserRole('technician');
               setActiveTab('simulator');
-              triggerToast(lang === 'ar' ? 'تم تحويلك لبوابة الفنيين لتلبية وتأكيد الطلب فوراً!' : 'Switched to Technician portal to accept task!', 'success');
+              triggerToast(lang === 'ar' ? 'تم الانتقال لقائمة المهمات المتاحة!' : 'Switched to Task Orders Dispatch Queue!', 'info');
             }}
-            className="px-3 py-1 bg-black text-amber-400 hover:bg-gray-900 border border-amber-400/50 rounded-lg text-[10px] font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow"
+            className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-400/50 rounded-lg text-[10px] font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow active:scale-95"
           >
-            <Wrench className="w-3.5 h-3.5 text-amber-400" />
-            <span>{lang === 'ar' ? 'تلبية المهمة الآن 🛠️' : 'Accept Task Now 🛠️'}</span>
+            <Briefcase className="w-3.5 h-3.5 text-slate-950" />
+            <span>{lang === 'ar' ? 'استعراض المهمات 📋' : 'Browse Tasks 📋'}</span>
           </button>
         </div>
       )}
@@ -5260,37 +5261,36 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* PROMINENT LIVE EMERGENCY ALERTS BANNER FOR TECHNICIAN */}
+                      {/* LIVE PENDING TASK ORDERS BANNER FOR TECHNICIAN */}
                       {allRequests.filter(isPendingForTechnician).length > 0 && (
-                        <div className="p-4 bg-gradient-to-r from-red-950/90 via-[#1A0A0A] to-[#0A0B10] border-2 border-red-500/80 rounded-3xl space-y-3 shadow-2xl shadow-red-950/50 animate-pulse text-right">
+                        <div className="p-4 bg-gradient-to-r from-[#0F172A] via-[#1E1B4B] to-[#0A0B10] border border-amber-500/30 rounded-3xl space-y-3 shadow-xl text-right">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              <div className="p-3 rounded-2xl bg-red-500/20 text-red-400 border border-red-500/40 animate-bounce">
-                                <AlertTriangle className="w-6 h-6" />
+                              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                <Briefcase className="w-6 h-6" />
                               </div>
                               <div>
-                                <span className="px-2 py-0.5 bg-red-500 text-black text-[9px] font-black rounded-full uppercase tracking-wider">
-                                  {lang === 'ar' ? 'تنبيه طوارئ جديد على الطريق 🚨' : 'NEW ROAD EMERGENCY ALERT 🚨'}
+                                <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-black rounded-full uppercase tracking-wider">
+                                  {lang === 'ar' ? 'قائمة المهمات والطلبات الحية 📋' : 'LIVE TASK ORDERS DISPATCH 📋'}
                                 </span>
                                 <h4 className="text-sm sm:text-base font-black text-white mt-1">
                                   {lang === 'ar'
-                                    ? `يوجد ${allRequests.filter(isPendingForTechnician).length} بلاغ طوارئ نشط بانتظار استجابتك وقبولك!`
-                                    : `There are ${allRequests.filter(isPendingForTechnician).length} active roadside emergencies awaiting your response!`}
+                                    ? `يوجد ${allRequests.filter(isPendingForTechnician).length} مهمة مطلوبة بانتظار استجابتك وتأكيد قبولك!`
+                                    : `There are ${allRequests.filter(isPendingForTechnician).length} task orders awaiting technician response!`}
                                 </h4>
                               </div>
                             </div>
                             <button
                               onClick={() => {
-                                playRescueAlertSound();
                                 const targetSection = document.getElementById('technician-rescue-alerts-list');
                                 if (targetSection) {
                                   targetSection.scrollIntoView({ behavior: 'smooth' });
                                 }
                               }}
-                              className="px-4 py-2.5 bg-red-500 hover:bg-red-400 text-black font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
                             >
-                              <Volume2 className="w-4 h-4" />
-                              <span>{lang === 'ar' ? 'عرض التنبيه والاستجابة الفورية ⚡' : 'View Alert & Respond Now ⚡'}</span>
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>{lang === 'ar' ? 'استعراض قائمة المهمات 📋' : 'View Task Orders 📋'}</span>
                             </button>
                           </div>
                         </div>
@@ -6045,108 +6045,154 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Active client requests from road network */}
+                      {/* Active client requests & task orders dispatch queue */}
                       <div id="technician-rescue-alerts-list" className="space-y-4">
-                        <div className="border-b border-gray-950 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
-                            <span>{lang === 'ar' ? '📡 نداءات استغاثة طارئة نشطة على الطريق:' : '📡 Active Live Rescue Alerts on Road:'}</span>
-                            <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2 py-0.5 rounded text-[9px] animate-pulse font-mono">
-                              {allRequests.filter(isPendingForTechnician).length} ALERTS
-                            </span>
-                          </h4>
+                        <div className="border-b border-gray-900 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0A0D18] p-4 rounded-2xl border border-amber-500/20 shadow-md">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-black text-white tracking-wide flex items-center gap-2">
+                                <Briefcase className="w-4 h-4 text-amber-400" />
+                                <span>{lang === 'ar' ? '📋 قائمة المهمات والطلبات الحية المتاحة للفنيين:' : '📋 Live Task Orders Dispatch Queue:'}</span>
+                              </h4>
+                              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono">
+                                {allRequests.filter(isPendingForTechnician).length} {lang === 'ar' ? 'مهمة' : 'TASKS'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1 font-semibold">
+                              {lang === 'ar' ? 'جميع الطلبات والمهمات التي ينشرها الزبائن يتم تعميمها فوراً وفي الوقت الحقيقي لجميع الفنيين المتصلين بالشبكة.' : 'All client requests published are automatically broadcasted in real time to all active technicians.'}
+                            </p>
+                          </div>
 
                           <div className="flex items-center gap-2 shrink-0 flex-wrap">
                             <button
                               type="button"
                               onClick={() => setShowMyOwnRequestsInTechList(prev => !prev)}
-                              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer border ${
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer border ${
                                 showMyOwnRequestsInTechList 
                                   ? 'bg-amber-500/15 text-amber-300 border-amber-500/35 hover:bg-amber-500/25' 
                                   : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'
                               }`}
-                              title={lang === 'ar' ? 'تبديل إظهار الطلبات التي أنشأتها أنت في لوحة الفني' : 'Toggle showing requests created by you'}
+                              title={lang === 'ar' ? 'تبديل إظهار الطلبات التي أنشأتها أنت كزبون في لوحة الفني' : 'Toggle showing requests created by you'}
                             >
-                              <span>{showMyOwnRequestsInTechList ? (lang === 'ar' ? '👁️ إظهار طلباتي كزبون' : '👁️ Show My Requests') : (lang === 'ar' ? '🙈 إخفاء طلباتي' : '🙈 Hide My Requests')}</span>
+                              <span>{showMyOwnRequestsInTechList ? (lang === 'ar' ? '👁️ إظهار طلباتي كزبون' : '👁️ Show My Client Tasks') : (lang === 'ar' ? '🙈 إخفاء طلباتي كزبون' : '🙈 Hide My Client Tasks')}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={handleTestPublishTask}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-emerald-700"
-                              title={lang === 'ar' ? 'اختبار نشر مهمة جديدة وتعميمها للفنيين' : 'Test publishing & broadcasting task'}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-emerald-500"
+                              title={lang === 'ar' ? 'اختبار نشر مهمة جديدة من قبل زبون وتعميمها فوراً لكافة الفنيين' : 'Test publishing & broadcasting task'}
                             >
-                              <span>🧪 {lang === 'ar' ? 'نشر مهمة اختبار 🚀' : 'Test Publish Task 🚀'}</span>
+                              <span>🧪 {lang === 'ar' ? 'نشر مهمة تجريبية 🚀' : 'Test Publish Task 🚀'}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={handleManualRefreshRequests}
                               className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-amber-600 shrink-0"
-                              title={lang === 'ar' ? 'تحديث وتفقد البلاغات الحية الآن' : 'Refresh live alerts now'}
+                              title={lang === 'ar' ? 'تحديث وتفقد قائمة المهمات الآن' : 'Refresh live task orders now'}
                             >
                               <RefreshCw className="w-3.5 h-3.5 text-slate-950" />
-                              <span className="text-slate-950">{lang === 'ar' ? 'تحديث البلاغات 🔄' : 'Refresh 🔄'}</span>
+                              <span className="text-slate-950">{lang === 'ar' ? 'تحديث المهمات 🔄' : 'Refresh Tasks 🔄'}</span>
                             </button>
                           </div>
                         </div>
 
                         {allRequests.filter(isPendingForTechnician).length === 0 ? (
                           <div className="p-8 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-3">
-                            <span className="text-xs text-gray-500 font-bold block">{lang === 'ar' ? 'لا توجد بلاغات طوارئ نشطة حالياً. المركبات تسير بأمان! 👍' : 'No active roadside emergencies. Drivers are safe! 👍'}</span>
-                            <div className="flex items-center justify-center gap-2 pt-1">
+                            <div className="w-12 h-12 bg-gray-900 text-gray-500 rounded-full flex items-center justify-center mx-auto border border-gray-800">
+                              <Briefcase className="w-6 h-6" />
+                            </div>
+                            <span className="text-xs text-gray-400 font-bold block">{lang === 'ar' ? 'لا توجد مهمات أو طلبات معلقة حالياً على الطريق. جميع السائقين والمركبات تسير بسلام! 👍' : 'No active client task orders. Drivers & vehicles are safe! 👍'}</span>
+                            <div className="flex items-center justify-center gap-2 pt-2">
                               <button
                                 type="button"
                                 onClick={handleTestPublishTask}
-                                className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-lg active:scale-95 inline-flex items-center gap-1.5"
+                                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-lg active:scale-95 inline-flex items-center gap-1.5"
                               >
-                                <span>🧪 {lang === 'ar' ? 'إجراء اختبار نشر مهمة للفنيين 🚀' : 'Test Publish Task to Techs 🚀'}</span>
+                                <span>🧪 {lang === 'ar' ? 'إجراء تجربة نشر مهمة زبون 🚀' : 'Test Publish Client Task 🚀'}</span>
                               </button>
 
                               <button
                                 type="button"
                                 onClick={handleManualRefreshRequests}
-                                className="px-3 py-2 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
+                                className="px-3.5 py-2 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
                               >
                                 <RefreshCw className="w-3.5 h-3.5" />
-                                <span>{lang === 'ar' ? 'فحص البلاغات 🔄' : 'Check Alerts 🔄'}</span>
+                                <span>{lang === 'ar' ? 'فحص المهمات 🔄' : 'Check Tasks 🔄'}</span>
                               </button>
                             </div>
                           </div>
                         ) : (
-                          <div className="space-y-3 font-sans">
+                          <div className="space-y-4 font-sans">
                             {allRequests.filter(isPendingForTechnician).map(req => {
                               const isSelected = selectedBidRequest?.id === req.id;
                               const isMine = isMyOwnClientRequest(req);
+                              const serviceTitle = req.serviceType === 'taxi' 
+                                ? (lang === 'ar' ? '🚕 توصيل تكسي خاص و VIP' : '🚕 Special VIP Taxi Ride') 
+                                : getServiceArName(req.serviceType);
+
                               return (
-                                <div key={req.id} className={`p-4 rounded-2xl border transition-all ${isSelected ? 'bg-[#0F1424] border-amber-500 shadow-md' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800'}`}>
-                                  <div className="flex items-center justify-between gap-4">
-                                    <div className="text-right rtl:text-right ltr:text-left">
-                                      {isMine ? (
-                                        <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black px-2 py-0.5 rounded-full inline-block uppercase mb-1.5">
-                                          {lang === 'ar' ? '👤 مهمتك المنشورة (مذاعة للشبكة الحية 📡)' : '👤 Your Published Task (Broadcast Live 📡)'}
+                                <div key={req.id} className={`p-5 rounded-2xl border transition-all ${isSelected ? 'bg-[#0F1424] border-amber-500 shadow-xl' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800 shadow-md'}`}>
+                                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="text-right rtl:text-right ltr:text-left space-y-1.5 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {isMine ? (
+                                          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                                            {lang === 'ar' ? '👤 مهمتك المنشورة (مذاعة حية لكافة الفنيين 📡)' : '👤 Your Published Task (Broadcast Live to Techs 📡)'}
+                                          </span>
+                                        ) : (
+                                          <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
+                                            <span>{lang === 'ar' ? '🟢 مهمة جديدة من عميل' : '🟢 NEW LIVE CLIENT TASK'}</span>
+                                          </span>
+                                        )}
+                                        <span className="text-[10px] text-gray-500 font-mono">
+                                          ID: #{req.id.substring(0, 10)}
                                         </span>
-                                      ) : (
-                                        <span className="bg-red-500/10 text-red-400 text-[9px] font-bold px-2 py-0.5 rounded inline-block uppercase mb-1.5 animate-pulse">
-                                          {lang === 'ar' ? '🚨 بلاغ طارئ جديد من عميل' : '🚨 LIVE CLIENT ALERT'}
+                                      </div>
+
+                                      <div className="flex items-center gap-2 pt-0.5">
+                                        <h5 className="text-sm font-black text-white">{req.clientName}</h5>
+                                        {req.clientPhone && (
+                                          <a href={`tel:${req.clientPhone}`} className="text-[10px] text-amber-400 hover:underline font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                                            📞 {req.clientPhone}
+                                          </a>
+                                        )}
+                                      </div>
+
+                                      <div className="text-xs text-gray-300 font-extrabold flex items-center gap-1.5">
+                                        <span>{lang === 'ar' ? 'نوع المهمة المطلوبة:' : 'Requested Task:'}</span>
+                                        <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                                          {serviceTitle}
                                         </span>
-                                      )}
-                                      <h5 className="text-xs font-black text-white">{req.clientName}</h5>
-                                      <span className="text-[10px] text-gray-400 font-bold block mt-0.5">
-                                        {lang === 'ar' ? 'الخدمة المطلوبة:' : 'Requested service:'} <span className="text-amber-500 font-extrabold">{req.serviceType === 'taxi' ? (lang === 'ar' ? '🚕 توصيل تكسي خاص و VIP' : '🚕 Special VIP Taxi Ride') : req.serviceType}</span>
-                                      </span>
-                                      {req.serviceType === 'taxi' && (
-                                        <div className="mt-1 text-[10px] text-gray-400 font-semibold space-y-0.5 text-right">
-                                          <div>📍 {lang === 'ar' ? 'موقع الاستلام:' : 'Pickup:'} <span className="text-white font-bold">{req.pickupLocation || req.locationName || 'موقعي الحالي'}</span></div>
-                                          <div>🏁 {lang === 'ar' ? 'وجهة التوصيل:' : 'Dropoff:'} <span className="text-white font-bold">{req.dropoffLocation || 'غير محدد'}</span></div>
+                                      </div>
+
+                                      {/* Location and taxi details */}
+                                      <div className="text-[11px] text-gray-300 font-semibold space-y-1 pt-1 bg-[#05060A] p-2.5 rounded-xl border border-gray-900">
+                                        <div className="flex items-center gap-1 text-gray-300">
+                                          <MapPin className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                                          <span>{lang === 'ar' ? 'الموقع الأساسي للمهمة:' : 'Location:'}</span>
+                                          <span className="text-white font-extrabold">{req.arLocationName || req.locationName || 'موقعي الحالي'}</span>
                                         </div>
-                                      )}
-                                      <span className="text-[10px] text-amber-400 font-extrabold block mt-1 flex items-center justify-start gap-1">
-                                        <span>💰</span>
-                                        <span>{lang === 'ar' ? `السعر التقريبي للزبون: ${req.approximatePrice || 150} ₪` : `Client Approx Price: ${req.approximatePrice || 150} ₪`}</span>
-                                      </span>
+
+                                        {req.serviceType === 'taxi' && (
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pt-1 border-t border-gray-900/60 text-[10px]">
+                                            <div className="text-emerald-400">📍 {lang === 'ar' ? 'نقطة الانطلاق:' : 'Pickup:'} <span className="text-white font-bold">{req.pickupLocation || req.locationName || 'موقعي'}</span></div>
+                                            <div className="text-amber-400">🏁 {lang === 'ar' ? 'الوجهة المطلوبة:' : 'Dropoff:'} <span className="text-white font-bold">{req.dropoffLocation || 'غير محدد'}</span></div>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-3 pt-1">
+                                        <span className="text-xs text-amber-400 font-black flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg">
+                                          <span>💰</span>
+                                          <span>{lang === 'ar' ? `الميزانية / السعر التقديري: ${req.approximatePrice || 150} ₪` : `Budget / Price: ${req.approximatePrice || 150} ₪`}</span>
+                                        </span>
+                                      </div>
                                     </div>
 
-                                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                    <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row items-stretch sm:items-center gap-2 shrink-0">
                                       {/* Direct Task Accept Button */}
                                       <button 
                                         onClick={async () => {
@@ -6195,7 +6241,7 @@ export default function App() {
                                               etaMinutes: 15,
                                               rating: activeTechDoc?.rating || 5.0,
                                               avatar: techAvatar,
-                                              carModel: activeTechDoc?.carModel || 'مركبة إنقاذ طوارئ',
+                                              carModel: activeTechDoc?.carModel || 'مركبة خدمات معتمدة',
                                               plateNumber: activeTechDoc?.plateNumber || '7-4321-99'
                                             };
                                             await setDoc(doc(db, "bids", bidId), newBidObj);
@@ -6207,8 +6253,8 @@ export default function App() {
                                               requestId: req.id,
                                               sender: 'system',
                                               text: lang === 'ar' 
-                                                ? `⚡ قام الفني [${techName}] بقبول وتلبية استغاثتك فوراً! وهو الآن في طريقه إليك 🚚` 
-                                                : `⚡ Technician [${techName}] accepted your rescue request immediately! En route to your location 🚚`,
+                                                ? `⚡ قام الفني [${techName}] بقبول وتلبية مهمتك فوراً! وهو الآن في طريقه إليك 🚚` 
+                                                : `⚡ Technician [${techName}] accepted your task request immediately! En route to your location 🚚`,
                                               timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
                                               createdTime: Date.now()
                                             });
@@ -6219,8 +6265,8 @@ export default function App() {
 
                                             triggerToast(
                                               lang === 'ar' 
-                                                ? `✅ تم قبول وتلبية المهمة فوراً! تم إغلاق الطلب وتحديث الحالة إلى (جاري التحرك 🚚) واختفائه من بقية الفنيين!` 
-                                                : `✅ Task accepted! Locked and en route, removed from other technicians!`,
+                                                ? `✅ تم قبول وتلبية المهمة فوراً! تم حجز الطلب باسمك وتحديث الحالة إلى (جاري التحرك 🚚)!` 
+                                                : `✅ Task accepted! Locked and en route, assigned to you!`,
                                               'success'
                                             );
                                           } catch (err: any) {
@@ -6267,7 +6313,7 @@ export default function App() {
                                                 etaMinutes: 15,
                                                 rating: activeTechDoc?.rating || 5.0,
                                                 avatar: techAvatar,
-                                                carModel: activeTechDoc?.carModel || "مركبة إنقاذ طوارئ",
+                                                carModel: activeTechDoc?.carModel || "مركبة خدمات معتمدة",
                                                 plateNumber: activeTechDoc?.plateNumber || "7-4321-99"
                                               };
                                               setActiveRequestId(req.id);
@@ -6275,17 +6321,17 @@ export default function App() {
                                               setSelectedBidRequest(null);
                                               triggerToast(
                                                 lang === 'ar' 
-                                                  ? "✅ تم قبول وتلبية المهمة فوراً! تم إغلاق الطلب وتحديث الحالة إلى (جاري التحرك 🚚) واختفائه من بقية الفنيين!" 
-                                                  : "✅ Task accepted! Locked and en route, removed from other technicians!",
+                                                  ? "✅ تم قبول وتلبية المهمة فوراً! تم حجز الطلب باسمك وتحديث الحالة إلى (جاري التحرك 🚚)!" 
+                                                  : "✅ Task accepted! Locked and en route, assigned to you!",
                                                 "success"
                                               );
                                             }
                                           }
                                         }}
-                                        className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-[10px] rounded-lg transition-all cursor-pointer shadow-md flex items-center gap-1 active:scale-95"
+                                        className="px-3.5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5 active:scale-95 border border-emerald-400"
                                       >
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                        <span>{lang === 'ar' ? '⚡ قبول وتلبية المهمة فوراً' : '⚡ Accept Task Now'}</span>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        <span>{lang === 'ar' ? '⚡ قبول واستلام المهمة فوراً' : '⚡ Accept Task Direct'}</span>
                                       </button>
 
                                       <button 
@@ -6295,14 +6341,14 @@ export default function App() {
                                           } else {
                                             setSelectedBidRequest(req);
                                             setCustomBidPrice(String(req.approximatePrice || 150));
-                                            // Set pinnedLocation temporarily so technician can see where the client is on their map!
                                             setPinnedLocation({ lat: req.locationLat, lng: req.locationLng });
-                                            triggerToast(lang === 'ar' ? 'تم تحديد موقع العميل على الخريطة!' : 'Client breakdown pinned on live map!', 'info');
+                                            triggerToast(lang === 'ar' ? 'تم تحديد موقع الزبون على الخريطة!' : 'Client breakdown pinned on map!', 'info');
                                           }
                                         }}
-                                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[10px] rounded-lg transition-all cursor-pointer"
+                                        className="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
                                       >
-                                        {isSelected ? (lang === 'ar' ? 'إغلاق' : 'Close') : (lang === 'ar' ? 'تقديم عرض 🛠️' : 'Bid 🛠️')}
+                                        <Wrench className="w-4 h-4" />
+                                        <span>{isSelected ? (lang === 'ar' ? 'إغلاق العرض' : 'Close Offer') : (lang === 'ar' ? 'تقديم عرض سعر 📝' : 'Submit Bid 📝')}</span>
                                       </button>
                                     </div>
                                   </div>
