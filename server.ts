@@ -336,6 +336,30 @@ async function startServer() {
     saveRequestsToFile();
   }
 
+  // Ensure an active live test request exists for instant testing
+  if (globalRescueRequestsMap.size === 0) {
+    const testReq = {
+      id: "req-test-live-101",
+      clientName: "عميل تجريبي - اختبار النشر",
+      clientPhone: "+972 59-999-8888",
+      requestedBy: "test.client@systro.live",
+      sessionId: "test-session-101",
+      locationLat: 31.9038,
+      locationLng: 35.2034,
+      locationName: "Al-Quds St",
+      arLocationName: "شارع القدس الرئيسي - رام الله",
+      serviceType: "towing",
+      description: "🚨 [مهمة اختبار تجريبية] سحب مركبة تعطلت بالمحرك وحاجة لتدخل فني عاجل",
+      status: "pending_bids",
+      escrowAmount: 0,
+      approximatePrice: 180,
+      selectedTechnicianId: null,
+      timestamp: new Date().toISOString()
+    };
+    globalRescueRequestsMap.set(testReq.id, testReq);
+    saveRequestsToFile();
+  }
+
   // GET /api/requests
   app.get('/api/requests', (req, res) => {
     if (globalRescueRequestsMap.has("req-seed-101")) {

@@ -907,6 +907,105 @@ export default function App() {
     }
   };
 
+  const handleTestPublishTask = async () => {
+    try {
+      const testReqId = `req-test-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const testLoc = pinnedLocation || { lat: 31.9038, lng: 35.2034 };
+      
+      const testReqObj: RescueRequest = {
+        id: testReqId,
+        clientName: lang === 'ar' ? 'عميل تجريبي - اختبار النشر' : 'Test Client - Dispatch Check',
+        clientPhone: phoneNumber || "+972 59-999-8888",
+        requestedBy: loggedInUserEmail || 'test.client@systro.live',
+        sessionId: currentSessionId || 'test-session',
+        locationLat: testLoc.lat,
+        locationLng: testLoc.lng,
+        locationName: "Al-Quds St",
+        arLocationName: "شارع القدس الرئيسي - رام الله",
+        serviceType: 'towing',
+        description: lang === 'ar' ? '🚨 [مهمة اختبار تجريبية] سحب مركبة تعطلت بالمحرك وحاجة لتدخل فني عاجل' : '🚨 [TEST TASK DISPATCH] Vehicle engine breakdown needing urgent towing',
+        status: "pending_bids",
+        escrowAmount: 0,
+        approximatePrice: 180,
+        selectedTechnicianId: null,
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        await setDoc(doc(db, "requests", testReqId), testReqObj);
+      } catch (fsErr) {
+        console.warn("Firestore setDoc test req notice:", fsErr);
+      }
+
+      try {
+        await fetch('/api/requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request: testReqObj })
+        });
+      } catch (apiErr) {
+        console.warn("API post test request notice:", apiErr);
+      }
+
+      setAllRequests(prev => [testReqObj, ...prev.filter(r => r.id !== testReqId)]);
+      setActiveRequestId(testReqId);
+      setLiveRequest(testReqObj);
+      setSimStatus('pending_bids');
+
+      try {
+        playRescueAlertSound();
+      } catch (e) {}
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const channel = new BroadcastChannel('systro_requests_channel');
+          channel.postMessage({ type: 'NEW_REQUEST', request: testReqObj });
+          channel.close();
+        } catch (bErr) {}
+      }
+
+      const matchedTechs = dbTechnicians.filter(t => t.notifyEmail !== false || t.notifyWhatsapp !== false);
+      if (matchedTechs.length > 0) {
+        fetch('/api/dispatch-rescue-notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestDetails: {
+              id: testReqId,
+              clientName: testReqObj.clientName,
+              clientPhone: testReqObj.clientPhone,
+              serviceType: 'towing',
+              locationLat: testLoc.lat,
+              locationLng: testLoc.lng,
+              locationName: "Al-Quds St",
+              arLocationName: "شارع القدس الرئيسي",
+              description: testReqObj.description
+            },
+            technicians: matchedTechs.map(t => ({
+              name: t.name,
+              email: t.email,
+              phone: t.phone,
+              notifyEmail: t.notifyEmail !== false,
+              notifyWhatsapp: !!t.notifyWhatsapp
+            })),
+            appUrl: window.location.origin,
+            lang: lang
+          })
+        }).catch(err => console.error(err));
+      }
+
+      triggerToast(
+        lang === 'ar'
+          ? '🧪 تم بنجاح نشر مهمة طوارئ تجريبية وبثها لجميع الفنيين بالمنطقة!'
+          : '🧪 Test rescue task published & broadcast to all technicians!',
+        'success'
+      );
+    } catch (err) {
+      console.error("Test publish task error:", err);
+      triggerToast(lang === 'ar' ? 'فشل نشر مهمة الاختبار!' : 'Failed to publish test task!', 'error');
+    }
+  };
+
   // Sync activeRequestId with localStorage & sessionStorage
   useEffect(() => {
     if (activeRequestId) {
@@ -6020,28 +6119,49 @@ export default function App() {
                             </span>
                           </h4>
 
-                          <button
-                            type="button"
-                            onClick={handleManualRefreshRequests}
-                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-                            title={lang === 'ar' ? 'تحديث وتفقد البلاغات الحية الآن' : 'Refresh live alerts now'}
-                          >
-                            <RefreshCw className="w-3 h-3 text-amber-400" />
-                            <span>{lang === 'ar' ? 'تحديث البلاغات 🔄' : 'Refresh 🔄'}</span>
-                          </button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={handleTestPublishTask}
+                              className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-black flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95"
+                              title={lang === 'ar' ? 'اختبار نشر مهمة جديدة وتعميمها للفنيين' : 'Test publishing & broadcasting task'}
+                            >
+                              <span>🧪 {lang === 'ar' ? 'نشر مهمة اختبار 🚀' : 'Test Publish Task 🚀'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={handleManualRefreshRequests}
+                              className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                              title={lang === 'ar' ? 'تحديث وتفقد البلاغات الحية الآن' : 'Refresh live alerts now'}
+                            >
+                              <RefreshCw className="w-3 h-3 text-amber-400" />
+                              <span>{lang === 'ar' ? 'تحديث البلاغات 🔄' : 'Refresh 🔄'}</span>
+                            </button>
+                          </div>
                         </div>
 
                         {allRequests.filter(isPendingForTechnician).length === 0 ? (
                           <div className="p-8 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-3">
                             <span className="text-xs text-gray-500 font-bold block">{lang === 'ar' ? 'لا توجد بلاغات طوارئ نشطة حالياً. المركبات تسير بأمان! 👍' : 'No active roadside emergencies. Drivers are safe! 👍'}</span>
-                            <button
-                              type="button"
-                              onClick={handleManualRefreshRequests}
-                              className="px-3 py-1.5 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>{lang === 'ar' ? 'فحص البلاغات مجدداً 🔄' : 'Check Alerts Again 🔄'}</span>
-                            </button>
+                            <div className="flex items-center justify-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={handleTestPublishTask}
+                                className="px-3.5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-lg active:scale-95 inline-flex items-center gap-1.5"
+                              >
+                                <span>🧪 {lang === 'ar' ? 'إجراء اختبار نشر مهمة للفنيين 🚀' : 'Test Publish Task to Techs 🚀'}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleManualRefreshRequests}
+                                className="px-3 py-2 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>{lang === 'ar' ? 'فحص البلاغات 🔄' : 'Check Alerts 🔄'}</span>
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div className="space-y-3 font-sans">
