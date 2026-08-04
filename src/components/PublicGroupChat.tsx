@@ -12,13 +12,13 @@ import { db } from '../firebase';
 import { 
   MessageSquare, 
   Send, 
-  Users, 
-  Radio, 
-  Sparkles,
-  User,
-  ShieldCheck,
-  Wrench,
-  Car
+  User, 
+  ShieldCheck, 
+  Wrench, 
+  Car,
+  Clock,
+  Radio,
+  CheckCheck
 } from 'lucide-react';
 import { PublicGroupMessage } from '../types';
 
@@ -29,6 +29,10 @@ interface PublicGroupChatProps {
   currentUserEmail?: string;
   currentUserAvatar?: string;
 }
+
+const LOCAL_STORAGE_KEY = 'systro_public_group_chat_v2';
+const BROADCAST_CHANNEL_NAME = 'systro_chat_channel_v2';
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
   lang,
@@ -41,45 +45,159 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
-  // Initial Seed Messages if collection is empty
-  const defaultInitialMessages: PublicGroupMessage[] = [
-    {
-      id: 'welcome-01',
-      senderName: lang === 'ar' ? 'إدارة سيسترو (البث المباشر)' : 'Systro Central Broadcast',
-      senderRole: 'admin',
-      text: lang === 'ar' 
-        ? '👋 أهلاً بك في غرفة المحادثة الجماعية المباشرة! يمكن للزبائن والفنيين التواصل فوراً وتداول الاستفسارات هنا.' 
-        : '👋 Welcome to the live group chat room! Clients and technicians can communicate in real time here.',
-      timestamp: new Date().toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
-      createdTime: Date.now() - 3600000
-    },
-    {
-      id: 'welcome-02',
-      senderName: lang === 'ar' ? 'المهندس أحمد (فني معتمد)' : 'Eng. Ahmed (Certified Tech)',
-      senderRole: 'technician',
-      senderAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120',
-      text: lang === 'ar' 
-        ? '🛠️ متواجد الآن على الطريق السريع وجاهز لتقديم خدمة السحب والإنعاش الميكانيكي!' 
-        : '🛠️ Available now on the highway ready for towing & roadside recovery!',
-      timestamp: new Date(Date.now() - 1800000).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
-      createdTime: Date.now() - 1800000
+  // Helper to filter messages strictly within the last 24 hours
+  const filter24Hours = (msgs: PublicGroupMessage[]): PublicGroupMessage[] => {
+    const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
+    return msgs.filter(m => {
+      const msgTime = m.createdTime || Date.now();
+      return msgTime >= cutoff;
+    });
+  };
+
+  // Helper to merge and deduplicate messages by ID or time+sender+text
+  const mergeAndSortMessages = (
+    existing: PublicGroupMessage[], 
+    incoming: PublicGroupMessage[]
+  ): PublicGroupMessage[] => {
+    const map = new Map<string, PublicGroupMessage>();
+
+    [...existing, ...incoming].forEach(m => {
+      const key = m.id || `${m.createdTime}_${m.senderName}_${m.text}`;
+      if (!map.has(key)) {
+        map.set(key, m);
+      }
+    });
+
+    const merged = Array.from(map.values());
+    const valid24h = filter24Hours(merged);
+    valid24h.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
+    return valid24h;
+  };
+
+  // Save messages to LocalStorage
+  const saveToLocalStorage = (msgs: PublicGroupMessage[]) => {
+    try {
+      const valid = filter24Hours(msgs);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(valid));
+    } catch (e) {
+      console.warn('LocalStorage save notice:', e);
     }
-  ];
+  };
 
-  // Subscribe to real-time updates from Firestore 'public_group_chat'
+  // Load initial messages from LocalStorage or seed defaults
+  const loadFromLocalStorage = (): PublicGroupMessage[] => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        const parsed: PublicGroupMessage[] = JSON.parse(saved);
+        const valid = filter24Hours(parsed);
+        if (valid.length > 0) return valid;
+      }
+    } catch (e) {
+      console.warn('LocalStorage load notice:', e);
+    }
+
+    // Default initial broadcast welcome messages within the 24h window
+    const now = Date.now();
+    const defaultInitial: PublicGroupMessage[] = [
+      {
+        id: 'welcome-01',
+        senderName: lang === 'ar' ? 'إدارة سيسترو (البث المباشر)' : 'Systro Central Broadcast',
+        senderRole: 'admin',
+        text: lang === 'ar' 
+          ? '👋 أهلاً بكم في غرفة المحادثة المباشرة العامة! القناة مفتوحة ومتاحة لجميع الزبائن والفنيين والإدارة للتواصل فوراً (تُحفظ الرسائل لمدة 24 ساعة).' 
+          : '👋 Welcome to the public live chat room! Open to all clients, technicians, and admins in real time (messages retained for 24h).',
+        timestamp: new Date(now - 1800000).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
+        createdTime: now - 1800000
+      },
+      {
+        id: 'welcome-02',
+        senderName: lang === 'ar' ? 'المهندس أحمد (فني معتمد)' : 'Eng. Ahmed (Tech)',
+        senderRole: 'technician',
+        senderAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120',
+        text: lang === 'ar' 
+          ? '🛠️ متواجد الآن وجاهز لتقديم خدمات الصيانة والسحب الطارئ في جميع المناطق!' 
+          : '🛠️ Available now and ready for maintenance & towing support everywhere!',
+        timestamp: new Date(now - 900000).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
+        createdTime: now - 900000
+      }
+    ];
+
+    saveToLocalStorage(defaultInitial);
+    return defaultInitial;
+  };
+
+  // Setup Real-Time Syncing across Firestore, BroadcastChannel, Window Events, and LocalStorage
   useEffect(() => {
-    let unsubscribe: () => void = () => {};
+    // 1. Load initial local cache
+    const initialMsgs = loadFromLocalStorage();
+    setMessages(initialMsgs);
+
+    // 2. Setup BroadcastChannel for cross-tab instant messaging
+    try {
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+        broadcastChannelRef.current = bc;
+        bc.onmessage = (event) => {
+          if (event.data && event.data.message) {
+            setMessages(prev => {
+              const updated = mergeAndSortMessages(prev, [event.data.message]);
+              saveToLocalStorage(updated);
+              return updated;
+            });
+          } else if (event.data && Array.isArray(event.data.messages)) {
+            setMessages(prev => {
+              const updated = mergeAndSortMessages(prev, event.data.messages);
+              saveToLocalStorage(updated);
+              return updated;
+            });
+          }
+        };
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel notice:', e);
+    }
+
+    // 3. Setup Storage Event Listener for multi-window sync
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === LOCAL_STORAGE_KEY && e.newValue) {
+        try {
+          const parsed: PublicGroupMessage[] = JSON.parse(e.newValue);
+          setMessages(prev => mergeAndSortMessages(prev, parsed));
+        } catch (err) {
+          console.warn('Storage event notice:', err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // 4. Setup custom window event for same-window component instances
+    const handleCustomWindowChat = (e: any) => {
+      if (e.detail) {
+        setMessages(prev => {
+          const updated = mergeAndSortMessages(prev, [e.detail]);
+          saveToLocalStorage(updated);
+          return updated;
+        });
+      }
+    };
+    window.addEventListener('systro_chat_update', handleCustomWindowChat);
+
+    // 5. Setup Firestore Realtime Subscription
+    let unsubscribeFirestore = () => {};
     try {
       const chatRef = collection(db, 'public_group_chat');
-      const q = query(chatRef, orderBy('createdTime', 'asc'), limit(100));
+      const q = query(chatRef, orderBy('createdTime', 'asc'), limit(150));
 
-      unsubscribe = onSnapshot(q, (snapshot) => {
+      unsubscribeFirestore = onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
-          const fetchedMsgs: PublicGroupMessage[] = [];
+          const fetched: PublicGroupMessage[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            fetchedMsgs.push({
+            fetched.push({
               id: docSnap.id,
               senderName: data.senderName || (lang === 'ar' ? 'مستخدم' : 'User'),
               senderEmail: data.senderEmail || '',
@@ -90,20 +208,40 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
               createdTime: data.createdTime || Date.now()
             });
           });
-          setMessages(fetchedMsgs);
-        } else {
-          setMessages(defaultInitialMessages);
+
+          setMessages(prev => {
+            const merged = mergeAndSortMessages(prev, fetched);
+            saveToLocalStorage(merged);
+            return merged;
+          });
         }
       }, (err) => {
-        console.warn('Firestore group chat snapshot notice:', err);
-        setMessages(defaultInitialMessages);
+        console.warn('Firestore snapshot listener notice:', err);
       });
     } catch (e) {
-      console.warn('Firestore group chat setup notice:', e);
-      setMessages(defaultInitialMessages);
+      console.warn('Firestore setup notice:', e);
     }
 
-    return () => unsubscribe();
+    // 6. Interval timer to automatically purge messages older than 24h
+    const interval = setInterval(() => {
+      setMessages(prev => {
+        const cleaned = filter24Hours(prev);
+        if (cleaned.length !== prev.length) {
+          saveToLocalStorage(cleaned);
+        }
+        return cleaned;
+      });
+    }, 60000); // Check every minute
+
+    return () => {
+      unsubscribeFirestore();
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('systro_chat_update', handleCustomWindowChat);
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+      }
+      clearInterval(interval);
+    };
   }, [lang]);
 
   // Auto scroll to bottom when messages update
@@ -118,46 +256,84 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
 
     setIsSending(true);
 
-    const now = new Date();
-    const formattedTime = now.toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+    const now = Date.now();
+    const formattedTime = new Date(now).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' });
     const displayName = currentUserName?.trim() || (currentUserRole === 'technician' 
       ? (lang === 'ar' ? 'فني معتمد' : 'Certified Tech') 
+      : currentUserRole === 'admin'
+      ? (lang === 'ar' ? 'إدارة سيسترو' : 'Systro Admin')
       : (lang === 'ar' ? 'زبون' : 'Client'));
 
-    const newMsgData: Omit<PublicGroupMessage, 'id'> = {
+    const newMsgObj: PublicGroupMessage = {
+      id: `msg_${now}_${Math.random().toString(36).substring(2, 9)}`,
       senderName: displayName,
       senderEmail: currentUserEmail || '',
       senderRole: currentUserRole || 'client',
       senderAvatar: currentUserAvatar || '',
       text: cleanText,
       timestamp: formattedTime,
-      createdTime: Date.now()
+      createdTime: now
     };
 
-    // Optimistic local update
-    const tempId = `temp_${Date.now()}`;
-    const optimisticMsg: PublicGroupMessage = { id: tempId, ...newMsgData };
-    setMessages(prev => [...prev, optimisticMsg]);
+    // Clear input box immediately so user can continue typing instantly
     setInputText('');
 
+    // 1. Instant local state update & 24h retention filter
+    setMessages(prev => {
+      const updated = mergeAndSortMessages(prev, [newMsgObj]);
+      saveToLocalStorage(updated);
+      
+      // Broadcast to other tabs & windows
+      try {
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage({ type: 'NEW_MESSAGE', message: newMsgObj });
+        }
+      } catch (err) {
+        console.warn('Broadcast post notice:', err);
+      }
+
+      // Dispatch window event for same-tab instances
+      try {
+        window.dispatchEvent(new CustomEvent('systro_chat_update', { detail: newMsgObj }));
+      } catch (err) {
+        // ignore
+      }
+
+      return updated;
+    });
+
+    // Unblock sending state immediately (within 80ms) so user is never stuck
+    setTimeout(() => {
+      setIsSending(false);
+      inputRef.current?.focus();
+    }, 80);
+
+    // 2. Non-blocking Async Sync with Cloud Firestore
     try {
-      await addDoc(collection(db, 'public_group_chat'), {
-        ...newMsgData,
+      addDoc(collection(db, 'public_group_chat'), {
+        senderName: newMsgObj.senderName,
+        senderEmail: newMsgObj.senderEmail,
+        senderRole: newMsgObj.senderRole,
+        senderAvatar: newMsgObj.senderAvatar,
+        text: newMsgObj.text,
+        timestamp: newMsgObj.timestamp,
+        createdTime: newMsgObj.createdTime,
         createdAtServer: serverTimestamp()
+      }).catch(err => {
+        console.warn('Background Firestore write notice:', err);
       });
     } catch (error) {
-      console.warn('Firestore chat write notice, kept local:', error);
-    } finally {
-      setIsSending(false);
+      console.warn('Firestore chat write notice:', error);
     }
   };
 
   const sendQuickTemplate = (text: string) => {
     setInputText(text);
+    inputRef.current?.focus();
   };
 
   return (
-    <div className="w-full bg-white border-2 border-amber-400/90 rounded-3xl p-4 md:p-6 shadow-xl relative overflow-hidden font-sans text-slate-900">
+    <div className="w-full bg-white border-2 border-amber-400 rounded-3xl p-4 md:p-6 shadow-xl relative overflow-hidden font-sans text-slate-900">
       {/* Soft Background Accent Gradients */}
       <div className="absolute top-0 right-0 w-80 h-80 bg-amber-100/60 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-100/60 rounded-full blur-3xl pointer-events-none"></div>
@@ -178,11 +354,17 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
                 <span>{lang === 'ar' ? 'بث حي 📡' : 'LIVE 📡'}</span>
               </span>
             </div>
-            <p className="text-xs text-slate-600 font-bold mt-0.5">
-              {lang === 'ar' 
-                ? 'قناة تواصل عامة وتشاركية تتيح للجميع (الفنيين، الزبائن، الإدارة) تبادل الرسائل فوراً.' 
-                : 'Open real-time broadcast chat channel connecting all technicians, clients, and platform support.'}
-            </p>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <p className="text-xs text-slate-600 font-bold">
+                {lang === 'ar' 
+                  ? 'قناة تواصل عامة وتشاركية تتيح للجميع (الفنيين، الزبائن، الإدارة) تبادل الرسائل فوراً.' 
+                  : 'Open real-time broadcast chat channel connecting all technicians, clients, and platform support.'}
+              </p>
+              <span className="inline-flex items-center gap-1 text-[11px] bg-amber-100 text-amber-900 border border-amber-300 font-black px-2 py-0.5 rounded-full shadow-xs">
+                <Clock className="w-3 h-3 text-amber-700" />
+                <span>{lang === 'ar' ? 'حفظ الرسائل لمدة 24 ساعة ⏱️' : '24 Hours Auto Retention ⏱️'}</span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -273,7 +455,7 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
 
             return (
               <div 
-                key={msg.id} 
+                key={msg.id || `${msg.createdTime}_${msg.senderName}`} 
                 className={`flex gap-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}
               >
                 {!isMe && (
@@ -314,12 +496,13 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
                     ) : (
                       <span className="bg-blue-200 text-blue-900 border border-blue-300 text-[10px] font-black px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
                         <Car className="w-3 h-3 text-blue-700" />
-                        <span>{lang === 'ar' ? 'عميل' : 'Client'}</span>
+                        <span>{lang === 'ar' ? 'زبون' : 'Client'}</span>
                       </span>
                     )}
 
-                    <span className={`text-[10px] font-mono font-bold ml-auto ${isMe ? 'text-slate-900' : 'text-slate-500'}`}>
-                      {msg.timestamp}
+                    <span className={`text-[10px] font-mono font-bold ml-auto flex items-center gap-1 ${isMe ? 'text-slate-900' : 'text-slate-500'}`}>
+                      <span>{msg.timestamp}</span>
+                      {isMe && <CheckCheck className="w-3 h-3 text-slate-950" />}
                     </span>
                   </div>
 
@@ -349,9 +532,16 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
       <form onSubmit={handleSendMessage} className="mt-3 flex items-center gap-2 relative z-10">
         <div className="flex-1 relative">
           <input
+            ref={inputRef}
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
             placeholder={lang === 'ar' ? 'اكتب رسالتك للمحادثة الجماعية الحية...' : 'Type a message to the public group chat...'}
             className="w-full px-4 py-3.5 bg-white border-2 border-slate-300 focus:border-amber-500 rounded-2xl outline-none text-xs font-bold text-slate-900 placeholder-slate-400 transition-colors shadow-sm"
           />
@@ -359,7 +549,7 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
 
         <button
           type="submit"
-          disabled={!inputText.trim() || isSending}
+          disabled={!inputText.trim()}
           className="px-6 py-3.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:hover:bg-amber-500 text-slate-950 font-black rounded-2xl transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-amber-500/30 shrink-0 border border-amber-600 active:scale-95"
         >
           <Send className="w-4 h-4 fill-slate-950" />
