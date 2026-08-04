@@ -554,6 +554,7 @@ export default function App() {
   // Dynamic Collections state synced in real-time from Firestore
   const [dbServices, setDbServices] = useState<any[]>([]);
   const [dbTechnicians, setDbTechnicians] = useState<Technician[]>([]);
+  const [showMyOwnRequestsInTechList, setShowMyOwnRequestsInTechList] = useState<boolean>(true);
 
   // Modals / Form inputs for Service Provider Registries
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
@@ -818,14 +819,13 @@ export default function App() {
     }
     if (!isPendingRequest(req)) return false;
 
-    // CRITICAL: A user who published a request MUST NOT see their own request in their own technician dashboard/alerts.
-    // The request is meant to be broadcasted to OTHER registered technicians and other accounts on the network.
-    if (isMyOwnClientRequest(req)) {
+    // If technician manually turned off showing their own client requests, filter them
+    if (!showMyOwnRequestsInTechList && isMyOwnClientRequest(req)) {
       return false;
     }
 
     return true;
-  }, [isPendingRequest, isMyOwnClientRequest]);
+  }, [isPendingRequest, isMyOwnClientRequest, showMyOwnRequestsInTechList]);
 
   // Helper to fetch requests from both Firestore and Node Server backend for multi-device sync
   const fetchRequestsDirectly = useCallback(async () => {
@@ -976,7 +976,8 @@ export default function App() {
         } catch (bErr) {}
       }
 
-      const matchedTechs = dbTechnicians.filter(t => t.notifyEmail !== false || t.notifyWhatsapp !== false);
+      const techListToNotify = dbTechnicians.length > 0 ? dbTechnicians : technicians;
+      const matchedTechs = techListToNotify.filter(t => t.notifyEmail !== false || t.notifyWhatsapp !== false);
       if (matchedTechs.length > 0) {
         fetch('/api/dispatch-rescue-notifications', {
           method: 'POST',
@@ -2682,7 +2683,8 @@ export default function App() {
       triggerToast(lang === 'ar' ? 'تم تسجيل وتعميم طلبك بنجاح على الفنيين بالقائمة!' : 'Request published successfully to all technicians!', 'success');
 
       // Fetch matching technicians and dispatch real notification alerts (SMTP / WhatsApp)
-      const matchedTechs = dbTechnicians.filter(tech => {
+      const techListToNotify = dbTechnicians.length > 0 ? dbTechnicians : technicians;
+      const matchedTechs = techListToNotify.filter(tech => {
         const wantsNotify = tech.notifyEmail !== false || tech.notifyWhatsapp !== false;
         return wantsNotify;
       });
@@ -6045,7 +6047,7 @@ export default function App() {
 
                       {/* Active client requests from road network */}
                       <div id="technician-rescue-alerts-list" className="space-y-4">
-                        <div className="border-b border-gray-950 pb-2 flex items-center justify-between gap-2">
+                        <div className="border-b border-gray-950 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
                             <span>{lang === 'ar' ? '📡 نداءات استغاثة طارئة نشطة على الطريق:' : '📡 Active Live Rescue Alerts on Road:'}</span>
                             <span className="bg-red-500/10 text-red-400 border border-red-500/25 px-2 py-0.5 rounded text-[9px] animate-pulse font-mono">
@@ -6053,7 +6055,20 @@ export default function App() {
                             </span>
                           </h4>
 
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => setShowMyOwnRequestsInTechList(prev => !prev)}
+                              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer border ${
+                                showMyOwnRequestsInTechList 
+                                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/35 hover:bg-amber-500/25' 
+                                  : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'
+                              }`}
+                              title={lang === 'ar' ? 'تبديل إظهار الطلبات التي أنشأتها أنت في لوحة الفني' : 'Toggle showing requests created by you'}
+                            >
+                              <span>{showMyOwnRequestsInTechList ? (lang === 'ar' ? '👁️ إظهار طلباتي كزبون' : '👁️ Show My Requests') : (lang === 'ar' ? '🙈 إخفاء طلباتي' : '🙈 Hide My Requests')}</span>
+                            </button>
+
                             <button
                               type="button"
                               onClick={handleTestPublishTask}
@@ -6101,13 +6116,20 @@ export default function App() {
                           <div className="space-y-3 font-sans">
                             {allRequests.filter(isPendingForTechnician).map(req => {
                               const isSelected = selectedBidRequest?.id === req.id;
+                              const isMine = isMyOwnClientRequest(req);
                               return (
                                 <div key={req.id} className={`p-4 rounded-2xl border transition-all ${isSelected ? 'bg-[#0F1424] border-amber-500 shadow-md' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800'}`}>
                                   <div className="flex items-center justify-between gap-4">
                                     <div className="text-right rtl:text-right ltr:text-left">
-                                      <span className="bg-red-500/10 text-red-400 text-[9px] font-bold px-2 py-0.5 rounded inline-block uppercase mb-1.5 animate-pulse">
-                                        {lang === 'ar' ? 'بلاغ طارئ' : 'ALERT'}
-                                      </span>
+                                      {isMine ? (
+                                        <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black px-2 py-0.5 rounded-full inline-block uppercase mb-1.5">
+                                          {lang === 'ar' ? '👤 مهمتك المنشورة (مذاعة للشبكة الحية 📡)' : '👤 Your Published Task (Broadcast Live 📡)'}
+                                        </span>
+                                      ) : (
+                                        <span className="bg-red-500/10 text-red-400 text-[9px] font-bold px-2 py-0.5 rounded inline-block uppercase mb-1.5 animate-pulse">
+                                          {lang === 'ar' ? '🚨 بلاغ طارئ جديد من عميل' : '🚨 LIVE CLIENT ALERT'}
+                                        </span>
+                                      )}
                                       <h5 className="text-xs font-black text-white">{req.clientName}</h5>
                                       <span className="text-[10px] text-gray-400 font-bold block mt-0.5">
                                         {lang === 'ar' ? 'الخدمة المطلوبة:' : 'Requested service:'} <span className="text-amber-500 font-extrabold">{req.serviceType === 'taxi' ? (lang === 'ar' ? '🚕 توصيل تكسي خاص و VIP' : '🚕 Special VIP Taxi Ride') : req.serviceType}</span>
