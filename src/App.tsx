@@ -73,6 +73,8 @@ import {
   Bell,
   BellOff,
   CheckCheck,
+  Maximize2,
+  Minimize2,
   Car,
   Save,
   Hammer,
@@ -560,6 +562,7 @@ export default function App() {
   const [dbTechnicians, setDbTechnicians] = useState<Technician[]>([]);
   const [showMyOwnRequestsInTechList, setShowMyOwnRequestsInTechList] = useState<boolean>(true);
   const [techTaskCategoryTab, setTechTaskCategoryTab] = useState<'all' | 'rescue' | 'tasks'>('all');
+  const [isTechChatExpanded, setIsTechChatExpanded] = useState(false);
 
   // Modals / Form inputs for Service Provider Registries
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
@@ -2151,12 +2154,28 @@ export default function App() {
     }
     const q = query(collection(db, "chats"), where("requestId", "==", activeRequestId));
     const unsub = onSnapshot(q, (snapshot) => {
-      const msgs: ChatMsg[] = [];
+      const rawMsgs: ChatMsg[] = [];
       snapshot.forEach(docSnap => {
-        msgs.push(docSnap.data() as ChatMsg);
+        const data = docSnap.data() as ChatMsg;
+        rawMsgs.push({ ...data, id: data.id || docSnap.id });
       });
-      msgs.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
-      setChatMessages(msgs);
+
+      // Deduplicate by ID and content signature
+      const uniqueMsgs: ChatMsg[] = [];
+      rawMsgs.forEach(m => {
+        const isDuplicate = uniqueMsgs.some(existing => 
+          (existing.id && m.id && existing.id === m.id) ||
+          (existing.sender === m.sender && 
+           existing.text === m.text && 
+           Math.abs((existing.createdTime || 0) - (m.createdTime || 0)) < 3000)
+        );
+        if (!isDuplicate) {
+          uniqueMsgs.push(m);
+        }
+      });
+
+      uniqueMsgs.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
+      setChatMessages(uniqueMsgs);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, `chats?requestId=${activeRequestId}`);
     });
@@ -6060,18 +6079,43 @@ export default function App() {
 
                                   {/* Expandable Live Tracking & Chat Panel for Technician */}
                                   {activeRequestId === req.id && (
-                                    <div className="mt-4 pt-4 border-t border-gray-900 space-y-4 animate-fade-in text-right">
+                                    <div className={isTechChatExpanded 
+                                      ? "fixed inset-0 z-[100] bg-[#07080E] p-4 sm:p-6 flex flex-col justify-between h-full w-full animate-fade-in text-right overflow-hidden"
+                                      : "mt-4 pt-4 border-t border-gray-900 space-y-4 animate-fade-in text-right"
+                                    }>
                                       <div className="flex items-center justify-between border-b border-gray-950 pb-2">
-                                        <button 
-                                          onClick={() => {
-                                            setActiveRequestId(null);
-                                            setSelectedBid(null);
-                                          }}
-                                          className="text-[10px] text-red-400 hover:text-red-300 font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
-                                        >
-                                          <span>✖</span>
-                                          <span>{lang === 'ar' ? 'إغلاق المحادثة' : 'Close Chat'}</span>
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                          <button 
+                                            onClick={() => {
+                                              setActiveRequestId(null);
+                                              setSelectedBid(null);
+                                              setIsTechChatExpanded(false);
+                                            }}
+                                            className="text-[10px] text-red-400 hover:text-red-300 font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
+                                          >
+                                            <span>✖</span>
+                                            <span>{lang === 'ar' ? 'إغلاق المحادثة' : 'Close Chat'}</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => setIsTechChatExpanded(!isTechChatExpanded)}
+                                            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-amber-400 font-extrabold text-[10px] rounded-lg border border-gray-700 flex items-center gap-1 cursor-pointer transition-colors"
+                                            title={isTechChatExpanded ? (lang === 'ar' ? 'تصغير الشاشة' : 'Minimize') : (lang === 'ar' ? 'توسيع المحادثة على كامل شاشة الهاتف' : 'Expand Fullscreen')}
+                                          >
+                                            {isTechChatExpanded ? (
+                                              <>
+                                                <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
+                                                <span>{lang === 'ar' ? 'تصغير الشاشة ↙' : 'Minimize ↙'}</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                                                <span>{lang === 'ar' ? 'توسيع المحادثة ⤢' : 'Expand ⤢'}</span>
+                                              </>
+                                            )}
+                                          </button>
+                                        </div>
                                         
                                         <h5 className="text-[11px] font-black text-amber-500 flex items-center gap-1.5 justify-end">
                                           <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
@@ -6080,7 +6124,7 @@ export default function App() {
                                       </div>
 
                                       {/* Chat Messages Display */}
-                                      <div className="bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between h-52">
+                                      <div className={`bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between ${isTechChatExpanded ? 'flex-1 my-3' : 'h-52'}`}>
                                         <div className="flex-1 overflow-y-auto space-y-2.5 pb-2.5 pr-1 text-[11px] font-semibold text-right">
                                           {chatMessages.length === 0 ? (
                                             <div className="h-full flex items-center justify-center text-gray-500 font-bold text-center">
@@ -6124,9 +6168,10 @@ export default function App() {
                                           />
                                           <button 
                                             type="submit"
-                                            className="p-1.5 bg-amber-500 hover:bg-amber-400 text-black rounded-lg transition-colors cursor-pointer"
+                                            className="p-1.5 bg-amber-500 hover:bg-amber-400 text-black rounded-lg transition-colors cursor-pointer flex items-center gap-1 font-bold text-xs shrink-0"
                                           >
                                             <Send className="w-3.5 h-3.5" />
+                                            <span className="hidden sm:inline">{lang === 'ar' ? 'إرسال' : 'Send'}</span>
                                           </button>
                                         </form>
                                       </div>

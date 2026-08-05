@@ -3,7 +3,7 @@ import { ServiceType, Technician, RescueRequest } from '../types';
 import { 
   MapPin, Wrench, Activity, CheckCircle2, Clock, Phone, MessageSquare, 
   Send, Star, X, ShieldCheck, AlertTriangle, Truck, Car, Zap, RotateCcw, 
-  DollarSign, Navigation, RefreshCw, UserCheck
+  DollarSign, Navigation, RefreshCw, UserCheck, Maximize2, Minimize2
 } from 'lucide-react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { PublicGroupChat } from './PublicGroupChat';
@@ -126,6 +126,8 @@ export default function ServicesTab({
   loggedInUserName,
   userRole
 }: ServicesTabProps) {
+
+  const [isChatExpanded, setIsChatExpanded] = React.useState(false);
 
   // Active customer request object if any
   const myActiveRequest = allRequests.find(r => r.id === activeRequestId);
@@ -456,38 +458,71 @@ export default function ServicesTab({
 
                 {/* Chat box with Technician */}
                 {(simStatus === 'en_route' || simStatus === 'arrived' || simStatus === 'accepted') && (
-                  <div className="p-4 bg-[#05060A] border border-gray-900 rounded-2xl space-y-3">
-                    <h5 className="text-xs font-black text-gray-300 flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
-                      <span>{lang === 'ar' ? 'محادثة مباشرة مع الفني المسعف:' : 'Direct Chat with Technician:'}</span>
-                    </h5>
+                  <div className={isChatExpanded 
+                    ? "fixed inset-0 z-[100] bg-[#07080E] p-4 sm:p-6 flex flex-col justify-between h-full w-full animate-fade-in text-right"
+                    : "p-4 bg-[#05060A] border border-gray-900 rounded-2xl space-y-3"
+                  }>
+                    <div className="flex items-center justify-between border-b border-gray-900 pb-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsChatExpanded(!isChatExpanded)}
+                        className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-amber-400 font-bold text-[11px] rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                        title={isChatExpanded ? (lang === 'ar' ? 'تصغير الشاشة' : 'Minimize') : (lang === 'ar' ? 'توسيع المحادثة على كامل شاشة الهاتف' : 'Expand Fullscreen')}
+                      >
+                        {isChatExpanded ? (
+                          <>
+                            <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
+                            <span>{lang === 'ar' ? 'تصغير الشاشة ↙' : 'Minimize ↙'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                            <span>{lang === 'ar' ? 'توسيع المحادثة ⤢' : 'Expand ⤢'}</span>
+                          </>
+                        )}
+                      </button>
+
+                      <h5 className="text-xs font-black text-gray-300 flex items-center gap-1.5 justify-end">
+                        <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+                        <span>{lang === 'ar' ? 'محادثة مباشرة مع الفني المسعف:' : 'Direct Chat with Technician:'}</span>
+                      </h5>
+                    </div>
                     
-                    <div className="max-h-36 overflow-y-auto space-y-2 pr-1">
-                      {chatMessages.length === 0 && (
+                    <div className={isChatExpanded ? "flex-1 my-3 overflow-y-auto space-y-2 pr-1" : "max-h-36 overflow-y-auto space-y-2 pr-1"}>
+                      {(!chatMessages || chatMessages.length === 0) && (
                         <p className="text-[10px] text-gray-500 text-center py-2">
                           {lang === 'ar' ? 'أرسل رسالة للفني لتزويده بملاحظات أو توجيهات...' : 'Send message to guide technician...'}
                         </p>
                       )}
-                      {chatMessages.map(msg => (
-                        <div key={msg.id} className={`p-2 rounded-xl text-xs max-w-[85%] ${msg.sender === 'client' ? 'bg-amber-500/20 text-amber-200 mr-auto text-left' : 'bg-gray-800 text-gray-200 ml-auto text-right'}`}>
+                      {chatMessages && chatMessages.map(msg => (
+                        <div key={msg.id} className={`p-2.5 rounded-xl text-xs max-w-[85%] ${msg.sender === 'client' ? 'bg-amber-500/20 text-amber-200 mr-auto text-left' : 'bg-gray-800 text-gray-200 ml-auto text-right'}`}>
                           <span>{msg.text}</span>
                         </div>
                       ))}
                     </div>
 
-                    <div className="flex gap-2">
+                    <form 
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSendMessage?.();
+                      }}
+                      className="flex gap-2 pt-1"
+                    >
                       <input 
                         type="text" 
-                        value={chatInput} 
-                        onChange={e => setChatInput(e.target.value)} 
-                        onKeyDown={e => e.key === 'Enter' && handleSendMessage?.()}
+                        value={chatInput || ''} 
+                        onChange={e => setChatInput?.(e.target.value)} 
                         placeholder={lang === 'ar' ? 'اكتب رسالتك هنا...' : 'Type message...'}
                         className="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
                       />
-                      <button onClick={() => handleSendMessage?.()} className="px-3 py-2 bg-amber-500 text-black rounded-xl font-bold text-xs hover:bg-amber-400 cursor-pointer">
+                      <button 
+                        type="submit" 
+                        className="px-4 py-2 bg-amber-500 text-black rounded-xl font-bold text-xs hover:bg-amber-400 cursor-pointer flex items-center justify-center gap-1 shrink-0"
+                      >
                         <Send className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">{lang === 'ar' ? 'إرسال' : 'Send'}</span>
                       </button>
-                    </div>
+                    </form>
                   </div>
                 )}
 

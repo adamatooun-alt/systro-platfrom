@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   collection, 
   onSnapshot, 
-  addDoc, 
+  doc,
+  setDoc, 
   query, 
-  orderBy, 
   limit,
   serverTimestamp
 } from 'firebase/firestore';
@@ -18,7 +18,9 @@ import {
   Car,
   Clock,
   Radio,
-  CheckCheck
+  CheckCheck,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { PublicGroupMessage } from '../types';
 
@@ -44,6 +46,7 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
   const [messages, setMessages] = useState<PublicGroupMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
@@ -62,17 +65,22 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
     existing: PublicGroupMessage[], 
     incoming: PublicGroupMessage[]
   ): PublicGroupMessage[] => {
-    const map = new Map<string, PublicGroupMessage>();
+    const result: PublicGroupMessage[] = [];
+    const all = [...existing, ...incoming];
 
-    [...existing, ...incoming].forEach(m => {
-      const key = m.id || `${m.createdTime}_${m.senderName}_${m.text}`;
-      if (!map.has(key)) {
-        map.set(key, m);
+    all.forEach(m => {
+      const isDuplicate = result.some(item => 
+        (item.id && m.id && item.id === m.id) ||
+        (item.senderName === m.senderName && 
+         item.text === m.text && 
+         Math.abs((item.createdTime || 0) - (m.createdTime || 0)) < 3000)
+      );
+      if (!isDuplicate) {
+        result.push(m);
       }
     });
 
-    const merged = Array.from(map.values());
-    const valid24h = filter24Hours(merged);
+    const valid24h = filter24Hours(result);
     valid24h.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
     return valid24h;
   };
@@ -363,7 +371,8 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
 
     // 3. Secondary background sync with Cloud Firestore
     try {
-      addDoc(collection(db, 'public_group_chat'), {
+      setDoc(doc(db, 'public_group_chat', newMsgObj.id), {
+        id: newMsgObj.id,
         senderName: newMsgObj.senderName,
         senderEmail: newMsgObj.senderEmail,
         senderRole: newMsgObj.senderRole,
@@ -386,7 +395,10 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
   };
 
   return (
-    <div className="w-full bg-white border-2 border-amber-400 rounded-3xl p-4 md:p-6 shadow-xl relative overflow-hidden font-sans text-slate-900">
+    <div className={isExpanded 
+      ? "fixed inset-0 z-[100] bg-white p-4 md:p-6 flex flex-col justify-between h-full w-full animate-fade-in font-sans text-slate-900 overflow-hidden" 
+      : "w-full bg-white border-2 border-amber-400 rounded-3xl p-4 md:p-6 shadow-xl relative overflow-hidden font-sans text-slate-900"
+    }>
       {/* Soft Background Accent Gradients */}
       <div className="absolute top-0 right-0 w-80 h-80 bg-amber-100/60 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-100/60 rounded-full blur-3xl pointer-events-none"></div>
@@ -421,37 +433,58 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
           </div>
         </div>
 
-        {/* Sender Info Badge */}
-        <div className="flex items-center gap-2 bg-slate-100 px-3.5 py-2 rounded-2xl border border-slate-300 shrink-0 self-start sm:self-center shadow-sm">
-          <div className="w-7 h-7 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-xs font-bold overflow-hidden shadow-inner">
-            {currentUserAvatar ? (
-              <img src={currentUserAvatar} alt="avatar" className="w-full h-full object-cover" />
+        {/* Sender Info Badge & Expand Toggle */}
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-center flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-2xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-amber-600 shrink-0"
+            title={isExpanded ? (lang === 'ar' ? 'تصغير الشاشة' : 'Minimize') : (lang === 'ar' ? 'توسيع المحادثة على كامل شاشة الهاتف' : 'Expand Fullscreen')}
+          >
+            {isExpanded ? (
+              <>
+                <Minimize2 className="w-4 h-4 text-slate-950" />
+                <span>{lang === 'ar' ? 'تصغير الشاشة ↙' : 'Minimize ↙'}</span>
+              </>
             ) : (
-              <User className="w-4 h-4" />
+              <>
+                <Maximize2 className="w-4 h-4 text-slate-950" />
+                <span>{lang === 'ar' ? 'توسيع المحادثة ⤢' : 'Expand ⤢'}</span>
+              </>
             )}
-          </div>
-          <div className="text-right rtl:text-right ltr:text-left">
-            <span className="text-[10px] text-slate-500 font-bold block leading-none">
-              {lang === 'ar' ? 'تتحدث بصفتك:' : 'Posting as:'}
-            </span>
-            <span className="text-xs font-black text-slate-900 flex items-center gap-1 font-sans mt-0.5">
-              {currentUserRole === 'technician' ? (
-                <>
-                  <Wrench className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-emerald-700">{currentUserName || (lang === 'ar' ? 'فني معتمد' : 'Technician')}</span>
-                </>
-              ) : currentUserRole === 'admin' ? (
-                <>
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-                  <span className="text-purple-700">{lang === 'ar' ? 'إدارة سيسترو' : 'Systro Admin'}</span>
-                </>
+          </button>
+
+          <div className="flex items-center gap-2 bg-slate-100 px-3.5 py-2 rounded-2xl border border-slate-300 shadow-sm">
+            <div className="w-7 h-7 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center text-xs font-bold overflow-hidden shadow-inner">
+              {currentUserAvatar ? (
+                <img src={currentUserAvatar} alt="avatar" className="w-full h-full object-cover" />
               ) : (
-                <>
-                  <Car className="w-3.5 h-3.5 text-blue-600" />
-                  <span className="text-blue-700">{currentUserName || (lang === 'ar' ? 'زبون' : 'Client')}</span>
-                </>
+                <User className="w-4 h-4" />
               )}
-            </span>
+            </div>
+            <div className="text-right rtl:text-right ltr:text-left">
+              <span className="text-[10px] text-slate-500 font-bold block leading-none">
+                {lang === 'ar' ? 'تتحدث بصفتك:' : 'Posting as:'}
+              </span>
+              <span className="text-xs font-black text-slate-900 flex items-center gap-1 font-sans mt-0.5">
+                {currentUserRole === 'technician' ? (
+                  <>
+                    <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-emerald-700">{currentUserName || (lang === 'ar' ? 'فني معتمد' : 'Technician')}</span>
+                  </>
+                ) : currentUserRole === 'admin' ? (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                    <span className="text-purple-700">{lang === 'ar' ? 'إدارة سيسترو' : 'Systro Admin'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Car className="w-3.5 h-3.5 text-blue-600" />
+                    <span className="text-blue-700">{currentUserName || (lang === 'ar' ? 'زبون' : 'Client')}</span>
+                  </>
+                )}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -494,7 +527,9 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
       {/* Messages Display Stream */}
       <div 
         ref={messagesContainerRef}
-        className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 h-72 md:h-80 overflow-y-auto space-y-3.5 shadow-inner relative z-10"
+        className={`bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 overflow-y-auto space-y-3.5 shadow-inner relative z-10 ${
+          isExpanded ? 'flex-1 my-3 max-h-none' : 'h-72 md:h-80'
+        }`}
       >
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-500 font-bold text-center gap-2">
