@@ -89,8 +89,6 @@ import {
   Search,
   Plus,
   PlusCircle,
-  Maximize2,
-  Minimize2,
   Smartphone,
   Wallet,
   Calendar,
@@ -1539,11 +1537,37 @@ export default function App() {
         // ignore network error
       }
 
-      // 2. Update Firestore heartbeat
+      // 2. Update Firestore heartbeat and user login record
       try {
         const userDocRef = doc(db, "users", cleanEmail);
+        const resolvedName = loggedInUserName || cleanEmail.split('@')[0];
+        const resolvedRole = userRole || 'client';
+        const formattedTime = new Date().toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+        const deviceType = typeof window !== 'undefined' && /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'هاتف جوال Mobile 📱' : 'حاسوب Desktop 💻';
+
         await setDoc(userDocRef, {
+          email: cleanEmail,
+          name: resolvedName,
+          role: resolvedRole,
+          phone: phoneNumber || '',
           lastActive: Date.now(),
+          lastLoginAt: Date.now(),
+          lastLoginFormatted: formattedTime,
+          deviceInfo: deviceType,
+          isOnline: true
+        }, { merge: true });
+
+        // Record or update active session entry in login_logs
+        const logId = `log_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        await setDoc(doc(db, "login_logs", logId), {
+          id: logId,
+          email: cleanEmail,
+          name: resolvedName,
+          role: resolvedRole,
+          phone: phoneNumber || '',
+          loginTime: Date.now(),
+          formattedTime: formattedTime,
+          deviceInfo: deviceType,
           isOnline: true
         }, { merge: true });
       } catch (err) {

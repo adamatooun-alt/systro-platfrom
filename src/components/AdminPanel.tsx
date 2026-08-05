@@ -29,7 +29,24 @@ import {
   CreditCard,
   FileText,
   Eye,
-  Filter
+  Filter,
+  Plane,
+  Activity,
+  UserCheck,
+  Power,
+  Smartphone,
+  Laptop,
+  RefreshCw,
+  MessageCircle,
+  Wrench,
+  Truck,
+  Car,
+  Zap,
+  Key,
+  ShieldCheck,
+  CheckCheck,
+  Copy,
+  Compass
 } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, setDoc, collection, onSnapshot, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -117,6 +134,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [storeOrders, setStoreOrders] = useState<StoreOrder[]>([]);
   const [storeOrderSearch, setStoreOrderSearch] = useState('');
   const [storeOrderStatusFilter, setStoreOrderStatusFilter] = useState<string>('all');
+  const [droneOrderOnlyFilter, setDroneOrderOnlyFilter] = useState<boolean>(false);
+
+  // Platform Visitor & Login Logs State
+  const [loginLogs, setLoginLogs] = useState<any[]>([]);
+  const [loginLogsSearch, setLoginLogsSearch] = useState('');
+  const [loginRoleFilter, setLoginRoleFilter] = useState<'all' | 'client' | 'technician' | 'admin'>('all');
+
+  // Active Technicians Ready to Work State
+  const [activeTechsList, setActiveTechsList] = useState<any[]>([]);
+  const [techSearch, setTechSearch] = useState('');
+  const [techFilterMode, setTechFilterMode] = useState<'ready' | 'all'>('ready');
 
   // Sync products list from Firestore in Admin
   useEffect(() => {
@@ -143,6 +171,66 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
     return () => unsub();
   }, []);
+
+  // Sync platform login logs from Firestore in Admin
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'login_logs'), (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      list.sort((a, b) => (b.loginTime || 0) - (a.loginTime || 0));
+      setLoginLogs(list);
+    });
+    return () => unsub();
+  }, []);
+
+  // Sync technicians list from Firestore in Admin
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'technicians'), (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setActiveTechsList(list);
+    });
+    return () => unsub();
+  }, []);
+
+  // Handler to toggle technician ready / online status
+  const handleToggleTechReady = async (techId: string, currentOnlineStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'technicians', techId), {
+        isOnline: !currentOnlineStatus,
+        isAvailable: !currentOnlineStatus
+      });
+      triggerToast(
+        lang === 'ar' 
+          ? `تم تحديث حالة الفني إلى (${!currentOnlineStatus ? 'متصل ومستعد للعمل 🟢' : 'غير متصل 🔴'})` 
+          : `Technician ready status updated!`,
+        'success'
+      );
+    } catch (err) {
+      console.error('Error toggling technician status:', err);
+      triggerToast(lang === 'ar' ? 'فشل تحديث حالة الفني!' : 'Failed to update technician status!', 'error');
+    }
+  };
+
+  // Handler to update technician commission rate
+  const handleUpdateTechCommission = async (techId: string, newRate: number) => {
+    try {
+      await updateDoc(doc(db, 'technicians', techId), {
+        commissionRate: newRate
+      });
+      triggerToast(
+        lang === 'ar' ? `تم تحديث نسبة عمولة الفني إلى ${newRate}% بنجاح! 💰` : `Commission rate updated to ${newRate}%!`,
+        'success'
+      );
+    } catch (err) {
+      console.error('Error updating commission:', err);
+      triggerToast(lang === 'ar' ? 'فشل تحديث نسبة العمولة!' : 'Failed to update commission rate!', 'error');
+    }
+  };
 
   // Add Product Handler
   const handleAddProduct = async (e: React.FormEvent) => {
@@ -293,10 +381,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       ord.id.toLowerCase().includes(searchLower) ||
       ord.customerName.toLowerCase().includes(searchLower) ||
       ord.customerPhone.toLowerCase().includes(searchLower) ||
+      (ord.customerEmail && ord.customerEmail.toLowerCase().includes(searchLower)) ||
+      (ord.userEmail && ord.userEmail.toLowerCase().includes(searchLower)) ||
       ord.customerAddress.toLowerCase().includes(searchLower);
 
     const matchesStatus = storeOrderStatusFilter === 'all' || ord.status === storeOrderStatusFilter;
-    return matchesSearch && matchesStatus;
+
+    const matchesDrone = !droneOrderOnlyFilter || ord.items?.some(item => 
+      (item.title || '').toLowerCase().includes('drone') ||
+      (item.title || '').toLowerCase().includes('aircraft') ||
+      (item.arTitle || '').includes('درون') ||
+      (item.arTitle || '').includes('طائرة') ||
+      (item.arTitle || '').includes('طائرات')
+    );
+
+    return matchesSearch && matchesStatus && matchesDrone;
   });
 
   // Calculate Order Statistics
@@ -736,8 +835,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             />
           </div>
 
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1 text-xs">
+          {/* Status Tabs & Drone Filter Toggle */}
+          <div className="flex flex-wrap items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1 text-xs">
+            <button
+              onClick={() => setDroneOrderOnlyFilter(!droneOrderOnlyFilter)}
+              className={`px-3 py-2 rounded-xl font-black text-xs shrink-0 cursor-pointer transition-all border flex items-center gap-1.5 ${
+                droneOrderOnlyFilter
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-400/30'
+                  : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+              }`}
+            >
+              <Plane className="w-4 h-4 text-amber-600" />
+              <span>{lang === 'ar' ? 'طلبات الطائرات والدرون 🚁✈️' : 'Aircraft / Drones 🚁'}</span>
+            </button>
+
             {[
               { id: 'all', label: lang === 'ar' ? 'الكل 📦' : 'All' },
               { id: 'pending', label: lang === 'ar' ? 'قيد المراجعة 🟡' : 'Pending' },
@@ -1070,6 +1181,333 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
 
+      </div>
+
+      {/* ========================================================= */}
+      {/* 4. ACTIVE TECHNICIANS READY TO WORK PANEL (الفنيين المفعلين) */}
+      {/* ========================================================= */}
+      <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-6 text-slate-900">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="space-y-1 text-right rtl:text-right">
+            <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-emerald-500" />
+              <span>{lang === 'ar' ? 'قائمة الفنيين المفعلين للخدمة والمستعدين للعمل 🛠️🟢' : 'Active & Ready Technicians Board 🛠️🟢'}</span>
+            </h3>
+            <p className="text-xs text-slate-500 font-semibold">
+              {lang === 'ar' ? 'عرض الفنيين الميدانيين المفعلين، المتصلين بالشبكة والمستعدين لاستقبال طلبات الفزعة والإنقاذ الآن.' : 'Monitor live active technicians on call and ready to take emergency rescue requests.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setTechFilterMode('ready')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border cursor-pointer ${
+                techFilterMode === 'ready'
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
+                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              }`}
+            >
+              {lang === 'ar' ? `المتفعلين والمستعدين حالياً (${activeTechsList.filter(t => t.isOnline).length}) 🟢` : `Ready Now (${activeTechsList.filter(t => t.isOnline).length}) 🟢`}
+            </button>
+            <button
+              onClick={() => setTechFilterMode('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border cursor-pointer ${
+                techFilterMode === 'all'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
+                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              }`}
+            >
+              {lang === 'ar' ? `جميع الفنيين بالمنصة (${activeTechsList.length})` : `All Techs (${activeTechsList.length})`}
+            </button>
+          </div>
+        </div>
+
+        {/* Tech Search Input */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={techSearch}
+            onChange={(e) => setTechSearch(e.target.value)}
+            placeholder={lang === 'ar' ? 'بحث باسم الفني، رقم الهاتف، نوع السيارة أو التخصص...' : 'Search technician name, phone, vehicle, or skill...'}
+            className="w-full pr-9 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 text-right rtl:text-right"
+          />
+        </div>
+
+        {/* Tech Cards List */}
+        {activeTechsList.filter(t => {
+          if (techFilterMode === 'ready' && !t.isOnline) return false;
+          if (!techSearch.trim()) return true;
+          const s = techSearch.toLowerCase();
+          return (
+            (t.name && t.name.toLowerCase().includes(s)) ||
+            (t.phone && t.phone.toLowerCase().includes(s)) ||
+            (t.vehicleModel && t.vehicleModel.toLowerCase().includes(s)) ||
+            (t.specialty && t.specialty.toLowerCase().includes(s))
+          );
+        }).length === 0 ? (
+          <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+            <Wrench className="w-10 h-10 text-slate-300 mx-auto" />
+            <p className="text-xs font-bold text-slate-400">
+              {lang === 'ar' ? 'لا يوجد فنيين متصلون ومستعدون حالياً يطابقون خيارات البحث.' : 'No active technicians currently online.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeTechsList.filter(t => {
+              if (techFilterMode === 'ready' && !t.isOnline) return false;
+              if (!techSearch.trim()) return true;
+              const s = techSearch.toLowerCase();
+              return (
+                (t.name && t.name.toLowerCase().includes(s)) ||
+                (t.phone && t.phone.toLowerCase().includes(s)) ||
+                (t.vehicleModel && t.vehicleModel.toLowerCase().includes(s)) ||
+                (t.specialty && t.specialty.toLowerCase().includes(s))
+              );
+            }).map(t => {
+              const cleanPhone = (t.phone || '').replace(/[^0-9]/g, '');
+              const isOnline = !!t.isOnline;
+
+              return (
+                <div key={t.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 hover:border-emerald-400 transition-all shadow-sm text-right rtl:text-right">
+                  <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={t.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80'}
+                        alt={t.name}
+                        className="w-10 h-10 rounded-full object-cover border-2 border-emerald-500 shrink-0"
+                      />
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900">{t.name || 'فني فزعة'}</h4>
+                        <span className="text-[10px] text-slate-500 font-bold block">{t.specialty || 'صيانة عامة وطوارئ'}</span>
+                      </div>
+                    </div>
+
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border flex items-center gap-1 ${
+                      isOnline
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : 'bg-slate-200 text-slate-600 border-slate-300'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                      <span>{isOnline ? (lang === 'ar' ? 'مستعد للعمل 🟢' : 'Ready') : (lang === 'ar' ? 'غير متصل 🔴' : 'Offline')}</span>
+                    </span>
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="space-y-1.5 text-xs">
+                    {t.vehicleModel && (
+                      <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[10px] text-slate-400 font-bold">{lang === 'ar' ? 'المركبة واللوحة:' : 'Vehicle:'}</span>
+                        <span className="font-extrabold text-slate-800 text-[11px]">{t.vehicleModel} ({t.plateNumber || 'بدون لوحة'})</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-100">
+                      <span className="text-[10px] text-slate-400 font-bold">{lang === 'ar' ? 'الهاتف المباشر:' : 'Phone:'}</span>
+                      <span className="font-mono font-black text-slate-900 text-[11px]">{t.phone || 'غير محدد'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-100">
+                      <span className="text-[10px] text-slate-400 font-bold">{lang === 'ar' ? 'التقييم والعمولة:' : 'Rating & Comm:'}</span>
+                      <div className="flex items-center gap-2 font-bold text-[11px]">
+                        <span className="text-amber-600">⭐ {t.rating || 5.0}</span>
+                        <span className="text-slate-300">|</span>
+                        <span className="text-emerald-700 font-mono">{t.commissionRate || 10}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={() => handleToggleTechReady(t.id, isOnline)}
+                      className={`flex-1 py-1.5 px-2 rounded-xl text-[10px] font-black border cursor-pointer transition-all ${
+                        isOnline
+                          ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+                      }`}
+                    >
+                      {isOnline ? (lang === 'ar' ? 'إيقاف الجاهزية 🔴' : 'Set Offline') : (lang === 'ar' ? 'تفعيل للخدمة 🟢' : 'Set Ready')}
+                    </button>
+
+                    {cleanPhone && (
+                      <>
+                        <a
+                          href={`https://wa.me/${cleanPhone}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="py-1.5 px-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-1 shrink-0"
+                          title="واتساب مباشر"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>واتساب</span>
+                        </a>
+
+                        <a
+                          href={`tel:${t.phone}`}
+                          className="py-1.5 px-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-1 shrink-0"
+                          title="اتصال هاتف"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>اتصال</span>
+                        </a>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================= */}
+      {/* 5. VISITORS & LOGIN LOGS PANEL (قائمة من قام بدخول المنصة) */}
+      {/* ========================================================= */}
+      <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-6 text-slate-900">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="space-y-1 text-right rtl:text-right">
+            <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+              <Activity className="w-5 h-5 text-indigo-500" />
+              <span>{lang === 'ar' ? 'سجل دخول المستخدمين والزوار إلى المنصة 🔐' : 'Platform Visitors & Login History Logs 🔐'}</span>
+            </h3>
+            <p className="text-xs text-slate-500 font-semibold">
+              {lang === 'ar' ? 'قائمة فورية لجميع الأشخاص والزوار الذين قاموا بدخول النظام، مع بيانات التواصل والأجهزة المستخدمة وحالة الاتصال الحالية.' : 'Live ledger of users entering the platform, contact details, device info, and current online status.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <span className="px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl font-mono">
+              {lang === 'ar' ? `إجمالي السجلات: ${loginLogs.length}` : `Total Logs: ${loginLogs.length}`}
+            </span>
+          </div>
+        </div>
+
+        {/* Filters Bar */}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={loginLogsSearch}
+              onChange={(e) => setLoginLogsSearch(e.target.value)}
+              placeholder={lang === 'ar' ? 'بحث بالاسم، البريد الإلكتروني، رقم الهاتف أو الجهاز...' : 'Search name, email, phone, or device...'}
+              className="w-full pr-9 pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-right rtl:text-right"
+            />
+          </div>
+
+          <select
+            value={loginRoleFilter}
+            onChange={(e) => setLoginRoleFilter(e.target.value as any)}
+            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-right rtl:text-right cursor-pointer"
+          >
+            <option value="all">{lang === 'ar' ? 'جميع الأدوار والزوار' : 'All Roles & Guests'}</option>
+            <option value="client">{lang === 'ar' ? 'العملاء 👤' : 'Clients'}</option>
+            <option value="technician">{lang === 'ar' ? 'فنيين الفزعة 🛠️' : 'Technicians'}</option>
+            <option value="admin">{lang === 'ar' ? 'المدراء 👑' : 'Admins'}</option>
+          </select>
+        </div>
+
+        {/* Visitor Logs List Table / Grid */}
+        {loginLogs.filter(log => {
+          if (loginRoleFilter !== 'all' && log.role !== loginRoleFilter) return false;
+          if (!loginLogsSearch.trim()) return true;
+          const s = loginLogsSearch.toLowerCase();
+          return (
+            (log.name && log.name.toLowerCase().includes(s)) ||
+            (log.email && log.email.toLowerCase().includes(s)) ||
+            (log.phone && log.phone.toLowerCase().includes(s)) ||
+            (log.deviceInfo && log.deviceInfo.toLowerCase().includes(s))
+          );
+        }).length === 0 ? (
+          <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+            <UserCheck className="w-10 h-10 text-slate-300 mx-auto" />
+            <p className="text-xs font-bold text-slate-400">
+              {lang === 'ar' ? 'لا توجد سجلات دخول مسجلة حالياً تفي بمعايير البحث.' : 'No visitor logs recorded matching criteria.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {loginLogs.filter(log => {
+              if (loginRoleFilter !== 'all' && log.role !== loginRoleFilter) return false;
+              if (!loginLogsSearch.trim()) return true;
+              const s = loginLogsSearch.toLowerCase();
+              return (
+                (log.name && log.name.toLowerCase().includes(s)) ||
+                (log.email && log.email.toLowerCase().includes(s)) ||
+                (log.phone && log.phone.toLowerCase().includes(s)) ||
+                (log.deviceInfo && log.deviceInfo.toLowerCase().includes(s))
+              );
+            }).map((log) => {
+              const cleanPhone = (log.phone || '').replace(/[^0-9]/g, '');
+
+              return (
+                <div
+                  key={log.id}
+                  className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-indigo-400 transition-all shadow-sm text-right rtl:text-right"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-black text-sm flex items-center justify-center shrink-0 border border-indigo-200">
+                      {(log.name || log.email || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-black text-slate-900">{log.name || log.email?.split('@')[0] || 'زائر غير معرف'}</h4>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                          log.role === 'client' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                          log.role === 'technician' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                          log.role === 'admin' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                          'bg-slate-200 text-slate-700 border-slate-300'
+                        }`}>
+                          {log.role === 'client' ? (lang === 'ar' ? 'عميل 👤' : 'Client') :
+                           log.role === 'technician' ? (lang === 'ar' ? 'فني 🛠️' : 'Tech') :
+                           log.role === 'admin' ? (lang === 'ar' ? 'مدير 👑' : 'Admin') : (lang === 'ar' ? 'زائر 🌐' : 'Visitor')}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px]">
+                        <a
+                          href={`mailto:${log.email}`}
+                          className="font-mono text-indigo-600 font-bold hover:underline"
+                        >
+                          {log.email}
+                        </a>
+                        {log.phone && (
+                          <span className="font-mono text-slate-600 font-black">
+                            📞 {log.phone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Device & Login Time Info */}
+                  <div className="flex flex-wrap items-center gap-3 text-xs">
+                    <div className="bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-700">
+                      <span>{log.deviceInfo || 'متصفح ويب Web Browser'}</span>
+                    </div>
+
+                    <div className="bg-slate-900 text-amber-400 px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold">
+                      <span>🕒 {log.formattedTime || new Date(log.loginTime).toLocaleString('ar-EG')}</span>
+                    </div>
+
+                    {cleanPhone && (
+                      <a
+                        href={`https://wa.me/${cleanPhone}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[11px] font-black transition-all flex items-center gap-1"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>مراسلة واتساب</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Row 2: Service management lists */}

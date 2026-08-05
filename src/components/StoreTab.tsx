@@ -110,6 +110,32 @@ const DEFAULT_PRODUCTS: Product[] = [
     arCategory: 'معدات سحب',
     inStock: true,
     createdAt: Date.now() - 100000
+  },
+  {
+    id: 'prod-rescue-drone-4k',
+    title: 'Smart Rescue & Reconnaissance Drone 4K',
+    arTitle: 'طائرة درون فزعة واستكشاف طوارئ مزودة بكاميرا حرارية وشاحن 🚁',
+    price: 1250,
+    image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=800&q=80',
+    description: 'Emergency smart rescue drone for locating stranded vehicles in remote desert areas, transporting boosters, and guiding rescue crews.',
+    arDescription: 'طائرة درون ذكية فائقة السرعة للوصول إلى المركبات العالقة في المناطق الصحراوية والبعيدة، نقل شواحن البطاريات، وتوجيه فرق الإنقاذ.',
+    category: 'Aircraft',
+    arCategory: 'طائرات ومعدات جوية',
+    inStock: true,
+    createdAt: Date.now() - 50000
+  },
+  {
+    id: 'prod-cargo-drone-heavy',
+    title: 'Heavy Duty Medical & Power Delivery Drone',
+    arTitle: 'طائرة درون طوارئ لنقل الإسعافات الأولية وشواحن البطاريات ✈️',
+    price: 1850,
+    image: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&q=80',
+    description: 'Heavy payload rescue drone capable of carrying up to 5kg of medical gear, emergency battery jumpers, and keys across difficult terrain.',
+    arDescription: 'طائرة درون هيفي دوتي متطورة قادرة على نقل حمولات طارئة حتى 5 كجم من الشواحن، الإسعافات الأولية والأقفل إلى المناطق الصعبة.',
+    category: 'Aircraft',
+    arCategory: 'طائرات ومعدات جوية',
+    inStock: true,
+    createdAt: Date.now()
   }
 ];
 
