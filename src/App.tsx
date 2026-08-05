@@ -4,6 +4,7 @@ import { db, auth } from './firebase';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import GooglePayButton from '@google-pay/button-react';
 import { SecuritySentinel } from './components/SecuritySentinel';
+import { DirectoryTab } from './components/DirectoryTab';
 
 const API_KEY =
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
@@ -82,6 +83,7 @@ import {
   Wind,
   ShieldAlert,
   Trash2,
+  RotateCcw,
   Search,
   Plus,
   PlusCircle,
@@ -250,8 +252,8 @@ export default function App() {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store'
-  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store'>(() => {
+  // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory'
+  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory'>(() => {
     try {
       if (typeof window !== 'undefined') {
         const savedReqId = localStorage.getItem('systro_active_request_id') || sessionStorage.getItem('systro_active_request_id');
@@ -575,6 +577,76 @@ export default function App() {
   const [customServiceDescAr, setCustomServiceDescAr] = useState('');
   const [customServiceDescEn, setCustomServiceDescEn] = useState('');
   const [customServicePrice, setCustomServicePrice] = useState<string>('150');
+
+  const handleResetDatabase = async () => {
+    if (!window.confirm(lang === 'ar' ? 'هل أنت تأكد من إعادة ضبط قاعدة البيانات ومسح المهمات المؤقتة؟' : 'Are you sure you want to reset all test data?')) return;
+    try {
+      setAllRequests([]);
+      setIncomingBids([]);
+      setChatMessages([]);
+      localStorage.removeItem('systro_rescue_requests');
+      triggerToast(lang === 'ar' ? 'تمت إعادة ضبط قاعدة البيانات والمحاكاة بنجاح!' : 'Database & Simulator reset successfully!', 'success');
+    } catch (err) {
+      console.error(err);
+      triggerToast(lang === 'ar' ? 'حدث خطأ أثناء إعادة الضبط' : 'Error resetting database', 'error');
+    }
+  };
+
+  const handleAddOrUpdateService = async () => {
+    if (!srvId.trim() || !srvName.trim() || !srvArName.trim()) {
+      triggerToast(lang === 'ar' ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill all required fields', 'warning');
+      return;
+    }
+    try {
+      const srvData = {
+        id: srvId.trim().toLowerCase().replace(/\s+/g, '_'),
+        name: srvName.trim(),
+        arName: srvArName.trim(),
+        description: srvDesc.trim(),
+        arDescription: srvArDesc.trim(),
+        basePrice: srvBasePrice,
+        icon: srvIcon || 'wrench',
+        updatedAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, "services", srvData.id), srvData, { merge: true });
+      triggerToast(lang === 'ar' ? 'تم حفظ بيانات الخدمة بنجاح!' : 'Service saved successfully!', 'success');
+      setEditingService(null);
+      setSrvId('');
+      setSrvName('');
+      setSrvArName('');
+      setSrvDesc('');
+      setSrvArDesc('');
+      setSrvBasePrice(100);
+      setSrvIcon('wrench');
+      setShowAddServiceForm(false);
+    } catch (err) {
+      console.error(err);
+      triggerToast(lang === 'ar' ? 'حدث خطأ أثناء حفظ الخدمة' : 'Error saving service', 'error');
+    }
+  };
+
+  const handleEditService = (srv: any) => {
+    setEditingService(srv);
+    setSrvId(srv.id || '');
+    setSrvName(srv.name || '');
+    setSrvArName(srv.arName || '');
+    setSrvDesc(srv.description || '');
+    setSrvArDesc(srv.arDescription || '');
+    setSrvBasePrice(srv.basePrice || 100);
+    setSrvIcon(srv.icon || 'wrench');
+    setShowAddServiceForm(true);
+  };
+
+  const handleDeleteService = async (id: string) => {
+    if (!window.confirm(lang === 'ar' ? 'هل أنت تأكد من حذف هذه الخدمة؟' : 'Are you sure you want to delete this service?')) return;
+    try {
+      await deleteDoc(doc(db, "services", id));
+      triggerToast(lang === 'ar' ? 'تم حذف الخدمة بنجاح!' : 'Service deleted successfully!', 'success');
+    } catch (err) {
+      console.error(err);
+      triggerToast(lang === 'ar' ? 'حدث خطأ أثناء الحذف' : 'Error deleting service', 'error');
+    }
+  };
 
   // Dynamic Live System Statistics
   const [stats, setStats] = useState<SystemStats>({
@@ -1575,6 +1647,21 @@ export default function App() {
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "technicians");
+    });
+    return () => unsub();
+  }, []);
+
+  // Synchronize registered users from Firestore (real-time)
+  useEffect(() => {
+    const q = query(collection(db, "users"));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setRegisteredUsers(list);
+    }, (error) => {
+      console.warn("Users sync notice:", error);
     });
     return () => unsub();
   }, []);
@@ -4706,6 +4793,7 @@ export default function App() {
             >
               {lang === 'ar' ? 'العمليات (الفني) 🛠️' : t.simulator}
             </button>
+
             <button 
               onClick={() => {
                 setActiveTab('taxi');
@@ -5027,10 +5115,13 @@ export default function App() {
           isAdminUnlocked={isAdminUnlocked}
           triggerToast={triggerToast}
           onNavigateToAdmin={() => setActiveTab('admin')}
-          phoneNumber={phoneNumber || enteredEmail}
+          phoneNumber={phoneNumber}
           clientName={loggedInUserName || enteredName}
+          userEmail={loggedInUserEmail || enteredEmail}
         />
       )}
+
+
 
       {/* MAIN INTERACTIVE SIMULATOR SUITE TAB */}
       {activeTab === 'simulator' && (
@@ -5100,7 +5191,7 @@ export default function App() {
           )}
 
           {/* Dynamic grid split */}
-          {(activeTechDoc?.isOnline ?? false) ? (
+          {(activeTechDoc?.isOnline ?? false) && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             {/* Left Column: Technician Live Emergency Radar Map */}
@@ -6624,9 +6715,10 @@ export default function App() {
                   })()}
                 </div>
               </div>
-                    {false ? (
-                      <>
-                        {simStatus === 'idle' && (
+            </div>
+          </div>
+        )}
+        {simStatus === 'idle' && (
                     <div className="space-y-6">
                       <h3 className="text-base font-black text-white border-b border-gray-900 pb-3">
                         {lang === 'ar' ? 'خطوة 1: تعبئة وتفاصيل طلب الإنقاذ' : 'Step 1: Fill Rescue Request details'}
@@ -7261,7 +7353,7 @@ export default function App() {
                                 <span>
                                   {lang === 'ar' 
                                     ? `إيداع وحجز ${selectedBid.price} ₪ والبدء بالبطاقة 🔒` 
-                                    : `Secure Deposit ${selectedBid.price} ₪ with Card 🔒`}
+                                    : `Secure Card Deposit ${selectedBid.price} ₪ 🔒`}
                                 </span>
                               </button>
                             </form>
@@ -7270,627 +7362,337 @@ export default function App() {
                       </div>
                     </div>
                   )}
-
-                  {/* Wizard Status: En route / Arrived / Working live tracking status */}
-                  {((simStatus === 'en_route' || simStatus === 'arrived' || simStatus === 'in_progress' || (simStatus === 'disputed' && !showDisputeForm)) && selectedBid) && (
-                    <div className="space-y-6">
-                      {/* Status wizard card */}
-                      <div className={`p-4 border rounded-2xl flex items-center justify-between gap-4 animate-pulse ${
-                        simStatus === 'disputed' ? 'bg-red-500/5 border-red-500/20 text-red-400' : 'bg-[#0F1424] border-gray-850'
-                      }`}>
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-xl ${
-                            simStatus === 'disputed' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'
-                          }`}>
-                            {simStatus === 'disputed' ? <AlertTriangle className="w-5 h-5 animate-bounce" /> : <Truck className="w-5 h-5" />}
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-black text-white">
-                              {simStatus === 'en_route' && t.simTechEnRoute}
-                              {simStatus === 'arrived' && t.simTechArrived}
-                              {simStatus === 'in_progress' && t.simTechWorking}
-                              {simStatus === 'disputed' && (lang === 'ar' ? 'الطلب قيد النزاع والمراجعة الإدارية ⚠️' : 'Under Dispute & Administrative Review ⚠️')}
-                            </h4>
-                            {selectedBid?.plateNumber && (
-                              <span className="text-[10px] text-gray-500 font-semibold block">{lang === 'ar' ? 'رقم اللوحة:' : 'License Plate:'} {selectedBid.plateNumber}</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full font-mono uppercase tracking-widest ${
-                          simStatus === 'disputed' 
-                            ? 'bg-red-500/15 text-red-500' 
-                            : 'bg-amber-500/15 text-amber-500'
-                        }`}>
-                          {simStatus === 'en_route' && (lang === 'ar' ? 'جاري التحرك' : 'EN ROUTE')}
-                          {simStatus === 'arrived' && (lang === 'ar' ? 'وصل الفني' : 'ARRIVED')}
-                          {simStatus === 'in_progress' && (lang === 'ar' ? 'جاري الصيانة' : 'IN REPAIR')}
-                          {simStatus === 'disputed' && (lang === 'ar' ? 'قيد التحقيق ⚠️' : 'UNDER INVESTIGATION ⚠️')}
-                        </span>
-                      </div>
-
-                      {/* Dynamic Interactive Live Chat with Technician for Client */}
-                      <div className={`bg-[#0A0B10] border border-amber-500/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 shadow-2xl ${
-                        isClientChatExpanded ? 'h-[500px]' : 'h-80'
-                      }`}>
-                        {/* Chat Header with Status & Expand Button */}
-                        <div className="flex items-center justify-between pb-3 border-b border-gray-900 gap-2">
-                          <div className="flex items-center gap-2.5">
-                            <div className="relative flex items-center justify-center">
-                              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full block"></span>
-                              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full block absolute inset-0 animate-ping opacity-75"></span>
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-black text-amber-500 flex items-center gap-1.5">
-                                <MessageCircle className="w-4 h-4 text-amber-500" />
-                                <span>{lang === 'ar' ? 'المحادثة الحية والمتابعة المباشرة مع الفني' : 'Live Chat with Technician'}</span>
-                              </h4>
-                              <span className="text-[10px] text-emerald-400 font-bold block">
-                                {selectedBid?.technicianName || (lang === 'ar' ? 'الفني المعتمد' : 'Assigned Technician')} {lang === 'ar' ? '(متصل الآن 🟢)' : '(Online Now 🟢)'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {/* Expand / Minimize Toggle Button */}
-                            <button
-                              type="button"
-                              onClick={() => setIsClientChatExpanded(!isClientChatExpanded)}
-                              className="px-2.5 py-1.5 bg-gray-900 hover:bg-gray-800 text-amber-400 border border-gray-800 hover:border-amber-500/50 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                            >
-                              {isClientChatExpanded ? (
-                                <>
-                                  <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
-                                  <span>{lang === 'ar' ? 'تصغير المحادثة' : 'Minimize'}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
-                                  <span>{lang === 'ar' ? 'تكبير وتوسيع المحادثة 🔍' : 'Expand Chat 🔍'}</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Quick Response Chips */}
-                        <div className="py-2 flex items-center gap-1.5 overflow-x-auto text-[10px] border-b border-gray-900/60 pb-2">
-                          <button
-                            type="button"
-                            onClick={() => setChatInput(lang === 'ar' ? 'أين أنت الآن؟ 📍' : 'Where are you now? 📍')}
-                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-full font-bold whitespace-nowrap transition-all cursor-pointer"
-                          >
-                            📍 {lang === 'ar' ? 'أين أنت الآن؟' : 'Where are you?'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setChatInput(lang === 'ar' ? 'أنا بانتظارك في موقع البلاغ ⏳' : 'Waiting for you at location ⏳')}
-                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-full font-bold whitespace-nowrap transition-all cursor-pointer"
-                          >
-                            ⏳ {lang === 'ar' ? 'أنا بانتظارك' : 'I am waiting'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setChatInput(lang === 'ar' ? 'تفاصيل إضافية عن عطل المركبة 🔧' : 'Additional vehicle issue details 🔧')}
-                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-full font-bold whitespace-nowrap transition-all cursor-pointer"
-                          >
-                            🔧 {lang === 'ar' ? 'تفاصيل العطل' : 'Issue details'}
-                          </button>
-                        </div>
-
-                        {/* Messages List Container */}
-                        <div className="flex-1 overflow-y-auto space-y-2.5 my-2 pr-1 text-xs">
-                          {chatMessages.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-gray-500 font-bold text-center gap-2 py-6">
-                              <MessageSquare className="w-8 h-8 text-amber-500/50 animate-bounce" />
-                              <span className="text-xs text-gray-400">
-                                {lang === 'ar' 
-                                  ? 'لا توجد رسائل سابقة. يمكنك كتابة رسالة للفني بالأسفل والتواصل معه فوراً...' 
-                                  : 'No previous messages. Type a message to technician below...'}
-                              </span>
-                            </div>
-                          ) : (
-                            chatMessages.map(msg => {
-                              const isSystem = msg.sender === 'system';
-                              const isTech = msg.sender === 'technician';
-                              return (
-                                <div key={msg.id} className={`flex ${isSystem ? 'justify-center' : isTech ? 'justify-start' : 'justify-end'}`}>
-                                  <div className={`p-2.5 max-w-[85%] rounded-xl font-semibold leading-relaxed shadow-md ${
-                                    isSystem 
-                                      ? 'bg-gray-900 text-gray-400 text-[10px] text-center max-w-full font-sans border border-gray-800' 
-                                      : isTech 
-                                      ? 'bg-[#1F2937] text-gray-200 rounded-tl-none border border-gray-800' 
-                                      : 'bg-amber-500 text-black rounded-tr-none font-bold'
-                                  }`}>
-                                    {isTech && (
-                                      <span className="block text-[9px] text-amber-400 font-extrabold mb-0.5">
-                                        🛠️ {msg.senderName || selectedBid?.technicianName || 'الفني'}
-                                      </span>
-                                    )}
-                                    {msg.text}
-                                    <span className={`block text-[8px] mt-1 opacity-70 ${isTech ? 'text-gray-400 text-left' : 'text-black/80 text-left'}`}>
-                                      {msg.timestamp}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-
-                        {/* Direct Message Input & Send Form */}
-                        <form onSubmit={handleChatSend} className="pt-2 border-t border-gray-900 flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            placeholder={lang === 'ar' ? 'أكتب رسالتك للفني...' : 'Type message to technician...'}
-                            className="flex-1 px-3.5 py-2.5 bg-[#111827] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-xs text-white placeholder-gray-500 font-semibold transition-colors"
-                          />
-                          <button
-                            type="submit"
-                            className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-lg active:scale-95"
-                          >
-                            <Send className="w-4 h-4" />
-                            <span>{lang === 'ar' ? 'إرسال 💬' : 'Send 💬'}</span>
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : null}
-
-              </div>
-            </div>
-          ) : (
-            <div className="p-8 md:p-12 bg-[#0F1424]/90 border-2 border-amber-500/30 rounded-3xl text-center space-y-6 shadow-2xl relative overflow-hidden my-4 select-none animate-fade-in">
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="w-20 h-20 bg-amber-500/10 border-2 border-amber-500/30 rounded-3xl flex items-center justify-center mx-auto text-amber-400 shadow-inner">
-                <Power className="w-10 h-10 animate-pulse" />
-              </div>
-
-              <div className="max-w-xl mx-auto space-y-3">
-                <span className="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-full text-xs font-black uppercase tracking-wider inline-block">
-                  {lang === 'ar' ? '🔒 اللوحة مخفية - حساب الفني غير مفعّل' : '🔒 Panel Hidden - Tech Account Inactive'}
-                </span>
-                <h3 className="text-xl md:text-2xl font-black text-white">
-                  {lang === 'ar' 
-                    ? 'هل تريد أن تكون فني مسجل ودخول الخدمة لعرض اللوحة وتتبع المهمات؟ 🛠️' 
-                    : 'Activate Technician Account & Enter Service to Reveal Dashboard & Track Tasks 🛠️'}
-                </h3>
-                <p className="text-xs md:text-sm text-gray-300 font-semibold leading-relaxed">
-                  {lang === 'ar'
-                    ? 'كالمعتاد، حسابك غير نشط كفني حالياً لضمان استقلالية حسابك وسلامة البيانات. اضغط على زر التفعيل أدناه لتسجيل الدخول كفني نشط؛ لتظهر لك خريطة بلاغات الطوارئ المباشرة، استقبال طلبات الزبائن، وتتبع المهمات والعمليات فوراً.'
-                    : 'Your technician account is currently off-duty. Click the button below to enter active service and unlock live emergency alerts, radar map, and task tracking.'}
-                </p>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleToggleTechMode}
-                  className="px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-black font-black text-sm rounded-2xl shadow-xl shadow-amber-500/25 transition-all cursor-pointer inline-flex items-center gap-3 active:scale-95 animate-bounce"
-                >
-                  <Power className="w-5 h-5" />
-                  <span>
-                    {lang === 'ar'
-                      ? 'تفعيل: أريد أن أكون فني مسجل ودخول الخدمة الآن ⚡'
-                      : 'Activate: Enable Active Tech Mode & Enter Service Now ⚡'}
-                  </span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Single Live Public Group Chat section at bottom of Operations / Simulator Tab */}
-          <div className="pt-8 border-t border-gray-900">
-            <PublicGroupChat 
-              lang={lang} 
-              currentUserRole={userRole || 'client'}
-              currentUserName={loggedInUserName || profileNameInput || (lang === 'ar' ? 'مستخدم' : 'User')}
-              currentUserEmail={loggedInUserEmail}
-              currentUserAvatar={userAvatar}
-            />
-          </div>
         </div>
       )}
 
-                  {activeTab === 'admin' && (
-                    isAdminUnlocked ? (
-                      <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 animate-fade-in space-y-8 bg-slate-50 text-slate-900 rounded-3xl border border-slate-200 shadow-2xl my-6">
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 border-b border-slate-200 pb-6 text-slate-900">
-              <div className="space-y-2 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
-                <div className="flex flex-col sm:flex-row items-center gap-3 justify-center sm:justify-start">
-                  <h2 className="text-2xl font-black text-slate-900">{t.adminTitle}</h2>
-                  {/* Verified Domain Badge - Relocated to Administration Portal */}
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs font-bold shrink-0 shadow-sm select-none">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>
-                    <span>{lang === 'ar' ? `نطاق موثق: ${customDomain}` : `Verified Domain: ${customDomain}`}</span>
+      {/* Admin Tab Content */}
+      {activeTab === 'admin' && (
+        isAdminUnlocked ? (
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 animate-fade-in space-y-8 bg-slate-50 text-slate-900 rounded-3xl border border-slate-200 shadow-2xl my-6">
+              
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 border-b border-slate-200 pb-6 text-slate-900">
+                <div className="space-y-2 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
+                  <div className="flex flex-col sm:flex-row items-center gap-3 justify-center sm:justify-start">
+                    <h2 className="text-2xl font-black text-slate-900">{t.adminTitle}</h2>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs font-bold shrink-0 shadow-sm select-none">
+                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>
+                      <span>{lang === 'ar' ? `نطاق موثق: ${customDomain}` : `Verified Domain: ${customDomain}`}</span>
+                    </div>
                   </div>
+                  <p className="text-xs text-slate-500 font-semibold">{lang === 'ar' ? 'فصل وتحكيم المنازعات المالية والودائع المعلقة لحل الخلافات بين العملاء والفنيين.' : 'Arbitrate active disputes, refund clients, or dispatch technician escrow payouts manually.'}</p>
                 </div>
-                <p className="text-xs text-slate-500 font-semibold">{lang === 'ar' ? 'فصل وتحكيم المنازعات المالية والودائع المعلقة لحل الخلافات بين العملاء والفنيين.' : 'Arbitrate active disputes, refund clients, or dispatch technician escrow payouts manually.'}</p>
+                <button 
+                  onClick={() => {
+                    setIsAdminUnlocked(false);
+                    sessionStorage.removeItem('systro_admin_unlocked');
+                    triggerToast(lang === 'ar' ? 'تم إغلاق لوحة الإدارة بنجاح!' : 'Admin Panel locked successfully!', 'info');
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-black rounded-xl border border-slate-200 transition-all cursor-pointer flex items-center justify-center gap-1.5 self-center sm:self-auto shadow-sm"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'قفل لوحة الإدارة 🔒' : 'Lock Admin Panel 🔒'}</span>
+                </button>
               </div>
-              <button 
-                onClick={() => {
-                  setIsAdminUnlocked(false);
-                  sessionStorage.removeItem('systro_admin_unlocked');
-                  triggerToast(lang === 'ar' ? 'تم إغلاق لوحة الإدارة بنجاح!' : 'Admin Panel locked successfully!', 'info');
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-black rounded-xl border border-slate-200 transition-all cursor-pointer flex items-center justify-center gap-1.5 self-center sm:self-auto shadow-sm"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>{lang === 'ar' ? 'قفل لوحة الإدارة 🔒' : 'Lock Admin Panel 🔒'}</span>
-              </button>
-            </div>
 
-          {/* Quick Database & Simulator Reset Panel */}
-          <div className="bg-red-50 border border-red-200 rounded-3xl p-5 max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-800">
-            <div className="space-y-1 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
-              <h4 className="text-sm font-black text-red-900 flex items-center gap-2 justify-center sm:justify-start">
-                <AlertCircle className="w-4 h-4 text-red-500" />
-                <span>{lang === 'ar' ? 'أداة تنظيف وضبط قاعدة البيانات (Firebase)' : 'Firebase Database Cleanup Tool'}</span>
-              </h4>
-              <p className="text-xs text-slate-600 font-semibold">
-                {lang === 'ar' 
-                  ? 'يقوم هذا الخيار بمسح كافة سجلات الطلبات النشطة، العروض والمحادثات من Firestore لإعادة تشغيل النظام من الصفر.' 
-                  : 'This option clears all active requests, technician bids, and chat transcripts from Firestore to allow clean testing.'}
-              </p>
-            </div>
-            <button 
-              onClick={resetSimulation}
-              className="px-5 py-3 bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-red-600/10 transition-all shrink-0 cursor-pointer"
-            >
-              {lang === 'ar' ? 'تفريغ Firestore وضبط النظام 🗑️' : 'Clear Firestore & Reset 🗑️'}
-            </button>
-          </div>
-
-          {/* Real-time Domain Connection & Website Trust Panel */}
-          <TrustPortal 
-            lang={lang === 'he' ? 'en' : lang} 
-            triggerToast={triggerToast} 
-            customDomain={customDomain}
-            setCustomDomain={setCustomDomain}
-          />
-
-          {/* Real-time SMTP Connection & Diagnostics Panel */}
-          <SmtpConfigPanel 
-            lang={lang}
-            status={smtpStatus}
-            onRefresh={fetchSmtpStatus}
-            triggerToast={triggerToast}
-          />
-
-          {/* Real-time WhatsApp Connection & Diagnostics Panel */}
-          <WhatsAppConfigPanel 
-            lang={lang}
-            status={whatsAppStatus}
-            onRefresh={fetchWhatsAppStatus}
-            triggerToast={triggerToast}
-          />
-
-          {/* Real-time Twilio SMS Gateway Connection & Diagnostics Panel */}
-          <SmsConfigPanel 
-            lang={lang}
-            status={smsStatus}
-            onRefresh={fetchSmsStatus}
-            triggerToast={triggerToast}
-          />
-
-          {/* Services Management Panel */}
-          <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div className="space-y-1 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
-                <h3 className="text-sm md:text-base font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 justify-center sm:justify-start">
-                  <Settings className="w-5 h-5 text-amber-500 animate-spin-slow" />
-                  <span>{lang === 'ar' ? 'إدارة وتعديل الخدمات المعروضة بالشبكة' : 'Manage & Edit Network Services'}</span>
-                </h3>
-                <p className="text-xs text-slate-500 font-semibold">
-                  {lang === 'ar' 
-                    ? 'عرض وتعديل أسعار ووصف الخدمات المعروضة، أو إزالتها كلياً من المنصة.' 
-                    : 'Manage displayed services, edit base prices, descriptions, or remove them entirely.'}
-                </p>
-              </div>
-              <button
-                onClick={handleStartAddService}
-                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl shadow-md shadow-amber-500/10 transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>{lang === 'ar' ? 'إضافة خدمة جديدة ➕' : 'Add New Service ➕'}</span>
-              </button>
-            </div>
-
-            {/* Add / Edit Service Form */}
-            {showAddServiceForm && (
-              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 animate-fade-in">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <h4 className="text-xs md:text-sm font-black text-slate-800 flex items-center gap-1.5">
-                    {editingService ? (
-                      <>
-                        <Edit className="w-4 h-4 text-amber-500" />
-                        <span>{lang === 'ar' ? `تعديل خدمة: ${editingService.arName || editingService.name}` : `Edit Service: ${editingService.name}`}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4 text-amber-500" />
-                        <span>{lang === 'ar' ? 'إضافة خدمة جديدة بالمنصة' : 'Add New Network Service'}</span>
-                      </>
-                    )}
+              {/* Quick Database & Simulator Reset Panel */}
+              <div className="bg-red-50 border border-red-200 rounded-3xl p-5 max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-800">
+                <div className="space-y-1 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
+                  <h4 className="text-sm font-black text-red-700 flex items-center justify-center sm:justify-start gap-2">
+                    <RotateCcw className="w-4 h-4 text-red-500" />
+                    <span>{lang === 'ar' ? 'إعادة ضبط المحاكاة وقاعدة البيانات ⚠️' : 'Reset Database & Simulator ⚠️'}</span>
                   </h4>
-                  <button 
-                    onClick={() => {
-                      setShowAddServiceForm(false);
-                      setEditingService(null);
-                    }}
-                    className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right rtl:text-right ltr:text-left">
-                  {/* Service ID (disabled when editing) */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      {lang === 'ar' ? 'رمز تعريف الخدمة الفريد (ID - بالإنجليزية وممنوع المسافات):' : 'Unique Service ID (no spaces):'}
-                    </label>
-                    <input 
-                      type="text"
-                      disabled={!!editingService}
-                      placeholder="e.g. towing, plumber, battery"
-                      value={srvId}
-                      onChange={(e) => setSrvId(e.target.value)}
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs disabled:opacity-50 disabled:bg-slate-100"
-                    />
-                  </div>
-
-                  {/* Base Price */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      {lang === 'ar' ? 'السعر الأساسي التقديري (₪):' : 'Estimated Base Price (₪):'}
-                    </label>
-                    <input 
-                      type="number"
-                      placeholder="e.g. 150"
-                      value={srvBasePrice}
-                      onChange={(e) => setSrvBasePrice(Number(e.target.value) || 0)}
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-mono text-xs"
-                    />
-                  </div>
-
-                  {/* Name Arabic */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      {lang === 'ar' ? 'اسم الخدمة (بالعربية):' : 'Service Name (Arabic):'}
-                    </label>
-                    <input 
-                      type="text"
-                      placeholder="مثال: خدمة تصليح الإطارات"
-                      value={srvArName}
-                      onChange={(e) => setSrvArName(e.target.value)}
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs"
-                    />
-                  </div>
-
-                  {/* Name English */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      {lang === 'ar' ? 'اسم الخدمة (بالإنجليزية):' : 'Service Name (English):'}
-                    </label>
-                    <input 
-                      type="text"
-                      placeholder="e.g. Flat Tire Repair"
-                      value={srvName}
-                      onChange={(e) => setSrvName(e.target.value)}
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs"
-                    />
-                  </div>
-
-                  {/* Icon */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      {lang === 'ar' ? 'الرمز والمجسم المرئي (Icon):' : 'Icon Graphic identifier:'}
-                    </label>
-                    <select
-                      value={srvIcon}
-                      onChange={(e) => setSrvIcon(e.target.value)}
-                      className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs"
-                    >
-                      <option value="wrench">{lang === 'ar' ? 'ميكانيكي / صيانة (Wrench)' : 'Mechanic (Wrench)'}</option>
-                      <option value="zap">{lang === 'ar' ? 'كهربائي / بطارية (Zap)' : 'Electrical (Zap)'}</option>
-                      <option value="fuel">{lang === 'ar' ? 'وقود / بنزين (Fuel)' : 'Fuel (Fuel)'}</option>
-                      <option value="key">{lang === 'ar' ? 'أقفال ومفاتيح (Key)' : 'Locksmith (Key)'}</option>
-                      <option value="truck">{lang === 'ar' ? 'ونش / سحب (Truck)' : 'Towing Truck'}</option>
-                      <option value="car">{lang === 'ar' ? 'تكسي / توصيل (Car)' : 'Taxi (Car)'}</option>
-                      <option value="hammer">{lang === 'ar' ? 'نجارة / مطرقة (Hammer)' : 'Carpentry (Hammer)'}</option>
-                      <option value="droplets">{lang === 'ar' ? 'سباكة / مياه (Droplets)' : 'Plumbing (Droplets)'}</option>
-                      <option value="wind">{lang === 'ar' ? 'تكييف / هواء (Wind)' : 'A/C (Wind)'}</option>
-                      <option value="helpcircle">{lang === 'ar' ? 'مساعدة عامة (Help)' : 'General Help (Help)'}</option>
-                    </select>
-                  </div>
-
-                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Description Arabic */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
-                        {lang === 'ar' ? 'وصف تفصيلي للخدمة (بالعربية):' : 'Service Description (Arabic):'}
-                      </label>
-                      <textarea 
-                        rows={2}
-                        placeholder="اكتب وصف الخدمة وحدودها للعملاء..."
-                        value={srvArDesc}
-                        onChange={(e) => setSrvArDesc(e.target.value)}
-                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs resize-none text-right"
-                      />
-                    </div>
-
-                    {/* Description English */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
-                        {lang === 'ar' ? 'وصف تفصيلي للخدمة (بالإنجليزية):' : 'Service Description (English):'}
-                      </label>
-                      <textarea 
-                        rows={2}
-                        placeholder="Write a clear service scope description..."
-                        value={srvDesc}
-                        onChange={(e) => setSrvDesc(e.target.value)}
-                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs resize-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 justify-end pt-2">
-                  <button 
-                    onClick={() => {
-                      setShowAddServiceForm(false);
-                      setEditingService(null);
-                    }}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-black rounded-xl cursor-pointer"
-                  >
-                    {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                  </button>
-                  <button 
-                    onClick={handleSaveActiveService}
-                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold rounded-xl shadow-md shadow-emerald-600/10 cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>{lang === 'ar' ? 'حفظ ونشر بالشبكة ✅' : 'Save & Publish ✅'}</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Services Grid list */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {dbServices.map((service: any) => {
-                const IconComponent = getServiceIcon(service.icon, service.name) || Wrench;
-                return (
-                  <div key={service.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between gap-4 text-right animate-fade-in relative hover:shadow-md transition-all">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[9px] text-slate-500 font-bold bg-slate-200/50 px-1.5 py-0.5 rounded">
-                            {service.id}
-                          </span>
-                          <span className="font-mono text-xs font-black text-amber-600">
-                            {service.basePrice} ₪
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-800">
-                            {lang === 'ar' ? service.arName || service.name : service.name}
-                          </span>
-                          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center">
-                            <IconComponent className="w-4 h-4" />
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-slate-500 font-semibold leading-relaxed line-clamp-2 h-8">
-                        {lang === 'ar' ? service.arDescription || service.description : service.description}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 border-t border-slate-200/60 pt-2.5">
-                      <button
-                        onClick={() => handleStartEditService(service)}
-                        className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 hover:text-black border border-amber-500/20 text-amber-700 text-[10px] font-extrabold rounded-lg transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <Edit className="w-3 h-3" />
-                        <span>{lang === 'ar' ? 'تعديل ⚙️' : 'Edit ⚙️'}</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(lang === 'ar' ? `هل أنت متأكد من رغبتك في حذف خدمة [${service.arName || service.name}] كلياً من المنصة؟` : `Are you sure you want to permanently delete [${service.name}]?`)) {
-                            handleDeleteActiveService(service.id);
-                          }
-                        }}
-                        className="px-2.5 py-1.5 bg-red-500/10 hover:bg-red-600 hover:text-white border border-red-500/20 text-red-500 text-[10px] font-extrabold rounded-lg transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        <span>{lang === 'ar' ? 'إزالة 🗑️' : 'Remove 🗑️'}</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-            {/* Proposed Custom Services Review Section */}
-            <div className="p-6 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-gray-850 pb-3">
-                <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                  <Wrench className="w-5 h-5 text-amber-500" />
-                  <span>{lang === 'ar' ? 'الخدمات والتخصصات المقترحة' : 'Proposed Custom Services'}</span>
-                </h3>
-                <span className="text-[10px] font-mono text-gray-500 bg-gray-950 px-2 py-0.5 rounded border border-gray-900">
-                  {lang === 'ar' ? `بانتظار المراجعة: ${pendingServices.length}` : `Pending: ${pendingServices.length}`}
-                </span>
-              </div>
-
-              {pendingServices.length === 0 ? (
-                <div className="text-center py-12 text-gray-500 flex flex-col items-center justify-center gap-2">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500/45 animate-pulse" />
-                  <p className="text-xs font-semibold">
-                    {lang === 'ar' ? 'لا توجد تخصصات أو خدمات مقترحة جديدة حالياً! 👍' : 'No new custom service proposals at this time! 👍'}
+                  <p className="text-xs text-slate-600 font-semibold">
+                    {lang === 'ar' ? 'مسح جميع بيانات البلاغات، الدردشات، والمهمات المؤقتة وإرجاع النظام لحالته الأولية النظيفة.' : 'Clear all test alerts, chats, and emergency logs to restore clean default state.'}
                   </p>
                 </div>
-              ) : (
-                <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                  {pendingServices.map(srv => (
-                    <div key={srv.id} className="p-4 bg-[#0A0B10] border border-gray-900 rounded-2xl flex flex-col justify-between gap-3 text-right">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between border-b border-gray-950 pb-2">
-                          <span className="text-[10px] font-extrabold text-amber-500 font-mono bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg">
-                            {srv.basePrice} ₪
-                          </span>
-                          <h4 className="text-xs font-black text-white">
-                            {srv.arName || srv.name}
-                          </h4>
-                        </div>
-                        
-                        <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
-                          {srv.arDescription || srv.description}
-                        </p>
-                        
-                        {srv.name && srv.name !== srv.arName && (
-                          <div className="text-[9px] text-gray-500 font-semibold font-mono">
-                            EN: {srv.name}
-                          </div>
-                        )}
+                <button
+                  onClick={handleResetDatabase}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer shrink-0 flex items-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>{lang === 'ar' ? 'إعادة الضبط الآن' : 'Reset All Data'}</span>
+                </button>
+              </div>
 
-                        <div className="flex items-center gap-1.5 text-[9px] text-gray-400 font-bold bg-[#0F1424] px-2.5 py-1 rounded-lg border border-gray-950">
-                          <span className="text-amber-500 shrink-0">👤</span>
-                          <span className="truncate">
-                            {lang === 'ar' ? `مقدم الطلب: ${srv.requestedByName || srv.requestedBy}` : `Requested By: ${srv.requestedByName || srv.requestedBy}`}
+              {/* Real-time Domain Connection & Website Trust Panel */}
+              <TrustPortal 
+                lang={lang === 'he' ? 'en' : lang} 
+                triggerToast={triggerToast} 
+                customDomain={customDomain}
+                setCustomDomain={setCustomDomain}
+              />
+
+              {/* Real-time SMTP Connection & Diagnostics Panel */}
+              <SmtpConfigPanel 
+                lang={lang}
+                status={smtpStatus}
+                onRefresh={fetchSmtpStatus}
+                triggerToast={triggerToast}
+              />
+
+              {/* Real-time WhatsApp Connection & Diagnostics Panel */}
+              <WhatsAppConfigPanel 
+                lang={lang}
+                status={whatsAppStatus}
+                onRefresh={fetchWhatsAppStatus}
+                triggerToast={triggerToast}
+              />
+
+              {/* Real-time Twilio SMS Gateway Connection & Diagnostics Panel */}
+              <SmsConfigPanel 
+                lang={lang}
+                status={smsStatus}
+                onRefresh={fetchSmsStatus}
+                triggerToast={triggerToast}
+              />
+
+              {/* Services Management Panel */}
+              <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                  <div className="space-y-1 text-center sm:text-right rtl:sm:text-right ltr:sm:text-left">
+                    <h3 className="text-sm md:text-base font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 justify-center sm:justify-start">
+                      <Settings className="w-5 h-5 text-amber-500 animate-spin-slow" />
+                      <span>{lang === 'ar' ? 'إدارة وتعديل الخدمات المعروضة بالشبكة' : 'Manage & Edit Network Services'}</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 font-semibold">
+                      {lang === 'ar' 
+                        ? 'عرض وتعديل أسعار ووصف الخدمات المعروضة، أو إزالتها كلياً من المنصة.' 
+                        : 'Manage displayed services, edit base prices, descriptions, or remove them entirely.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleStartAddService}
+                    className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl shadow-md shadow-amber-500/10 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>{lang === 'ar' ? 'إضافة خدمة جديدة ➕' : 'Add New Service ➕'}</span>
+                  </button>
+                </div>
+
+                {/* Add / Edit Service Form */}
+                {showAddServiceForm && (
+                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 animate-fade-in">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <h4 className="text-xs md:text-sm font-black text-slate-800 flex items-center gap-1.5">
+                        {editingService ? (
+                          <>
+                            <Edit className="w-4 h-4 text-amber-500" />
+                            <span>{lang === 'ar' ? `تعديل خدمة: ${editingService.arName || editingService.name}` : `Edit Service: ${editingService.name}`}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4 text-amber-500" />
+                            <span>{lang === 'ar' ? 'إضافة خدمة جديدة بالمنصة' : 'Add New Network Service'}</span>
+                          </>
+                        )}
+                      </h4>
+                      <button 
+                        onClick={() => {
+                          setShowAddServiceForm(false);
+                          setEditingService(null);
+                        }}
+                        className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right rtl:text-right ltr:text-left">
+                      {/* Service ID (disabled when editing) */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">
+                          {lang === 'ar' ? 'رمز تعريف الخدمة الفريد (ID - بالإنجليزية وممنوع المسافات):' : 'Unique Service ID (no spaces):'}
+                        </label>
+                        <input 
+                          type="text"
+                          disabled={!!editingService}
+                          placeholder="e.g. towing, plumber, battery"
+                          value={srvId}
+                          onChange={(e) => setSrvId(e.target.value)}
+                          className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs disabled:opacity-50 disabled:bg-slate-100"
+                        />
+                      </div>
+
+                      {/* Base Price */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">
+                          {lang === 'ar' ? 'السعر الأساسي التقديري (₪):' : 'Estimated Base Price (₪):'}
+                        </label>
+                        <input 
+                          type="number"
+                          placeholder="e.g. 150"
+                          value={srvBasePrice}
+                          onChange={(e) => setSrvBasePrice(Number(e.target.value) || 0)}
+                          className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-mono text-xs"
+                        />
+                      </div>
+
+                      {/* Name Arabic */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">
+                          {lang === 'ar' ? 'اسم الخدمة (بالعربية):' : 'Service Name (Arabic):'}
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="مثال: خدمة تصليح الإطارات"
+                          value={srvArName}
+                          onChange={(e) => setSrvArName(e.target.value)}
+                          className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs"
+                        />
+                      </div>
+
+                      {/* Name English */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">
+                          {lang === 'ar' ? 'اسم الخدمة (بالإنجليزية):' : 'Service Name (English):'}
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="e.g. Flat Tire Repair"
+                          value={srvName}
+                          onChange={(e) => setSrvName(e.target.value)}
+                          className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs"
+                        />
+                      </div>
+
+                      {/* Icon */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">
+                          {lang === 'ar' ? 'أيقونة الخدمة (رمز تعبيري Emoji):' : 'Service Icon (Emoji):'}
+                        </label>
+                        <input 
+                          type="text"
+                          placeholder="e.g. 🛠️, 🛞, ⚡"
+                          value={srvIcon}
+                          onChange={(e) => setSrvIcon(e.target.value)}
+                          className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 font-bold text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Description Arabic */}
+                    <div className="flex flex-col gap-1.5 text-right rtl:text-right ltr:text-left">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">
+                        {lang === 'ar' ? 'وصف تفصيلي للخدمة (بالعربية):' : 'Detailed Description (Arabic):'}
+                      </label>
+                      <textarea 
+                        rows={2}
+                        placeholder="اكتب وصفاً مختصراً يوضح ما تشمله هذه الخدمة للعميل..."
+                        value={srvArDesc}
+                        onChange={(e) => setSrvArDesc(e.target.value)}
+                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-amber-500 outline-none text-slate-800 text-xs font-medium"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      {editingService && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingService(null);
+                            setSrvId('');
+                            setSrvName('');
+                            setSrvArName('');
+                            setSrvDesc('');
+                            setSrvArDesc('');
+                            setSrvBasePrice(100);
+                            setSrvIcon('🛠️');
+                            setShowAddServiceForm(false);
+                          }}
+                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                        >
+                          {lang === 'ar' ? 'إلغاء التعديل' : 'Cancel Edit'}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleAddOrUpdateService}
+                        className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>
+                          {editingService 
+                            ? (lang === 'ar' ? 'حفظ تعديلات الخدمة 💾' : 'Save Service Changes 💾') 
+                            : (lang === 'ar' ? 'إضافة الخدمة الجديدة للشبكة 🚀' : 'Add New Service to Network 🚀')}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Services List / Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dbServices.map((srv) => (
+                    <div key={srv.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 relative text-right rtl:text-right ltr:text-left">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                        <span className="text-xl">{srv.icon || '🛠️'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full font-mono">
+                            {srv.basePrice} ₪
                           </span>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2 pt-1">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900">{srv.arName || srv.name}</h4>
+                        <p className="text-[10px] text-slate-500 font-semibold line-clamp-2 mt-1">{srv.arDescription || srv.description || (lang === 'ar' ? 'خدمة إنقاذ ومساعدة سريعة معتمدة بالشبكة.' : 'Certified emergency service.')}</p>
+                      </div>
+                      <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-200">
                         <button
-                          onClick={() => handleApprovePendingService(srv)}
-                          className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[10px] rounded-xl shadow-lg shadow-emerald-500/10 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                          onClick={() => handleEditService(srv)}
+                          className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                         >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>{lang === 'ar' ? 'موافقة ونشر بالشبكة' : 'Approve & Publish'}</span>
+                          <Edit className="w-3 h-3" />
+                          <span>{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
                         </button>
                         <button
-                          onClick={() => handleRejectPendingService(srv.id)}
-                          className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 border border-red-500/20 font-bold text-[10px] rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
+                          onClick={() => handleDeleteService(srv.id)}
+                          className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                         >
-                          <X className="w-3.5 h-3.5" />
-                          <span>{lang === 'ar' ? 'رفض' : 'Reject'}</span>
+                          <Trash2 className="w-3 h-3" />
+                          <span>{lang === 'ar' ? 'حذف' : 'Delete'}</span>
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
+
+                {/* Pending Custom Service Proposals */}
+                {pendingServices && pendingServices.length > 0 && (
+                  <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl space-y-3">
+                    <h4 className="text-xs font-black text-amber-700 flex items-center gap-2">
+                      <PlusCircle className="w-4 h-4 text-amber-500" />
+                      <span>{lang === 'ar' ? 'اقتراحات الخدمات الجديدة بانتظار الموافقة' : 'Pending Custom Service Proposals'}</span>
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {pendingServices.map((srv) => (
+                        <div key={srv.id} className="p-3 bg-white border border-slate-200 rounded-xl space-y-2 text-right">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-800">{srv.arName || srv.name}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">{(srv as any).estimatedPrice ? `${(srv as any).estimatedPrice} ₪` : 'حسب العرض'}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-600">{srv.arDescription || srv.description}</p>
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              onClick={() => handleApprovePendingService(srv)}
+                              className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-[10px] rounded-xl shadow-lg shadow-emerald-500/10 transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{lang === 'ar' ? 'موافقة ونشر بالشبكة' : 'Approve & Publish'}</span>
+                            </button>
+                            <button
+                              onClick={() => handleRejectPendingService(srv.id)}
+                              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 border border-red-500/20 font-bold text-[10px] rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>{lang === 'ar' ? 'رفض' : 'Reject'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
 
             {/* Website Support Tickets & Complaints Section */}
@@ -8081,7 +7883,6 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
         ) : (
           <div className="max-w-md mx-auto my-16 p-8 bg-[#0F1424] border border-gray-800 rounded-3xl shadow-2xl text-center space-y-6 animate-fade-in select-none">
                         <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-amber-500/5">
@@ -8119,8 +7920,8 @@ export default function App() {
                           </button>
                         </div>
                       </div>
-                    )
-                  )}
+        )
+      )}
 
       {/* Suggest Custom Service Modal */}
       {showCustomServiceModal && (

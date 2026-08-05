@@ -820,10 +820,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   {/* Customer Personal Info Card */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-4 rounded-xl border border-slate-200 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3 bg-white p-4 rounded-xl border border-slate-200 text-xs">
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'اسم المشتري:' : 'Customer Name:'}</span>
                       <span className="font-extrabold text-slate-900 text-sm">{ord.customerName}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'البريد الإلكتروني:' : 'Email Address:'}</span>
+                      <a
+                        href={`mailto:${ord.customerEmail || ord.userEmail || ''}`}
+                        className="font-mono font-bold text-amber-600 hover:underline text-xs block truncate"
+                        title={ord.customerEmail || ord.userEmail || ''}
+                      >
+                        {ord.customerEmail || ord.userEmail || (lang === 'ar' ? 'غير محدد' : 'N/A')}
+                      </a>
                     </div>
 
                     <div>
@@ -852,7 +863,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
 
                     {ord.notes && (
-                      <div className="md:col-span-4 pt-2 border-t border-slate-100">
+                      <div className="md:col-span-5 pt-2 border-t border-slate-100">
                         <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'ملاحظات العميل والتوصيل:' : 'Customer Notes:'}</span>
                         <p className="text-slate-700 font-semibold text-xs bg-amber-50/50 p-2 rounded-lg border border-amber-100">
                           {ord.notes}

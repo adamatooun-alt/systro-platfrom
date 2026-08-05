@@ -166,6 +166,8 @@ export interface StoreOrder {
   id: string;
   customerName: string;
   customerPhone: string;
+  customerEmail?: string;
+  userEmail?: string;
   customerAddress: string;
   paymentMethod: 'cash' | 'card' | 'escrow';
   notes?: string;
@@ -174,6 +176,5 @@ export interface StoreOrder {
   status: StoreOrderStatus;
   createdAt: number;
   createdAtFormatted?: string;
-  userEmail?: string;
 }
 

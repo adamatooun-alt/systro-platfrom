@@ -9,6 +9,7 @@ import {
   Sparkles, 
   ExternalLink, 
   Phone, 
+  Mail,
   Package, 
   Tag, 
   X, 
@@ -41,6 +42,7 @@ interface StoreTabProps {
   onNavigateToAdmin?: () => void;
   phoneNumber?: string;
   clientName?: string;
+  userEmail?: string;
 }
 
 const DEFAULT_PRODUCTS: Product[] = [
@@ -119,7 +121,8 @@ export const StoreTab: React.FC<StoreTabProps> = ({
   triggerToast,
   onNavigateToAdmin,
   phoneNumber,
-  clientName
+  clientName,
+  userEmail
 }) => {
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
   const [loading, setLoading] = useState<boolean>(false);
@@ -135,6 +138,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState<boolean>(false);
   const [custName, setCustName] = useState<string>(clientName || '');
   const [custPhone, setCustPhone] = useState<string>(phoneNumber || '');
+  const [custEmail, setCustEmail] = useState<string>(userEmail || '');
   const [custAddress, setCustAddress] = useState<string>('');
   const [custPaymentMethod, setCustPaymentMethod] = useState<'cash' | 'card' | 'escrow'>('cash');
   const [custNotes, setCustNotes] = useState<string>('');
@@ -146,11 +150,12 @@ export const StoreTab: React.FC<StoreTabProps> = ({
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState<boolean>(false);
   const [allOrders, setAllOrders] = useState<StoreOrder[]>([]);
 
-  // Keep customer name & phone synced if updated
+  // Keep customer name, phone & email synced if updated
   useEffect(() => {
     if (clientName && !custName) setCustName(clientName);
     if (phoneNumber && !custPhone) setCustPhone(phoneNumber);
-  }, [clientName, phoneNumber]);
+    if (userEmail && !custEmail) setCustEmail(userEmail);
+  }, [clientName, phoneNumber, userEmail]);
 
   // Sync real-time products from Firestore
   useEffect(() => {
@@ -315,10 +320,14 @@ export const StoreTab: React.FC<StoreTabProps> = ({
         image: item.product.image
       }));
 
+      const resolvedEmail = custEmail.trim() || userEmail || '';
+
       const newOrder: StoreOrder = {
         id: orderId,
         customerName: custName.trim(),
         customerPhone: custPhone.trim(),
+        customerEmail: resolvedEmail,
+        userEmail: resolvedEmail,
         customerAddress: custAddress.trim(),
         paymentMethod: custPaymentMethod,
         notes: custNotes.trim(),
@@ -354,8 +363,8 @@ export const StoreTab: React.FC<StoreTabProps> = ({
         : (lang === 'ar' ? 'محفظة الأمان المالي Escrow Vault 🔒' : 'Escrow Vault 🔒');
 
       const orderText = lang === 'ar'
-        ? `🛒 *طلب جديد من متجر سيسترو (رقم الطلب: #${orderId})*\n\n👤 *تفاصيل المشتري الشخصية:*\nالاسم: ${custName}\nرقم الهاتف: ${custPhone}\nالعنوان والمدينة: ${custAddress}\nطريقة الدفع: ${paymentLabel}\n${custNotes ? `ملاحظات: ${custNotes}\n` : ''}\n📦 *تفاصيل المنتجات المطلوبة:*\n${itemsListText}\n\n💰 *إجمالي المبلغ:* ${cartTotal} ₪\n\nيرجى تأكيد الطلب وبدء الشحن والتوصيل!`
-        : `🛒 *New Order from Systro Store (#${orderId})*\n\n👤 *Customer Details:*\nName: ${custName}\nPhone: ${custPhone}\nAddress: ${custAddress}\nPayment: ${paymentLabel}\n${custNotes ? `Notes: ${custNotes}\n` : ''}\n📦 *Items:*\n${itemsListText}\n\n💰 *Total:* ${cartTotal} ₪`;
+        ? `🛒 *طلب جديد من متجر سيسترو (رقم الطلب: #${orderId})*\n\n👤 *تفاصيل المشتري الشخصية:*\nالاسم: ${custName}\nرقم الهاتف: ${custPhone}\nالبريد الإلكتروني: ${resolvedEmail || 'غير محدد'}\nالعنوان والمدينة: ${custAddress}\nطريقة الدفع: ${paymentLabel}\n${custNotes ? `ملاحظات: ${custNotes}\n` : ''}\n📦 *تفاصيل المنتجات المطلوبة:*\n${itemsListText}\n\n💰 *إجمالي المبلغ:* ${cartTotal} ₪\n\nيرجى تأكيد الطلب وبدء الشحن والتوصيل!`
+        : `🛒 *New Order from Systro Store (#${orderId})*\n\n👤 *Customer Details:*\nName: ${custName}\nPhone: ${custPhone}\nEmail: ${resolvedEmail || 'N/A'}\nAddress: ${custAddress}\nPayment: ${paymentLabel}\n${custNotes ? `Notes: ${custNotes}\n` : ''}\n📦 *Items:*\n${itemsListText}\n\n💰 *Total:* ${cartTotal} ₪`;
 
       const encoded = encodeURIComponent(orderText);
       window.open(`https://wa.me/972599999999?text=${encoded}`, '_blank');
@@ -903,6 +912,21 @@ export const StoreTab: React.FC<StoreTabProps> = ({
                 />
               </div>
 
+              {/* Customer Email */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'البريد الإلكتروني للعميل (Email)' : 'Customer Email Address'}</span>
+                </label>
+                <input
+                  type="email"
+                  value={custEmail}
+                  onChange={(e) => setCustEmail(e.target.value)}
+                  placeholder={lang === 'ar' ? 'example@domain.com' : 'e.g. name@example.com'}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
               {/* Delivery Address */}
               <div className="space-y-1">
                 <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
@@ -1088,7 +1112,7 @@ export const StoreTab: React.FC<StoreTabProps> = ({
                       </div>
 
                       {/* Customer Info Card */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white p-3.5 rounded-xl border border-slate-100">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs bg-white p-3.5 rounded-xl border border-slate-100">
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'المشتري:' : 'Customer:'}</span>
                           <span className="font-extrabold text-slate-900">{ord.customerName}</span>
@@ -1096,6 +1120,12 @@ export const StoreTab: React.FC<StoreTabProps> = ({
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'رقم التواصل:' : 'Phone:'}</span>
                           <span className="font-mono font-bold text-slate-900">{ord.customerPhone}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'البريد الإلكتروني:' : 'Email:'}</span>
+                          <span className="font-mono font-bold text-slate-900 truncate block" title={ord.customerEmail || ord.userEmail || ''}>
+                            {ord.customerEmail || ord.userEmail || (lang === 'ar' ? 'غير محدد' : 'N/A')}
+                          </span>
                         </div>
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 block">{lang === 'ar' ? 'العنوان:' : 'Address:'}</span>
