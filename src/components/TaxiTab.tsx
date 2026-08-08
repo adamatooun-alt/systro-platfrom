@@ -589,8 +589,8 @@ export default function TaxiTab({
 
       triggerToast(
         lang === 'ar' 
-          ? '✅ تم إرسال طلب التكسي بنجاح! تم نشر المهمة في لوحة الفني وجاري البحث عن سائقين.' 
-          : '✅ Taxi request submitted! Task published to technician dashboard and sourcing drivers.', 
+          ? '✅ تم إرسال طلب التكسي بنجاح! جاري البحث عن سائقين قريبين.' 
+          : '✅ Taxi request submitted! Searching for nearby drivers.', 
         'success'
       );
     } catch (err) {

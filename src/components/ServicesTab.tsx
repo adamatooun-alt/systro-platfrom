@@ -197,7 +197,7 @@ export default function ServicesTab({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Left Column: Interactive Google Map for Location Pinning */}
-        <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
+        <div id="customer-map-section" className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
             <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
               <MapPin className="w-4 h-4 text-amber-500" />
@@ -323,84 +323,18 @@ export default function ServicesTab({
         <div className="lg:col-span-7 bg-[#111827]/60 border border-gray-800 p-6 rounded-3xl space-y-6 flex flex-col justify-between">
           <div className="space-y-6 text-right rtl:text-right ltr:text-left">
             
-            {/* Service Selection Cards & Dispatch Button when idle */}
+            {/* Service Dispatch Status when Idle */}
             {simStatus === 'idle' && (
-              <div className="space-y-5">
-                <div className="p-5 bg-[#0A0B10] border border-amber-500/30 rounded-3xl space-y-4 shadow-xl">
-                  <div className="flex items-center justify-between border-b border-gray-900 pb-3">
-                    <h3 className="text-sm font-black text-amber-400 flex items-center gap-2">
-                      <Wrench className="w-4 h-4 text-amber-500" />
-                      <span>{lang === 'ar' ? 'اختر نوع الخدمة المطلوبة 🚗' : 'Select Required Emergency Service 🚗'}</span>
-                    </h3>
-                    <span className="text-[10px] text-amber-300 font-bold bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-                      {lang === 'ar' ? 'بث حي وفوري' : 'Live Broadcast'}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-300 font-semibold leading-relaxed">
-                    {lang === 'ar' 
-                      ? 'حدد الخدمة المناسبة ليتم إنشاء مهمة ونشر بلاغ عاجل فوراً في المحادثة المباشرة ورادار الفنيين:' 
-                      : 'Choose service type to publish an immediate task alert into the live group chat & radar:'}
-                  </p>
-
-                  {/* Service Selection Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {servicesList.map(s => {
-                      const isSelected = selectedService === s.id;
-                      const Icon = s.icon;
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedService(s.id);
-                            triggerToast(lang === 'ar' ? `تم تحديد خدمة ${s.name}` : `Selected ${s.name}`, 'info');
-                          }}
-                          className={`p-3.5 rounded-2xl border transition-all text-right cursor-pointer flex flex-col justify-between gap-2.5 relative overflow-hidden shadow-sm ${
-                            isSelected 
-                              ? 'bg-amber-100 border-amber-500 shadow-md shadow-amber-500/20 ring-2 ring-amber-500/80' 
-                              : 'bg-white border-amber-200 hover:border-amber-400 hover:bg-amber-50/60'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className={`p-2 rounded-xl ${s.color} border border-amber-300 shadow-sm`}>
-                              <Icon className="w-4 h-4 shrink-0 text-slate-900" />
-                            </div>
-                            {isSelected ? (
-                              <span className="flex items-center gap-1 text-[10px] font-black bg-amber-500 text-black px-2 py-0.5 rounded-full shadow-sm">
-                                <span className="w-1.5 h-1.5 rounded-full bg-black animate-ping"></span>
-                                <span>{lang === 'ar' ? 'محدد' : 'Selected'}</span>
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="space-y-1">
-                            <span className="text-xs font-black block text-slate-900 leading-snug break-words">
-                              {s.name}
-                            </span>
-                            <span className="text-xs text-amber-800 font-mono font-black block">
-                              {s.basePrice} ₪
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Main Order & Broadcast Alert Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUserRole('client');
-                      if (triggerBidsSimulation) {
-                        triggerBidsSimulation(selectedService);
-                      }
-                    }}
-                    className="w-full py-4 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-amber-500/25 transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 border-2 border-amber-300 mt-2"
-                  >
-                    <Activity className="w-5 h-5 text-slate-950 animate-pulse" />
-                    <span>{lang === 'ar' ? 'اطلب الخدمة الآن ونشر بلاغ 🚀' : 'Order Service Now & Broadcast Alert 🚀'}</span>
-                  </button>
+              <div className="p-5 bg-[#0A0B10] border border-amber-500/30 rounded-3xl space-y-3 shadow-xl text-center">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-black rounded-full">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>{lang === 'ar' ? 'رادار الفنيين والخدمات مباشر 📡' : 'Live Technician Radar Active 📡'}</span>
                 </div>
+                <p className="text-xs text-gray-300 font-medium leading-relaxed">
+                  {lang === 'ar'
+                    ? 'الشبكة متصلة وتعمل بنجاح. حدد الخدمة من القائمة أدناه أو اضغط زر SOS المباشر للطلب.'
+                    : 'Network connected. Choose a service from the catalog below or press SOS.'}
+                </p>
               </div>
             )}
 
@@ -611,17 +545,44 @@ export default function ServicesTab({
                   </div>
 
                   <button 
+                    type="button"
                     onClick={() => {
+                      // Mandatory Requirement: Location must be pinned on map
+                      if (!pinnedLocation) {
+                        triggerToast(
+                          lang === 'ar' 
+                            ? '⚠️ يرجى تحديد موقعك على الخريطة أولاً لنشر الطلب بالمحادثة الجماعية! 📍' 
+                            : '⚠️ Please pin your location on the map first before publishing! 📍', 
+                          'warning'
+                        );
+                        const mapEl = document.getElementById('customer-map-section');
+                        if (mapEl) {
+                          mapEl.scrollIntoView({ behavior: 'smooth' });
+                        } else {
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                        return;
+                      }
+
                       setSelectedService(service.id);
                       setUserRole('client');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
                       if (triggerBidsSimulation) {
                         triggerBidsSimulation(service.id, service.basePrice);
                       }
+                      
+                      triggerToast(
+                        lang === 'ar' 
+                          ? '🚀 تم نشر الخدمة بنجاح وإرسال البلاغ فوراً للمحادثة الجماعية ورادار الفنيين!' 
+                          : '🚀 Task request published successfully to group chat & radar!', 
+                        'success'
+                      );
+
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-all cursor-pointer"
+                    className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs md:text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 border border-amber-300"
                   >
-                    {lang === 'ar' ? 'اطلب الخدمة الآن ونشر البلاغ 🚀' : 'Request Service & Broadcast Alert 🚀'}
+                    <span>🚀</span>
+                    <span>{lang === 'ar' ? 'نشر الخدمة بالمحادثة الجماعية' : 'Publish to Group Chat'}</span>
                   </button>
                 </div>
               </div>

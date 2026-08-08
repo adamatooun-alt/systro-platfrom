@@ -2832,7 +2832,11 @@ export default function App() {
       setAllRequests(prev => [newReqObj, ...prev.filter(r => r.id !== reqId)]);
       setActiveRequestId(reqId);
       setSimStatus('pending_bids');
-      setActiveTab('simulator');
+      if (userRole === 'technician') {
+        setActiveTab('simulator');
+      } else {
+        setActiveTab('services');
+      }
       try {
         localStorage.setItem('systro_active_request_id', reqId);
         sessionStorage.setItem('systro_active_request_id', reqId);
@@ -2848,8 +2852,8 @@ export default function App() {
 
       triggerToast(
         lang === 'ar' 
-          ? '🚀 تم نشر المهمة وإطلاق البلاغ بنجاح! جاري عرض الطلب والرادار المباشر.' 
-          : '🚀 Task published & broadcast successfully! Displaying live radar view.',
+          ? '🚀 تم إرسال الطلب بنجاح! جاري عرض الطلب والرادار المباشر.' 
+          : '🚀 Request sent successfully! Displaying live radar view.',
         'success'
       );
 
@@ -4778,38 +4782,31 @@ export default function App() {
 
       {/* TOP NAVBAR HEADER */}
       <header className="sticky top-0 z-40 bg-[#0A0B10]/95 backdrop-blur-md border-b border-[#1E293B]/70 select-none">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 min-h-[5.25rem] py-2 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
           
           {/* Logo Brand matching Images */}
-          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
-            <img src="/icon.svg" alt="Systro Logo" className="w-12 h-12 rounded-2xl shadow-lg shadow-sky-500/20 object-contain shrink-0 border border-sky-400/30" />
-            <div className="flex flex-col justify-center gap-0.5">
-              <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-300 to-blue-500 drop-shadow-[0_1px_2px_rgba(14,165,233,0.15)] leading-tight">
-                {t.logoTitle} <span className="text-sky-400 font-black">{t.logoRescue}</span>
-              </h1>
-              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-sky-400/80 block uppercase leading-none">
-                {t.logoSub}
+          <div className="flex items-center gap-2.5 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
+            <img src="/icon.svg" alt="Systro Logo" className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl shadow-md shadow-sky-500/20 object-contain shrink-0 border border-sky-400/30" />
+            
+            {/* Compact User Name Badge Box */}
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isLoggedIn) {
+                  setShowProfileModal(true);
+                } else {
+                  handleRealGoogleSignIn();
+                }
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-[11px] font-black text-sky-300 bg-blue-500/15 border border-blue-500/30 hover:border-blue-500/60 hover:bg-blue-500/25 shadow-sm rounded-lg max-w-[160px] sm:max-w-[220px] truncate select-none transition-all cursor-pointer"
+              title={isLoggedIn ? (loggedInUserName || loggedInUserEmail) : (lang === 'ar' ? 'اضغط لتسجيل الدخول' : 'Click to sign in')}
+            >
+              <span className={`w-2 h-2 rounded-full shrink-0 ${isLoggedIn ? 'bg-emerald-400 animate-pulse' : 'bg-sky-400'}`}></span>
+              <span className="truncate">
+                {isLoggedIn 
+                  ? (loggedInUserName || loggedInUserEmail || (lang === 'ar' ? 'المستخدم' : 'User'))
+                  : (lang === 'ar' ? '👤 تسجيل الدخول' : lang === 'he' ? '👤 התחבר' : '👤 Sign In')}
               </span>
-              {/* User Name Badge Box - Stacked Vertically Under Systro Logo & Title */}
-              <div 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isLoggedIn) {
-                    setShowProfileModal(true);
-                  } else {
-                    handleRealGoogleSignIn();
-                  }
-                }}
-                className="mt-1 flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-[11px] font-black text-sky-300 bg-blue-500/15 border border-blue-500/30 hover:border-blue-500/60 hover:bg-blue-500/25 shadow-sm rounded-lg w-fit max-w-[200px] truncate select-none transition-all cursor-pointer"
-                title={isLoggedIn ? (loggedInUserName || loggedInUserEmail) : (lang === 'ar' ? 'اضغط لتسجيل الدخول' : 'Click to sign in')}
-              >
-                <span className={`w-2 h-2 rounded-full shrink-0 ${isLoggedIn ? 'bg-emerald-400 animate-pulse' : 'bg-sky-400'}`}></span>
-                <span className="truncate">
-                  {isLoggedIn 
-                    ? (loggedInUserName || loggedInUserEmail || (lang === 'ar' ? 'المستخدم' : 'User'))
-                    : (lang === 'ar' ? '👤 تسجيل الدخول' : lang === 'he' ? '👤 התחבר' : '👤 Sign In')}
-                </span>
-              </div>
             </div>
           </div>
 
@@ -5681,22 +5678,97 @@ export default function App() {
                   </form>
                 )}
 
-                {/* Public Group Chat */}
+                {/* Active Emergency Rescue Dispatch Radar & Requests Queue */}
                 <div id="technician-rescue-alerts-list" className="space-y-4 pt-2">
-                  <PublicGroupChat 
-                    lang={lang} 
-                    currentUserRole={userRole || 'technician'}
-                    currentUserName={loggedInUserName || activeTechDoc?.name || (lang === 'ar' ? 'فني معتمد' : 'Technician')}
-                    currentUserEmail={loggedInUserEmail}
-                    currentUserAvatar={providerAvatar || activeTechDoc?.avatar || userAvatar}
-                  />
+                  <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                    <h4 className="text-xs md:text-sm font-black text-amber-400 flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping"></span>
+                      <span>{lang === 'ar' ? '📋 رادار وبلاغات الطوارئ النشطة للفنيين:' : '📋 Active Rescue Dispatch Radar:'}</span>
+                    </h4>
+                    <span className="text-[10px] text-gray-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                      {lang === 'ar' ? `المهمات المعلقة (${allRequests.filter(isPendingForTechnician).length})` : `Pending Tasks (${allRequests.filter(isPendingForTechnician).length})`}
+                    </span>
+                  </div>
+
+                  {allRequests.filter(isPendingForTechnician).length > 0 ? (
+                    <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                      {allRequests.filter(isPendingForTechnician).map((req) => (
+                        <div key={req.id} className="p-4 bg-[#0A0B10] border-2 border-amber-500/40 rounded-2xl space-y-3 hover:border-amber-400 transition-all shadow-lg text-right rtl:text-right ltr:text-left">
+                          <div className="flex items-center justify-between border-b border-gray-900 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-1 bg-amber-500 text-slate-950 font-black text-[10px] rounded-lg shadow">
+                                ⚡ {getServiceArName(req.serviceType)}
+                              </span>
+                              <span className="text-xs font-black text-white">
+                                {req.clientName || (lang === 'ar' ? 'زبون طوارئ' : 'Client')}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono text-emerald-400 font-black bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                              {req.approximatePrice || 150} ₪
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-gray-300 space-y-1 font-semibold">
+                            {req.description && (
+                              <p className="text-amber-200/90 text-[11px] bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
+                                💬 {req.description}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between text-[10px] text-gray-400 pt-1">
+                              <span>📍 {lang === 'ar' ? 'الموقع المباشر: محدد على الخريطة' : 'Live Pin Location'}</span>
+                              <span>🕒 {req.timestamp ? new Date(req.timestamp).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : (lang === 'ar' ? 'الآن' : 'Just now')}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-gray-900">
+                            {req.clientPhone && (
+                              <a
+                                href={`https://wa.me/${req.clientPhone.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1"
+                              >
+                                📱 WhatsApp
+                              </a>
+                            )}
+
+                            <button
+                              onClick={() => {
+                                setActiveRequestId(req.id);
+                                setTechBidPrice(Number(req.approximatePrice || 150));
+                                setTechBidEta(15);
+                                triggerToast(lang === 'ar' ? 'تم اختيار المهمة وسحب التفاصيل!' : 'Selected task details!', 'info');
+                              }}
+                              className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1"
+                            >
+                              ⚡ {lang === 'ar' ? 'الاستجابة وتقديم عرض 🏷️' : 'Respond & Submit Bid 🏷️'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-5 bg-[#0A0B10] border border-gray-850 rounded-2xl text-center space-y-2">
+                      <div className="w-10 h-10 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-black">
+                        ✓
+                      </div>
+                      <h5 className="text-xs font-black text-white">
+                        {lang === 'ar' ? '🟢 رادار العمليات متصل وجاهز' : '🟢 Dispatch Radar Connected & Ready'}
+                      </h5>
+                      <p className="text-[11px] text-gray-400 font-semibold max-w-md mx-auto leading-relaxed">
+                        {lang === 'ar' 
+                          ? 'لا توجد بلاغات طوارئ جديدة بانتظار الاستجابة حالياً. سيتم إطلاق تنبيه صوتي فور نشر أي زبون لبلاغ خدمات جديد!'
+                          : 'No pending emergency requests awaiting dispatch right now. Alarm audio will sound when a client posts a new request!'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Technician Roadside Emergency Equipment Checklist */}
-          <div className="p-5 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 shadow-xl text-right select-none col-span-full mt-6">
+          <div className="p-5 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 shadow-xl text-right select-none col-span-full">
             <div className="flex items-center justify-between border-b border-gray-900 pb-3">
               <h4 className="text-xs font-black text-amber-400 flex items-center gap-2">
                 <Wrench className="w-4 h-4 text-amber-500" />
@@ -5725,6 +5797,17 @@ export default function App() {
                 <span>{lang === 'ar' ? 'مثلث عاكس وكشاف طوارئ' : 'Safety Triangle & Flashlight'}</span>
               </div>
             </div>
+          </div>
+
+          {/* Live Public Group Chat section at bottom of Technician Tab */}
+          <div className="pt-8 border-t border-gray-900 col-span-full">
+            <PublicGroupChat 
+              lang={lang} 
+              currentUserRole={userRole || 'technician'}
+              currentUserName={loggedInUserName || activeTechDoc?.name || (lang === 'ar' ? 'فني معتمد' : 'Technician')}
+              currentUserEmail={loggedInUserEmail}
+              currentUserAvatar={providerAvatar || activeTechDoc?.avatar || userAvatar}
+            />
           </div>
 
         </div>
