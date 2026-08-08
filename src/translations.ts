@@ -124,9 +124,9 @@ export interface Dictionary {
 
 export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
   ar: {
-    logoTitle: "سيسترو",
-    logoRescue: "",
-    logoSub: "SYSTRO",
+    logoTitle: "نظام سيسترو",
+    logoRescue: "| Systro",
+    logoSub: "SYSTRO SYSTEM",
     home: "الرئيسية",
     services: "خدماتنا",
     simulator: "العمليات",
@@ -246,9 +246,9 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     adminNoEscrows: "لا توجد ودائع معلقة حالياً في النظام."
   },
   en: {
-    logoTitle: "SYSTRO",
-    logoRescue: "",
-    logoSub: "SYSTRO",
+    logoTitle: "Systro System",
+    logoRescue: "| نظام سيسترو",
+    logoSub: "SYSTRO SYSTEM",
     home: "Home",
     services: "Our Services",
     simulator: "Emergency Rescue Portal",
@@ -368,9 +368,9 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     adminNoEscrows: "There are currently no active escrow holdings in the system."
   },
   he: {
-    logoTitle: "סיסטרו",
-    logoRescue: "",
-    logoSub: "SYSTRO",
+    logoTitle: "מערכת סיסטרו",
+    logoRescue: "| Systro",
+    logoSub: "SYSTRO SYSTEM",
     home: "ראשי",
     services: "השירותים שלנו",
     simulator: "פורטל קריאות חירום",

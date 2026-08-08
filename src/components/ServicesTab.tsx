@@ -323,74 +323,85 @@ export default function ServicesTab({
         <div className="lg:col-span-7 bg-[#111827]/60 border border-gray-800 p-6 rounded-3xl space-y-6 flex flex-col justify-between">
           <div className="space-y-6 text-right rtl:text-right ltr:text-left">
             
-            {/* Header & Service selection */}
-            <div className="space-y-2">
-              <h3 className="text-lg font-black text-white flex items-center gap-2">
-                <Wrench className="w-5 h-5 text-amber-500" />
-                <span>{lang === 'ar' ? 'طلب خدمة إنقاذ وطوارئ سريعة 🚗' : 'Request Rapid Emergency Assistance 🚗'}</span>
-              </h3>
-              <p className="text-xs text-slate-300 font-semibold">
-                {lang === 'ar' 
-                  ? 'حدد نوع الخدمة المطلوبة وموقعك ليصلك عروض الفنيين القريبين منك فوراً:' 
-                  : 'Select service type and pin location to get instant technician quotes:'}
-              </p>
-            </div>
+            {/* Service Selection Cards & Dispatch Button when idle */}
+            {simStatus === 'idle' && (
+              <div className="space-y-5">
+                <div className="p-5 bg-[#0A0B10] border border-amber-500/30 rounded-3xl space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-gray-900 pb-3">
+                    <h3 className="text-sm font-black text-amber-400 flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-amber-500" />
+                      <span>{lang === 'ar' ? 'اختر نوع الخدمة المطلوبة 🚗' : 'Select Required Emergency Service 🚗'}</span>
+                    </h3>
+                    <span className="text-[10px] text-amber-300 font-bold bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                      {lang === 'ar' ? 'بث حي وفوري' : 'Live Broadcast'}
+                    </span>
+                  </div>
 
-            {/* Service Selection Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {servicesList.map(s => {
-                const isSelected = selectedService === s.id;
-                const Icon = s.icon;
-                return (
+                  <p className="text-xs text-slate-300 font-semibold leading-relaxed">
+                    {lang === 'ar' 
+                      ? 'حدد الخدمة المناسبة ليتم إنشاء مهمة ونشر بلاغ عاجل فوراً في المحادثة المباشرة ورادار الفنيين:' 
+                      : 'Choose service type to publish an immediate task alert into the live group chat & radar:'}
+                  </p>
+
+                  {/* Service Selection Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {servicesList.map(s => {
+                      const isSelected = selectedService === s.id;
+                      const Icon = s.icon;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedService(s.id);
+                            triggerToast(lang === 'ar' ? `تم تحديد خدمة ${s.name}` : `Selected ${s.name}`, 'info');
+                          }}
+                          className={`p-3.5 rounded-2xl border transition-all text-right cursor-pointer flex flex-col justify-between gap-2.5 relative overflow-hidden shadow-sm ${
+                            isSelected 
+                              ? 'bg-amber-100 border-amber-500 shadow-md shadow-amber-500/20 ring-2 ring-amber-500/80' 
+                              : 'bg-white border-amber-200 hover:border-amber-400 hover:bg-amber-50/60'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className={`p-2 rounded-xl ${s.color} border border-amber-300 shadow-sm`}>
+                              <Icon className="w-4 h-4 shrink-0 text-slate-900" />
+                            </div>
+                            {isSelected ? (
+                              <span className="flex items-center gap-1 text-[10px] font-black bg-amber-500 text-black px-2 py-0.5 rounded-full shadow-sm">
+                                <span className="w-1.5 h-1.5 rounded-full bg-black animate-ping"></span>
+                                <span>{lang === 'ar' ? 'محدد' : 'Selected'}</span>
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-xs font-black block text-slate-900 leading-snug break-words">
+                              {s.name}
+                            </span>
+                            <span className="text-xs text-amber-800 font-mono font-black block">
+                              {s.basePrice} ₪
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Main Order & Broadcast Alert Button */}
                   <button
-                    key={s.id}
                     type="button"
                     onClick={() => {
-                      setSelectedService(s.id);
-                      triggerToast(lang === 'ar' ? `تم اختيار خدمة ${s.name}` : `Selected ${s.name}`, 'info');
+                      setUserRole('client');
+                      if (triggerBidsSimulation) {
+                        triggerBidsSimulation(selectedService);
+                      }
                     }}
-                    className={`p-3.5 sm:p-4 rounded-2xl border transition-all text-right cursor-pointer flex flex-col justify-between gap-3 relative overflow-hidden shadow-sm ${
-                      isSelected 
-                        ? 'bg-amber-100 border-amber-500 shadow-md shadow-amber-500/20 ring-2 ring-amber-500/80' 
-                        : 'bg-white border-amber-200 hover:border-amber-400 hover:bg-amber-50/60'
-                    }`}
+                    className="w-full py-4 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-amber-500/25 transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-95 border-2 border-amber-300 mt-2"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className={`p-2.5 rounded-xl ${s.color} border border-amber-300 shadow-sm`}>
-                        <Icon className="w-5 h-5 shrink-0 text-slate-900" />
-                      </div>
-                      {isSelected ? (
-                        <span className="flex items-center gap-1 text-[10px] font-black bg-amber-500 text-black px-2 py-0.5 rounded-full shadow-sm">
-                          <span className="w-1.5 h-1.5 rounded-full bg-black animate-ping"></span>
-                          <span>{lang === 'ar' ? 'محدد' : 'Selected'}</span>
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs sm:text-sm font-black block text-slate-900 leading-snug break-words">
-                        {s.name}
-                      </span>
-                      <span className="text-xs text-amber-800 font-mono font-black block">
-                        {s.basePrice} ₪
-                      </span>
-                    </div>
+                    <Activity className="w-5 h-5 text-slate-950 animate-pulse" />
+                    <span>{lang === 'ar' ? 'اطلب الخدمة الآن ونشر بلاغ 🚀' : 'Order Service Now & Broadcast Alert 🚀'}</span>
                   </button>
-                );
-              })}
-            </div>
-
-            {/* Submit Rescue Request Button */}
-            {simStatus === 'idle' && (
-              <button
-                onClick={() => {
-                  setUserRole('client');
-                  triggerBidsSimulation();
-                }}
-                className="w-full py-4 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 hover:from-orange-400 hover:to-amber-400 text-black font-black text-sm rounded-2xl shadow-xl shadow-orange-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
-              >
-                <Activity className="w-5 h-5 animate-pulse" />
-                <span>{lang === 'ar' ? 'إرسال طلب الإنقاذ وتفعيل رادار الفنيين 🚀' : 'Send Rescue Request & Broadcast Alert 🚀'}</span>
-              </button>
+                </div>
+              </div>
             )}
 
             {/* ACTIVE CUSTOMER REQUEST TRACKER & BIDS CONTROL */}

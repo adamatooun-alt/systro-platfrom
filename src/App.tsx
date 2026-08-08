@@ -94,7 +94,7 @@ import {
   Calendar,
   Building2
 } from 'lucide-react';
-import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification } from './types';
+import { ServiceType, RequestStatus, RescueRequest, Technician, Bid, ChatMsg, SystemStats, InAppNotification, PublicGroupMessage } from './types';
 import TrustPortal from './components/TrustPortal';
 import SmtpConfigPanel from './components/SmtpConfigPanel';
 import WhatsAppConfigPanel from './components/WhatsAppConfigPanel';
@@ -2771,6 +2771,62 @@ export default function App() {
         console.warn("API post request notice:", apiErr);
       }
 
+      // 1c. Automatically Post Task Alert Message into Live Public Group Chat
+      const serviceArMap: Record<string, string> = {
+        fuel: 'توصيل وتزويد بالوقود ⛽',
+        locksmith: 'فتح أقفال وسيارات مغلقة 🔑',
+        mechanic: 'صيانة وتصحيح أعطال ميكانيكية 🛠️',
+        towing: 'سحب ونقل المركبات (وينش) 🚚',
+        battery: 'شحن واستبدال البطارية ⚡',
+        taxi: 'حجز تكسي وسفريات VIP 🚕'
+      };
+      const srvNameAr = serviceArMap[targetService] || 'خدمة إغاثة وإنقاذ 🚗';
+
+      const chatTaskMsg: PublicGroupMessage = {
+        id: `msg_task_${reqId}`,
+        senderName: newReqObj.clientName,
+        senderEmail: newReqObj.requestedBy || '',
+        senderRole: 'client',
+        text: `🚨 [بلاغ عاجل - طلب خدمة جديد]
+🛠️ الخدمة المطلوبة: ${srvNameAr}
+💰 التكلفة المقدرة: ${targetPrice} ₪
+👤 اسم الزبون: ${newReqObj.clientName}
+📞 رقم التواصل: ${newReqObj.clientPhone}
+📍 الموقع الإحداثيات: ${newReqObj.arLocationName} (Lat: ${latVal.toFixed(2)}, Lng: ${lngVal.toFixed(2)})
+📝 التفاصيل: ${targetDesc || 'طلب خدمة صيانة وإغاثة طارئة'}
+معرف المهمة: #${reqId}`,
+        timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+        createdTime: Date.now(),
+        isTaskAlert: true,
+        taskId: reqId,
+        serviceType: targetService,
+        serviceName: srvNameAr,
+        price: Number(targetPrice),
+        clientPhone: newReqObj.clientPhone,
+        locationName: `${newReqObj.arLocationName} (${latVal.toFixed(2)}, ${lngVal.toFixed(2)})`,
+        taskStatus: 'pending'
+      };
+
+      try {
+        fetch('/api/public-group-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: chatTaskMsg })
+        }).catch(err => console.warn("Public group chat post error:", err));
+
+        setDoc(doc(db, "public_group_chat", chatTaskMsg.id), chatTaskMsg).catch(err => console.warn("Firestore chat write error:", err));
+
+        window.dispatchEvent(new CustomEvent('systro_chat_update', { detail: chatTaskMsg }));
+
+        if ('BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('systro_chat_channel_v2');
+          bc.postMessage({ type: 'NEW_MESSAGE', message: chatTaskMsg });
+          bc.close();
+        }
+      } catch (chatErr) {
+        console.warn("Error posting task to public chat:", chatErr);
+      }
+
       // 2. Update local state, liveRequest, activeRequestId, simStatus, and switch to simulator tab
       setLiveRequest(newReqObj);
       setAllRequests(prev => [newReqObj, ...prev.filter(r => r.id !== reqId)]);
@@ -4726,59 +4782,33 @@ export default function App() {
           
           {/* Logo Brand matching Images */}
           <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
-            <div className="w-11 h-11 relative rounded-xl overflow-hidden p-[1px] bg-gradient-to-tr from-blue-400 via-cyan-300 to-teal-400 shadow-md flex items-center justify-center shrink-0 border border-cyan-300/20">
-              <div className="absolute inset-0 bg-gradient-to-tr from-[#1E3A8A] via-[#2563EB] to-[#06B6D4] rounded-[10px] overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-1/2 bg-white/10 rounded-t-[10px] filter blur-[0.5px]"></div>
+            <div className="w-12 h-12 relative rounded-2xl overflow-hidden p-[1.5px] bg-gradient-to-tr from-blue-600 via-sky-400 to-blue-400 shadow-lg shadow-blue-500/25 flex items-center justify-center shrink-0 border border-sky-300/30">
+              <div className="absolute inset-0 bg-gradient-to-b from-[#0B152C] via-[#0D1B3E] to-[#060B18] rounded-[14px] overflow-hidden flex items-center justify-center">
+                <svg className="w-10 h-10" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Outer Dashed Golden Circle Ring */}
+                  <circle cx="256" cy="256" r="215" fill="none" stroke="#F59E0B" strokeWidth="18" strokeDasharray="26 14" opacity="0.95" />
+                  {/* Inner Blue Dash Ring */}
+                  <circle cx="256" cy="256" r="186" fill="none" stroke="#38BDF8" strokeWidth="4" strokeDasharray="8 8" opacity="0.6" />
+                  {/* Central Golden Shield */}
+                  <g transform="translate(116, 96) scale(0.55)">
+                    <path d="M256 32 L420 96 V224 C420 340 336 438 256 480 C176 438 92 340 92 224 V96 L256 32 Z" fill="url(#goldGradHeader)" stroke="#FEF08A" strokeWidth="12" />
+                    <path d="M275 110 L165 270 H260 L235 410 L345 250 H250 L275 110 Z" fill="#0D1B3E" stroke="#060B18" strokeWidth="3" />
+                  </g>
+                  <defs>
+                    <linearGradient id="goldGradHeader" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#FDE047" />
+                      <stop offset="50%" stopColor="#F59E0B" />
+                      <stop offset="100%" stopColor="#D97706" />
+                    </linearGradient>
+                  </defs>
+                </svg>
               </div>
-              <svg className="w-7 h-7 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <filter id="shadow-nav" x="-10%" y="-10%" width="120%" height="120%">
-                    <feDropShadow dx="0" dy="2" stdDeviation="1.5" floodColor="#1E3A8A" floodOpacity="0.5" />
-                  </filter>
-                  <linearGradient id="sGrad-nav" x1="10%" y1="0%" x2="90%" y2="100%">
-                    <stop offset="0%" stopColor="#FFFFFF" />
-                    <stop offset="50%" stopColor="#E0F2FE" />
-                    <stop offset="100%" stopColor="#38BDF8" />
-                  </linearGradient>
-                </defs>
-                <path d="M15 70 C 35 85, 70 65, 85 40" stroke="#FFFFFF" strokeWidth="1.5" strokeOpacity="0.2" strokeDasharray="3 3" />
-                <path d="M20 55 C 40 70, 75 55, 80 25" stroke="#38BDF8" strokeWidth="1.2" strokeOpacity="0.35" />
-                <circle cx="85" cy="40" r="3.5" fill="#FFFFFF" />
-                <circle cx="80" cy="25" r="2.5" fill="#38BDF8" />
-                <circle cx="20" cy="55" r="3" fill="#38BDF8" />
-                <circle cx="33" cy="67" r="4" fill="#E0F2FE" />
-                <circle cx="15" cy="70" r="2" fill="#FFFFFF" />
-                <circle cx="68" cy="35" r="4.5" fill="#FFFFFF" />
-                <path 
-                  d="M 75,32 
-                     C 70,22  45,22  32,28 
-                     C 20,34  22,46  38,48 
-                     C 58,50  78,48  74,68 
-                     C 70,82  42,84  25,74" 
-                  stroke="url(#sGrad-nav)" 
-                  strokeWidth="11" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                  filter="url(#shadow-nav)"
-                />
-                <path 
-                  d="M 70,30 
-                     C 66,24  46,24  35,29 
-                     C 25,34  26,44  39,46 
-                     C 56,48  73,46  71,64 
-                     C 68,76  44,78  28,70" 
-                  stroke="#FFFFFF" 
-                  strokeWidth="3" 
-                  strokeLinecap="round"
-                  strokeOpacity="0.85"
-                />
-              </svg>
             </div>
             <div className="flex flex-col justify-center gap-0.5">
-              <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-cyan-400 to-blue-500 drop-shadow-[0_1px_2px_rgba(14,165,233,0.15)] leading-tight">
+              <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-300 to-blue-500 drop-shadow-[0_1px_2px_rgba(14,165,233,0.15)] leading-tight">
                 {t.logoTitle} <span className="text-sky-400 font-black">{t.logoRescue}</span>
               </h1>
-              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-cyan-400/80 block uppercase leading-none">
+              <span className="text-[8px] sm:text-[9px] font-mono font-bold tracking-widest text-sky-400/80 block uppercase leading-none">
                 {t.logoSub}
               </span>
               {/* User Name Badge Box - Stacked Vertically Under Systro Logo & Title */}
@@ -4791,10 +4821,10 @@ export default function App() {
                     handleRealGoogleSignIn();
                   }
                 }}
-                className="mt-1 flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-[11px] font-black text-amber-300 bg-amber-500/15 border border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/25 shadow-sm rounded-lg w-fit max-w-[200px] truncate select-none transition-all cursor-pointer"
+                className="mt-1 flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-[11px] font-black text-sky-300 bg-blue-500/15 border border-blue-500/30 hover:border-blue-500/60 hover:bg-blue-500/25 shadow-sm rounded-lg w-fit max-w-[200px] truncate select-none transition-all cursor-pointer"
                 title={isLoggedIn ? (loggedInUserName || loggedInUserEmail) : (lang === 'ar' ? 'اضغط لتسجيل الدخول' : 'Click to sign in')}
               >
-                <span className={`w-2 h-2 rounded-full shrink-0 ${isLoggedIn ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                <span className={`w-2 h-2 rounded-full shrink-0 ${isLoggedIn ? 'bg-emerald-400 animate-pulse' : 'bg-sky-400'}`}></span>
                 <span className="truncate">
                   {isLoggedIn 
                     ? (loggedInUserName || loggedInUserEmail || (lang === 'ar' ? 'المستخدم' : 'User'))
@@ -4817,10 +4847,10 @@ export default function App() {
           )}
 
           {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 bg-gradient-to-r from-orange-600 to-amber-600 p-1 rounded-xl border border-orange-500/25 shrink-0 shadow-lg shadow-orange-500/10">
+          <nav className="hidden md:flex items-center gap-1 bg-gradient-to-r from-blue-800 via-blue-600 to-sky-600 p-1 rounded-xl border border-blue-400/30 shrink-0 shadow-lg shadow-blue-500/15">
             <button 
               onClick={() => setActiveTab('home')}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'home' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'home' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
               {t.home}
             </button>
@@ -4830,7 +4860,7 @@ export default function App() {
                 sessionStorage.setItem('systro_user_role', 'client');
                 setActiveTab('services');
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'services' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'services' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
               {lang === 'ar' ? 'الخدمات (الزبون) 👤' : t.services}
             </button>
@@ -4840,7 +4870,7 @@ export default function App() {
                 sessionStorage.setItem('systro_user_role', 'technician');
                 setActiveTab('simulator');
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
               {lang === 'ar' ? 'العمليات (الفني) 🛠️' : t.simulator}
             </button>
@@ -4850,7 +4880,7 @@ export default function App() {
                 setActiveTab('world');
                 setIsLeftMenuOpen(true);
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'world' || isLeftMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'world' || isLeftMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
               {lang === 'ar' ? 'عالم 🌐' : lang === 'he' ? 'עולם 🌐' : 'World 🌐'}
             </button>
@@ -4858,7 +4888,7 @@ export default function App() {
               onClick={() => {
                 setActiveTab('store');
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'store' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'store' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
               {lang === 'ar' ? 'المتجر 🛒' : lang === 'he' ? 'חנות 🛒' : 'Store 🛒'}
             </button>
@@ -6410,581 +6440,20 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Active client requests & task orders dispatch queue */}
-                      <div id="technician-rescue-alerts-list" className="space-y-4">
-                        {(() => {
-                          const pendingTechTasks = allRequests.filter(isPendingForTechnician);
-                          const isRescueTaskItem = (r: RescueRequest) => r.serviceType === 'towing' || r.serviceType === 'battery' || Boolean(r.isEmergency);
-                          const rescueList = pendingTechTasks.filter(isRescueTaskItem);
-                          const generalList = pendingTechTasks.filter(r => !isRescueTaskItem(r));
-                          const currentDisplayedTasks = techTaskCategoryTab === 'rescue' 
-                            ? rescueList 
-                            : techTaskCategoryTab === 'tasks' 
-                            ? generalList 
-                            : pendingTechTasks;
-
-                          return (
-                            <>
-                              <div className="border-b border-gray-900 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0A0D18] p-4 rounded-2xl border border-amber-500/20 shadow-md">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="text-sm font-black text-white tracking-wide flex items-center gap-2">
-                                      <Briefcase className="w-4 h-4 text-amber-400" />
-                                      <span>{lang === 'ar' ? '📋 رادار وبوابة استعراض المهمات والطلبات:' : '📋 Task Orders & Rescue Dispatch Radar:'}</span>
-                                    </h4>
-                                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono">
-                                      {pendingTechTasks.length} {lang === 'ar' ? 'مهمة حية' : 'LIVE TASKS'}
-                                    </span>
-                                  </div>
-                                  <p className="text-[10px] text-gray-400 mt-1 font-semibold">
-                                    {lang === 'ar' ? 'تم تنظيم وتصنيف المهمات في قائمة الإنقاذ والإنعاش الفوري وقائمة المهام والخدمات العامة.' : 'Tasks organized into Emergency Rescue List & General Task Orders List.'}
-                                  </p>
-
-                                  {/* Dual Task Lists Selector Tabs */}
-                                  <div className="flex items-center gap-2 mt-3 flex-wrap">
-                                    <button
-                                      type="button"
-                                      onClick={() => setTechTaskCategoryTab('all')}
-                                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border ${
-                                        techTaskCategoryTab === 'all'
-                                          ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
-                                          : 'bg-[#111625] text-gray-300 border-gray-800 hover:border-gray-700'
-                                      }`}
-                                    >
-                                      <span>🌐 {lang === 'ar' ? 'جميع المهمات المذاعة' : 'All Tasks'}</span>
-                                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${techTaskCategoryTab === 'all' ? 'bg-slate-950 text-amber-300' : 'bg-gray-800 text-gray-300'}`}>
-                                        {pendingTechTasks.length}
-                                      </span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => setTechTaskCategoryTab('rescue')}
-                                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border ${
-                                        techTaskCategoryTab === 'rescue'
-                                          ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-950/40'
-                                          : 'bg-red-950/20 text-red-300 border-red-900/40 hover:bg-red-950/40'
-                                      }`}
-                                    >
-                                      <span>🚨 {lang === 'ar' ? 'قائمة الإنقاذ والإنعاش' : 'Rescue Tasks List'}</span>
-                                      <span className="px-1.5 py-0.2 bg-red-900/80 text-red-200 rounded-full text-[10px] font-mono">
-                                        {rescueList.length}
-                                      </span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => setTechTaskCategoryTab('tasks')}
-                                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border ${
-                                        techTaskCategoryTab === 'tasks'
-                                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-950/40'
-                                          : 'bg-emerald-950/20 text-emerald-300 border-emerald-900/40 hover:bg-emerald-950/40'
-                                      }`}
-                                    >
-                                      <span>📋 {lang === 'ar' ? 'قائمة ظهور واستعراض المهام' : 'General Task Orders List'}</span>
-                                      <span className="px-1.5 py-0.2 bg-emerald-900/80 text-emerald-200 rounded-full text-[10px] font-mono">
-                                        {generalList.length}
-                                      </span>
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 shrink-0 flex-wrap self-start sm:self-center">
-                                  <button
-                                    type="button"
-                                    onClick={handleManualRefreshRequests}
-                                    className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-amber-600 shrink-0"
-                                    title={lang === 'ar' ? 'تحديث وتفقد قائمة المهمات الآن' : 'Refresh live task orders now'}
-                                  >
-                                    <RefreshCw className="w-3.5 h-3.5 text-slate-950" />
-                                    <span className="text-slate-950">{lang === 'ar' ? 'تحديث المهمات 🔄' : 'Refresh Tasks 🔄'}</span>
-                                  </button>
-                                </div>
-                              </div>
-
-                              {currentDisplayedTasks.length === 0 ? (
-                                <div className="p-8 text-center bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-3">
-                                  <div className="w-12 h-12 bg-gray-900 text-gray-500 rounded-full flex items-center justify-center mx-auto border border-gray-800">
-                                    <Briefcase className="w-6 h-6" />
-                                  </div>
-                                  <span className="text-xs text-gray-400 font-bold block">
-                                    {techTaskCategoryTab === 'rescue'
-                                      ? (lang === 'ar' ? '🚨 لا توجد بلاغات إنقاذ أو إنعاش طارئة حالياً في القائمة. جميع الطريق آمن! 👍' : 'No emergency rescue tasks pending! 👍')
-                                      : techTaskCategoryTab === 'tasks'
-                                      ? (lang === 'ar' ? '📋 لا توجد طلبات مهمات أو خدمات عامة معلقة حالياً.' : 'No general task orders pending! 👍')
-                                      : (lang === 'ar' ? 'لا توجد مهمات أو طلبات معلقة حالياً على الطريق. جميع السائقين والمركبات تسير بسلام! 👍' : 'No active client task orders. Drivers & vehicles are safe! 👍')}
-                                  </span>
-                                  <div className="flex items-center justify-center gap-2 pt-2">
-                                    <button
-                                      type="button"
-                                      onClick={handleManualRefreshRequests}
-                                      className="px-4 py-2 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
-                                    >
-                                      <RefreshCw className="w-3.5 h-3.5" />
-                                      <span>{lang === 'ar' ? 'فحص وتحديث المهمات 🔄' : 'Check & Refresh Tasks 🔄'}</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="space-y-4 font-sans">
-                                  {currentDisplayedTasks.map(req => {
-                                    const isSelected = selectedBidRequest?.id === req.id;
-                                    const isMine = isMyOwnClientRequest(req);
-                                    const isRescue = isRescueTaskItem(req);
-                                    const serviceTitle = req.serviceType === 'taxi' 
-                                      ? (lang === 'ar' ? '🚕 توصيل تكسي خاص و VIP' : '🚕 Special VIP Taxi Ride') 
-                                      : getServiceArName(req.serviceType);
-
-                                    return (
-                                      <div key={req.id} className={`p-5 rounded-2xl border transition-all ${isSelected ? 'bg-[#0F1424] border-amber-500 shadow-xl' : isRescue ? 'bg-[#140A0C] border-red-900/60 hover:border-red-700/80 shadow-md' : 'bg-[#0A0B10] border-gray-900 hover:border-gray-800 shadow-md'}`}>
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                          <div className="text-right rtl:text-right ltr:text-left space-y-1.5 flex-1">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                              {isMine ? (
-                                                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase">
-                                                  {lang === 'ar' ? '👤 مهمتك المنشورة (مذاعة حية لكافة الفنيين 📡)' : '👤 Your Published Task (Broadcast Live to Techs 📡)'}
-                                                </span>
-                                              ) : isRescue ? (
-                                                <span className="bg-red-500/20 text-red-300 border border-red-500/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1 animate-pulse">
-                                                  <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-ping"></span>
-                                                  <span>{lang === 'ar' ? '🚨 قائمة الإنقاذ والإنعاش الطارئ' : '🚨 EMERGENCY RESCUE ALERT'}</span>
-                                                </span>
-                                              ) : (
-                                                <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1">
-                                                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-                                                  <span>{lang === 'ar' ? '📋 قائمة المهمات والخدمات العامة' : '📋 GENERAL SERVICE TASK'}</span>
-                                                </span>
-                                              )}
-                                              <span className="text-[10px] text-gray-500 font-mono">
-                                                ID: #{req.id.substring(0, 10)}
-                                              </span>
-                                            </div>
-
-                                            <div className="flex items-center gap-2 pt-0.5">
-                                              <h5 className="text-sm font-black text-white">{req.clientName}</h5>
-                                              {req.clientPhone && (
-                                                <a href={`tel:${req.clientPhone}`} className="text-[10px] text-amber-400 hover:underline font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                                                  📞 {req.clientPhone}
-                                                </a>
-                                              )}
-                                            </div>
-
-                                      <div className="text-xs text-gray-300 font-extrabold flex items-center gap-1.5">
-                                        <span>{lang === 'ar' ? 'نوع المهمة المطلوبة:' : 'Requested Task:'}</span>
-                                        <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
-                                          {serviceTitle}
-                                        </span>
-                                      </div>
-
-                                      {/* Location and taxi details */}
-                                      <div className="text-[11px] text-gray-300 font-semibold space-y-1 pt-1 bg-[#05060A] p-2.5 rounded-xl border border-gray-900">
-                                        <div className="flex items-center gap-1 text-gray-300">
-                                          <MapPin className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                                          <span>{lang === 'ar' ? 'الموقع الأساسي للمهمة:' : 'Location:'}</span>
-                                          <span className="text-white font-extrabold">{req.arLocationName || req.locationName || 'موقعي الحالي'}</span>
-                                        </div>
-
-                                        {req.serviceType === 'taxi' && (
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pt-1 border-t border-gray-900/60 text-[10px]">
-                                            <div className="text-emerald-400">📍 {lang === 'ar' ? 'نقطة الانطلاق:' : 'Pickup:'} <span className="text-white font-bold">{req.pickupLocation || req.locationName || 'موقعي'}</span></div>
-                                            <div className="text-amber-400">🏁 {lang === 'ar' ? 'الوجهة المطلوبة:' : 'Dropoff:'} <span className="text-white font-bold">{req.dropoffLocation || 'غير محدد'}</span></div>
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      <div className="flex items-center gap-3 pt-1">
-                                        <span className="text-xs text-amber-400 font-black flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg">
-                                          <span>💰</span>
-                                          <span>{lang === 'ar' ? `الميزانية / السعر التقديري: ${req.approximatePrice || 150} ₪` : `Budget / Price: ${req.approximatePrice || 150} ₪`}</span>
-                                        </span>
-                                      </div>
-                                    </div>
-
-                                    <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                                      {/* Direct Task Accept Button */}
-                                      <button 
-                                        onClick={async () => {
-                                          const techEmail = loggedInUserEmail || 'tech@systro.live';
-                                          const techName = loggedInUserName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician');
-                                          const techAvatar = providerAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120';
-                                          const acceptPrice = Number(req.approximatePrice || 150);
-
-                                          try {
-                                            await runTransaction(db, async (transaction) => {
-                                              const reqRef = doc(db, "requests", req.id);
-                                              const reqDocSnap = await transaction.get(reqRef);
-
-                                              if (!reqDocSnap.exists()) {
-                                                throw new Error("TASK_NOT_FOUND");
-                                              }
-
-                                              const currentReqData = reqDocSnap.data();
-                                              const existingTech = currentReqData.selectedTechnicianId;
-                                              const currentStatus = currentReqData.status;
-
-                                              if (existingTech && String(existingTech).trim() !== '' && existingTech !== techEmail) {
-                                                throw new Error("TASK_ALREADY_TAKEN");
-                                              }
-
-                                              if (currentStatus !== 'pending_bids' && currentStatus !== 'pending' && currentStatus !== 'idle') {
-                                                throw new Error("TASK_ALREADY_TAKEN");
-                                              }
-
-                                              transaction.update(reqRef, {
-                                                status: 'en_route',
-                                                selectedTechnicianId: techEmail,
-                                                escrowAmount: acceptPrice
-                                              });
-                                            });
-
-                                            const bidId = 'bid-' + Math.random().toString(36).substring(2, 9);
-                                            const newBidObj = {
-                                              id: bidId,
-                                              requestId: req.id,
-                                              technicianId: techEmail,
-                                              technicianName: techName,
-                                              technicianArName: techName,
-                                              phone: activeTechDoc?.phone || phoneNumber || '+972 59-999-9999',
-                                              price: acceptPrice,
-                                              etaMinutes: 15,
-                                              rating: activeTechDoc?.rating || 5.0,
-                                              avatar: techAvatar,
-                                              carModel: activeTechDoc?.carModel || 'مركبة خدمات معتمدة',
-                                              plateNumber: activeTechDoc?.plateNumber || '7-4321-99'
-                                            };
-                                            await setDoc(doc(db, "bids", bidId), newBidObj);
-
-                                            // Send automated system chat message
-                                            const chatMsgId = `sys-accept-${Date.now()}`;
-                                            await setDoc(doc(db, "chats", chatMsgId), {
-                                              id: chatMsgId,
-                                              requestId: req.id,
-                                              sender: 'system',
-                                              text: lang === 'ar' 
-                                                ? `⚡ قام الفني [${techName}] بقبول وتلبية مهمتك فوراً! وهو الآن في طريقه إليك 🚚` 
-                                                : `⚡ Technician [${techName}] accepted your task request immediately! En route to your location 🚚`,
-                                              timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-                                              createdTime: Date.now()
-                                            });
-
-                                            setActiveRequestId(req.id);
-                                            setSelectedBid(newBidObj);
-                                            setSelectedBidRequest(null);
-
-                                            triggerToast(
-                                              lang === 'ar' 
-                                                ? `✅ تم قبول وتلبية المهمة فوراً! تم حجز الطلب باسمك وتحديث الحالة إلى (جاري التحرك 🚚)!` 
-                                                : `✅ Task accepted! Locked and en route, assigned to you!`,
-                                              'success'
-                                            );
-                                          } catch (err: any) {
-                                            if (err?.message === "TASK_ALREADY_TAKEN") {
-                                              triggerToast(
-                                                lang === 'ar' 
-                                                  ? '⚠️ نعتذر، قام فني آخر بقبول وتلبية هذه المهمة قبلك بسباق السرعة!' 
-                                                  : '⚠️ Sorry, another technician accepted this task first!',
-                                                'warning'
-                                              );
-                                              handleManualRefreshRequests();
-                                            } else {
-                                              console.warn("Firestore notice during task accept (falling back to server API):", err);
-                                              const updatedReqObj = {
-                                                ...req,
-                                                status: "en_route",
-                                                selectedTechnicianId: techEmail,
-                                                escrowAmount: acceptPrice
-                                              };
-                                              setAllRequests((prev: any[]) => prev.map((r: any) => r.id === req.id ? updatedReqObj : r));
-                                              try {
-                                                fetch("/api/requests/update", {
-                                                  method: "POST",
-                                                  headers: { "Content-Type": "application/json" },
-                                                  body: JSON.stringify({
-                                                    id: req.id,
-                                                    updates: {
-                                                      status: "en_route",
-                                                      selectedTechnicianId: techEmail,
-                                                      escrowAmount: acceptPrice
-                                                    }
-                                                  })
-                                                });
-                                              } catch (apiErr) {}
-                                              const bidId = "bid-" + Math.random().toString(36).substring(2, 9);
-                                              const fallbackBidObj = {
-                                                id: bidId,
-                                                requestId: req.id,
-                                                technicianId: techEmail,
-                                                technicianName: techName,
-                                                technicianArName: techName,
-                                                phone: activeTechDoc?.phone || phoneNumber || "+972 59-999-9999",
-                                                price: acceptPrice,
-                                                etaMinutes: 15,
-                                                rating: activeTechDoc?.rating || 5.0,
-                                                avatar: techAvatar,
-                                                carModel: activeTechDoc?.carModel || "مركبة خدمات معتمدة",
-                                                plateNumber: activeTechDoc?.plateNumber || "7-4321-99"
-                                              };
-                                              setActiveRequestId(req.id);
-                                              setSelectedBid(fallbackBidObj);
-                                              setSelectedBidRequest(null);
-                                              triggerToast(
-                                                lang === 'ar' 
-                                                  ? "✅ تم قبول وتلبية المهمة فوراً! تم حجز الطلب باسمك وتحديث الحالة إلى (جاري التحرك 🚚)!" 
-                                                  : "✅ Task accepted! Locked and en route, assigned to you!",
-                                                "success"
-                                              );
-                                            }
-                                          }
-                                        }}
-                                        className="px-3.5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5 active:scale-95 border border-emerald-400"
-                                      >
-                                        <CheckCircle2 className="w-4 h-4" />
-                                        <span>{lang === 'ar' ? '⚡ قبول واستلام المهمة فوراً' : '⚡ Accept Task Direct'}</span>
-                                      </button>
-
-                                      <button 
-                                        onClick={() => {
-                                          if (isSelected) {
-                                            setSelectedBidRequest(null);
-                                          } else {
-                                            setSelectedBidRequest(req);
-                                            setCustomBidPrice(String(req.approximatePrice || 150));
-                                            setPinnedLocation({ lat: req.locationLat, lng: req.locationLng });
-                                            triggerToast(lang === 'ar' ? 'تم تحديد موقع الزبون على الخريطة!' : 'Client breakdown pinned on map!', 'info');
-                                          }
-                                        }}
-                                        className="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
-                                      >
-                                        <Wrench className="w-4 h-4" />
-                                        <span>{isSelected ? (lang === 'ar' ? 'إغلاق العرض' : 'Close Offer') : (lang === 'ar' ? 'تقديم عرض سعر 📝' : 'Submit Bid 📝')}</span>
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Bid Form Expansion inside alert card */}
-                                  {isSelected && (
-                                    <div className="mt-4 pt-4 border-t border-gray-950 space-y-4 animate-fade-in text-right">
-                                      <div className="p-3 bg-[#050505] rounded-xl text-[11px] leading-relaxed text-gray-300 font-semibold border border-gray-950">
-                                        <span className="font-extrabold text-amber-500 block mb-0.5">{lang === 'ar' ? 'شرح المشكلة:' : 'Problem Details:'}</span>
-                                        {req.description || (lang === 'ar' ? 'لا يوجد شرح تفصيلي' : 'No description provided')}
-                                      </div>
-
-                                      <div className="grid grid-cols-2 gap-3 text-xs font-bold">
-                                        <div className="flex flex-col gap-1">
-                                          <label className="text-[9px] text-gray-500 uppercase">{lang === 'ar' ? 'عرض السعر المقترح (₪):' : 'Bid Amount (₪):'}</label>
-                                          <input 
-                                            type="text" 
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            value={customBidPrice}
-                                            onChange={(e) => setCustomBidPrice(cleanInput(e.target.value))}
-                                            className="w-full px-3 py-2 bg-[#050505] border border-gray-900 rounded-lg text-white font-mono text-center"
-                                          />
-                                        </div>
-
-                                        <div className="flex flex-col gap-1">
-                                          <label className="text-[9px] text-gray-500 uppercase">{lang === 'ar' ? 'الوقت المتوقع للوصول (دقيقة):' : 'ETA (Min):'}</label>
-                                          <input 
-                                            type="text" 
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            value={customBidEta}
-                                            onChange={(e) => setCustomBidEta(cleanInput(e.target.value))}
-                                            className="w-full px-3 py-2 bg-[#050505] border border-gray-900 rounded-lg text-white font-mono text-center"
-                                          />
-                                        </div>
-                                      </div>
-
-                                      {/* Customized Pricing Help Note for Technician */}
-                                      <div className="text-[10px] text-gray-400 bg-amber-500/5 p-3 rounded-xl border border-amber-500/15 leading-relaxed font-semibold">
-                                        {lang === 'ar' 
-                                          ? `💡 يطلب العميل سعراً تقريبياً بحدود [${req.approximatePrice || 150} ₪]. بصفتك شريكاً مستقلاً، يرجى تقديم عرض السعر المناسب والملائم لك والذي يغطي تكلفة انتقالك ومعداتك (حيث يختلف تسعير كل فني عن الآخر).` 
-                                          : `💡 The client has proposed an approximate price of [${req.approximatePrice || 150} ₪]. As an independent partner, please submit the price that is suitable for you based on your distance and tools (since pricing varies for each technician).`}
-                                      </div>
-
-                                      <button 
-                                        onClick={async () => {
-                                          const priceNum = Number(customBidPrice);
-                                          const etaNum = Number(customBidEta);
-                                          if (isNaN(priceNum) || priceNum <= 0 || isNaN(etaNum) || etaNum <= 0) {
-                                            triggerToast(lang === 'ar' ? 'يرجى إدخال قيم صحيحة!' : 'Please enter valid values!', 'warning');
-                                            return;
-                                          }
-                                          try {
-                                            const bidId = 'bid-' + Math.random().toString(36).substring(2, 9);
-                                            const newBidObj = {
-                                              id: bidId,
-                                              requestId: req.id,
-                                              technicianId: loggedInUserEmail,
-                                              technicianName: loggedInUserName,
-                                              technicianArName: loggedInUserName,
-                                              phone: '+972 59-999-9999',
-                                              price: priceNum,
-                                              etaMinutes: etaNum,
-                                              rating: activeTechDoc?.rating || 5.0,
-                                              avatar: providerAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120',
-                                              carModel: activeTechDoc?.carModel || (lang === 'ar' ? 'مركبة إنقاذ/تكسي معتمدة' : 'Certified Service Vehicle'),
-                                              plateNumber: activeTechDoc?.plateNumber || '7-4321-99'
-                                            };
-                                            await setDoc(doc(db, "bids", bidId), newBidObj);
-                                            
-                                            // Automatically update status to pending_bids if it's idle
-                                            await updateDoc(doc(db, "requests", req.id), {
-                                              status: 'pending_bids'
-                                            });
-
-                                            // Send initial greeting/bid message to chats collection
-                                            const chatMsgId = `chat-bid-${Date.now()}`;
-                                            await setDoc(doc(db, "chats", chatMsgId), {
-                                              id: chatMsgId,
-                                              requestId: req.id,
-                                              sender: 'technician',
-                                              senderName: loggedInUserName || (lang === 'ar' ? 'الفني' : 'Technician'),
-                                              text: lang === 'ar' 
-                                                ? `⚡ أهلاً بك! لقد أرسلت لك عرض سعر بقيمة [${priceNum} ₪] ووقت وصول متوقع خلال [${etaNum} دقيقة]. يمكنك المحادثة والتواصل معي مباشرة هنا.` 
-                                                : `⚡ Welcome! I submitted a bid of [${priceNum} ₪] with ETA of [${etaNum} mins]. You can chat with me directly here.`,
-                                              timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-                                              createdTime: Date.now()
-                                            });
-
-                                            triggerToast(lang === 'ar' ? `تم إرسال عرض السعر بقيمة ${priceNum} ₪ والانتقال فوراً للمحادثة! 💬` : `Bid submitted! Navigated to live chat 💬`, 'success');
-                                            
-                                            // Activate this request & open chat view immediately
-                                            setActiveRequestId(req.id);
-                                            setSelectedBid(newBidObj);
-                                            setSelectedBidRequest(req);
-
-                                            // Smooth scroll to chat container
-                                            setTimeout(() => {
-                                              const chatElement = document.getElementById(`chat-container-${req.id}`);
-                                              if (chatElement) {
-                                                chatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                              }
-                                            }, 120);
-
-                                          } catch (err) {
-                                            console.error(err);
-                                            triggerToast('Error submitting bid', 'error');
-                                          }
-                                        }}
-                                        className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-extrabold text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-                                      >
-                                        <Send className="w-4 h-4" />
-                                        <span>{lang === 'ar' ? 'إرسال عرض السعر الفوري وانتقال للمحادثة 💬⚡' : 'Submit Bid & Open Live Chat 💬⚡'}</span>
-                                      </button>
-
-                                      {/* Live Chat Section right inside the request card once bid is submitted or request is active */}
-                                      {activeRequestId === req.id && (
-                                        <div 
-                                          id={`chat-container-${req.id}`} 
-                                          className={expandedChatId === req.id
-                                            ? "fixed inset-0 z-[100] bg-[#07080E] p-4 sm:p-6 flex flex-col justify-between h-full w-full animate-fade-in text-right rtl:text-right ltr:text-left"
-                                            : "mt-4 pt-4 border-t border-amber-500/30 space-y-3 animate-fade-in text-right rtl:text-right ltr:text-left"
-                                          }
-                                        >
-                                          <div className="flex items-center justify-between border-b border-gray-900 pb-2">
-                                            <div className="flex items-center gap-2">
-                                              <button
-                                                type="button"
-                                                onClick={() => setExpandedChatId(expandedChatId === req.id ? null : req.id)}
-                                                className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[11px] rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-                                                title={expandedChatId === req.id ? (lang === 'ar' ? 'تصغير الشاشة' : 'Minimize') : (lang === 'ar' ? 'توسيع المحادثة على كامل شاشة الهاتف' : 'Expand Fullscreen')}
-                                              >
-                                                {expandedChatId === req.id ? (
-                                                  <>
-                                                    <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
-                                                    <span>{lang === 'ar' ? 'تصغير الشاشة ↙' : 'Minimize ↙'}</span>
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
-                                                    <span>{lang === 'ar' ? 'توسيع المحادثة ⤢' : 'Expand ⤢'}</span>
-                                                  </>
-                                                )}
-                                              </button>
-                                              <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 shadow-sm">
-                                                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
-                                                <span>{lang === 'ar' ? 'المحادثة الحية والمتابعة الفورية' : 'Live Conversation'}</span>
-                                              </span>
-                                            </div>
-                                            <h5 className="text-[11px] font-black text-amber-500">
-                                              {req.clientName}
-                                            </h5>
-                                          </div>
-
-                                          {/* Chat Messages Box */}
-                                          <div className={expandedChatId === req.id ? "flex-1 my-3 bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between shadow-inner overflow-hidden" : "bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between h-64 shadow-inner"}>
-                                            <div className="flex-1 overflow-y-auto space-y-2.5 pb-2.5 pr-1 text-[11px] font-semibold text-right">
-                                              {chatMessages.length === 0 ? (
-                                                <div className="h-full flex flex-col items-center justify-center text-gray-500 font-bold text-center gap-2">
-                                                  <span className="animate-spin text-amber-500 text-lg">💬</span>
-                                                  <span>{lang === 'ar' ? 'جاري فتح المحادثة المباشرة...' : 'Opening live chat...'}</span>
-                                                </div>
-                                              ) : (
-                                                chatMessages.map(msg => {
-                                                  const isSystem = msg.sender === 'system';
-                                                  const isTech = msg.sender === 'technician';
-                                                  return (
-                                                    <div key={msg.id} className={`flex ${isSystem ? 'justify-center' : isTech ? 'justify-end' : 'justify-start'}`}>
-                                                      <div className={`p-2.5 max-w-[85%] rounded-xl font-semibold leading-relaxed ${
-                                                        isSystem 
-                                                          ? 'bg-gray-900 text-gray-400 text-[9px] text-center max-w-full font-sans border border-gray-850' 
-                                                          : isTech 
-                                                          ? 'bg-amber-500 text-black rounded-tr-none shadow-md' 
-                                                          : 'bg-[#1F2937] text-gray-200 rounded-tl-none border border-gray-850 shadow-md'
-                                                      }`}>
-                                                        {msg.text}
-                                                        <span className={`block text-[8px] mt-1 opacity-75 ${isTech ? 'text-black/80 text-left' : 'text-gray-400 text-right'}`}>
-                                                          {msg.timestamp}
-                                                        </span>
-                                                      </div>
-                                                    </div>
-                                                  );
-                                                })
-                                              )}
-                                            </div>
-
-                                            {/* Input Message Form */}
-                                            <form 
-                                              onSubmit={(e) => {
-                                                e.preventDefault();
-                                                handleChatSend(e);
-                                              }} 
-                                              className="pt-2 border-t border-gray-900 flex items-center gap-2"
-                                            >
-                                              <input 
-                                                type="text" 
-                                                value={chatInput}
-                                                onChange={(e) => setChatInput(e.target.value)}
-                                                placeholder={lang === 'ar' ? 'أكتب رسالة مباشرة للعميل...' : 'Type direct message to client...'}
-                                                className="flex-1 px-3 py-2 bg-[#111827] border border-gray-800 focus:border-amber-500 rounded-xl outline-none text-xs text-white placeholder-gray-500 transition-colors"
-                                              />
-                                              <button 
-                                                type="submit"
-                                                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
-                                              >
-                                                <Send className="w-3.5 h-3.5" />
-                                                <span className="text-xs font-black">{lang === 'ar' ? 'إرسال' : 'Send'}</span>
-                                              </button>
-                                            </form>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                      {/* Live Public Group Chat section replacing the task orders dispatch queue */}
+                      <div id="technician-rescue-alerts-list" className="space-y-4 pt-2">
+                        <PublicGroupChat 
+                          lang={lang} 
+                          currentUserRole={userRole || 'technician'}
+                          currentUserName={loggedInUserName || activeTechDoc?.name || (lang === 'ar' ? 'فني معتمد' : 'Technician')}
+                          currentUserEmail={loggedInUserEmail}
+                          currentUserAvatar={providerAvatar || activeTechDoc?.avatar || userAvatar}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
+              )}
         {userRole !== 'technician' && simStatus === 'idle' && (
                     <div className="space-y-6">
                       <h3 className="text-base font-black text-white border-b border-gray-900 pb-3">
@@ -8108,10 +7577,10 @@ export default function App() {
                           {u.phone && (
                             <p className="text-[10px] text-slate-600 font-bold">📞 {u.phone}</p>
                           )}
-                          {(u.lastLoginFormatted || u.deviceInfo) && (
+                          {((u as any).lastLoginFormatted || (u as any).deviceInfo) && (
                             <div className="flex items-center gap-2 pt-1 text-[9px] text-slate-400 font-mono">
-                              {u.lastLoginFormatted && <span>🕒 {u.lastLoginFormatted}</span>}
-                              {u.deviceInfo && <span>• {u.deviceInfo}</span>}
+                              {(u as any).lastLoginFormatted && <span>🕒 {(u as any).lastLoginFormatted}</span>}
+                              {(u as any).deviceInfo && <span>• {(u as any).deviceInfo}</span>}
                             </div>
                           )}
                         </div>
@@ -8166,18 +7635,18 @@ export default function App() {
                 </h3>
                 <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 font-extrabold">
                   {lang === 'ar' 
-                    ? `النشطين حالياً: ${technicians.filter(t => t.isOnline || t.isAvailable).length}` 
-                    : `Active: ${technicians.filter(t => t.isOnline || t.isAvailable).length}`}
+                    ? `النشطين حالياً: ${technicians.filter(t => t.isOnline || (t as any).isAvailable).length}` 
+                    : `Active: ${technicians.filter(t => t.isOnline || (t as any).isAvailable).length}`}
                 </span>
               </div>
 
-              {technicians.filter(t => t.isOnline || t.isAvailable).length === 0 ? (
+              {technicians.filter(t => t.isOnline || (t as any).isAvailable).length === 0 ? (
                 <div className="text-center py-8 text-slate-400 font-semibold text-xs">
                   {lang === 'ar' ? 'لا يوجد فنيين متصلين بالشبكة حالياً' : 'No online technicians currently'}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {technicians.filter(t => t.isOnline || t.isAvailable).map(tech => (
+                  {technicians.filter(t => t.isOnline || (t as any).isAvailable).map(tech => (
                     <div key={tech.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <img 
@@ -8227,17 +7696,17 @@ export default function App() {
                   </p>
                 </div>
                 <span className="text-[10px] font-mono text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 font-extrabold">
-                  {lang === 'ar' ? `المجموع: ${allRequests.filter(r => r.serviceType === 'taxi' || r.serviceType === 'store' || r.description?.includes('طائرة') || r.description?.includes('متجر')).length}` : `Total: ${allRequests.filter(r => r.serviceType === 'taxi' || r.serviceType === 'store').length}`}
+                  {lang === 'ar' ? `المجموع: ${allRequests.filter(r => r.serviceType === 'taxi' || (r.serviceType as string) === 'store' || r.description?.includes('طائرة') || r.description?.includes('متجر')).length}` : `Total: ${allRequests.filter(r => r.serviceType === 'taxi' || (r.serviceType as string) === 'store').length}`}
                 </span>
               </div>
 
-              {allRequests.filter(r => r.serviceType === 'taxi' || r.serviceType === 'store' || r.description?.includes('طائرة') || r.description?.includes('متجر')).length === 0 ? (
+              {allRequests.filter(r => r.serviceType === 'taxi' || (r.serviceType as string) === 'store' || r.description?.includes('طائرة') || r.description?.includes('متجر')).length === 0 ? (
                 <div className="text-center py-8 text-slate-400 font-semibold text-xs">
                   {lang === 'ar' ? 'لا توجد طلبات متجر أو طائرات حالياً' : 'No store or aircraft requests currently'}
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-                  {allRequests.filter(r => r.serviceType === 'taxi' || r.serviceType === 'store' || r.description?.includes('طائرة') || r.description?.includes('متجر')).map(item => (
+                  {allRequests.filter(r => r.serviceType === 'taxi' || (r.serviceType as string) === 'store' || r.description?.includes('طائرة') || r.description?.includes('متجر')).map(item => (
                     <div key={item.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -8804,10 +8273,10 @@ export default function App() {
       </footer>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-orange-600 to-amber-600 border-t border-orange-500/30 flex items-center justify-around py-3 pb-safe md:hidden shadow-[0_-10px_30px_rgba(234,88,12,0.3)] select-none">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-blue-900 via-blue-700 to-sky-700 border-t border-blue-400/30 flex items-center justify-around py-3 pb-safe md:hidden shadow-[0_-10px_30px_rgba(37,99,235,0.35)] select-none">
         <button 
           onClick={() => setActiveTab('home')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'home' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'home' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
         >
           <Home className="w-5 h-5 shrink-0" />
           <span>{lang === 'ar' ? 'الرئيسية' : lang === 'he' ? 'דף הבית' : 'Home'}</span>
@@ -8815,7 +8284,7 @@ export default function App() {
         
         <button 
           onClick={() => setActiveTab('services')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'services' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'services' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
         >
           <Wrench className="w-5 h-5 shrink-0" />
           <span>{lang === 'ar' ? 'الخدمات' : lang === 'he' ? 'שירותים' : 'Services'}</span>
@@ -8825,7 +8294,7 @@ export default function App() {
           onClick={() => {
             setActiveTab('simulator');
           }}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
         >
           <Activity className="w-5 h-5 animate-pulse shrink-0" />
           <span>{lang === 'ar' ? 'العمليات' : lang === 'he' ? 'פעילויות' : 'Operations'}</span>
@@ -8836,7 +8305,7 @@ export default function App() {
             setActiveTab('world');
             setIsLeftMenuOpen(true);
           }}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'world' || isLeftMenuOpen ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'world' || isLeftMenuOpen ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
         >
           <Globe className="w-5 h-5 shrink-0" />
           <span>{lang === 'ar' ? 'عالم' : lang === 'he' ? 'עולם' : 'World'}</span>
@@ -8844,7 +8313,7 @@ export default function App() {
 
         <button 
           onClick={() => setActiveTab('store')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'store' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'store' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
         >
           <ShoppingBag className="w-5 h-5 shrink-0" />
           <span>{lang === 'ar' ? 'المتجر' : lang === 'he' ? 'חנות' : 'Store'}</span>
@@ -9070,7 +8539,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setShowTranslateWidget(true)}
-                      className="w-full py-2.5 mt-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-orange-500/20 cursor-pointer"
+                      className="w-full py-2.5 mt-2 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
                     >
                       <span>🌐 {lang === 'ar' ? 'تفعيل الترجمة الفورية لجميع اللغات' : lang === 'he' ? 'הפעל תרגום מיידי לכל השפות' : 'Enable Instant Universal Translator'}</span>
                     </button>
@@ -9100,7 +8569,7 @@ export default function App() {
                             window.location.reload();
                           }
                         }}
-                        className="text-[10px] text-orange-400 hover:text-orange-300 font-black transition-colors underline cursor-pointer flex items-center gap-1 mt-1"
+                        className="text-[10px] text-sky-400 hover:text-sky-300 font-black transition-colors underline cursor-pointer flex items-center gap-1 mt-1"
                       >
                         <span>🔄 {lang === 'ar' ? 'إعادة الموقع للغة الأصلية' : lang === 'he' ? 'חזור לשפת המקור' : 'Restore Original Language'}</span>
                       </button>
@@ -9163,29 +8632,29 @@ export default function App() {
       {/* Left Menu Drawer (Opens from the left - عالم سيسترو) */}
       {isLeftMenuOpen && (
         <div className="fixed inset-0 z-[80] flex justify-start bg-black/80 backdrop-blur-md animate-fade-in select-none">
-          <div className="w-full max-w-xs sm:max-w-sm bg-[#090D1A] border-r border-amber-500/30 h-full flex flex-col justify-between shadow-2xl p-5 text-right rtl:text-right ltr:text-left overflow-y-auto">
+          <div className="w-full max-w-xs sm:max-w-sm bg-[#0B0F19] border-r-2 border-amber-400/80 h-full flex flex-col justify-between shadow-2xl p-5 text-right rtl:text-right ltr:text-left overflow-y-auto">
             
             {/* Header */}
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-gray-800 pb-3">
                 <button
                   onClick={() => setIsLeftMenuOpen(false)}
-                  className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center text-sm font-bold cursor-pointer transition-colors"
+                  className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 flex items-center justify-center text-base font-black cursor-pointer transition-colors shadow-md"
                 >
                   ✕
                 </button>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping"></span>
-                  <h3 className="text-base font-black text-white flex items-center gap-1.5">
-                    <Globe className="w-5 h-5 text-amber-500" />
+                <div className="flex items-center gap-2 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/30">
+                  <span className="w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping"></span>
+                  <h3 className="text-base font-black text-amber-400 flex items-center gap-1.5">
+                    <Globe className="w-5 h-5 text-amber-400" />
                     <span>{lang === 'ar' ? 'عالم سيسترو' : lang === 'he' ? 'עולם סיסטרו' : 'Systro World'}</span>
                   </h3>
                 </div>
               </div>
 
               {/* World Menu Quick Links */}
-              <div className="space-y-2 pt-2">
-                <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+              <div className="space-y-2.5 pt-2">
+                <p className="text-[11px] font-black text-amber-400 uppercase tracking-wider bg-amber-950/60 px-3 py-1.5 rounded-lg border border-amber-500/30">
                   {lang === 'ar' ? '🌐 أقسام القائمة الرئيسية:' : '🌐 World Navigation Hub:'}
                 </p>
 
@@ -9194,12 +8663,14 @@ export default function App() {
                     setActiveTab('home');
                     setIsLeftMenuOpen(false);
                   }}
-                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                  className="w-full p-3.5 bg-white hover:bg-amber-50 border-2 border-slate-200 hover:border-amber-400 rounded-2xl flex items-center justify-between text-xs font-black text-slate-950 transition-all cursor-pointer shadow-md"
                 >
-                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
-                  <span className="flex items-center gap-2">
-                    <span>الرئيسية</span>
-                    <Home className="w-4 h-4 text-amber-500" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 rotate-180" />
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-xs sm:text-sm font-black text-slate-900">الرئيسية</span>
+                    <div className="p-1.5 bg-amber-100 rounded-xl text-amber-700">
+                      <Home className="w-4 h-4" />
+                    </div>
                   </span>
                 </button>
 
@@ -9210,12 +8681,14 @@ export default function App() {
                     setActiveTab('services');
                     setIsLeftMenuOpen(false);
                   }}
-                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                  className="w-full p-3.5 bg-white hover:bg-amber-50 border-2 border-slate-200 hover:border-amber-400 rounded-2xl flex items-center justify-between text-xs font-black text-slate-950 transition-all cursor-pointer shadow-md"
                 >
-                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
-                  <span className="flex items-center gap-2">
-                    <span>لوحة الزبون والخدمات</span>
-                    <Wrench className="w-4 h-4 text-amber-500" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 rotate-180" />
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-xs sm:text-sm font-black text-slate-900">لوحة الزبون والخدمات</span>
+                    <div className="p-1.5 bg-amber-100 rounded-xl text-amber-700">
+                      <Wrench className="w-4 h-4" />
+                    </div>
                   </span>
                 </button>
 
@@ -9224,12 +8697,14 @@ export default function App() {
                     setActiveTab('taxi');
                     setIsLeftMenuOpen(false);
                   }}
-                  className="w-full p-3 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 rounded-2xl flex items-center justify-between text-xs font-black text-amber-300 transition-all cursor-pointer hover:scale-[1.01]"
+                  className="w-full p-3.5 bg-gradient-to-r from-amber-400 to-amber-500 border-2 border-amber-300 rounded-2xl flex items-center justify-between text-xs font-black text-slate-950 transition-all cursor-pointer shadow-lg shadow-amber-500/20 hover:scale-[1.01]"
                 >
-                  <span className="text-[10px] bg-amber-500 text-black px-2 py-0.5 rounded-full font-black">جديد 🚕</span>
-                  <span className="flex items-center gap-2">
-                    <span>بوابة حجز تكسي وسفريات VIP</span>
-                    <Car className="w-4 h-4 text-amber-400" />
+                  <span className="text-[10px] bg-black text-amber-400 px-2.5 py-1 rounded-full font-black border border-amber-400">جديد 🚕</span>
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-xs sm:text-sm font-black text-slate-950">بوابة حجز تكسي وسفريات VIP</span>
+                    <div className="p-1.5 bg-black/10 rounded-xl text-slate-950">
+                      <Car className="w-4 h-4" />
+                    </div>
                   </span>
                 </button>
 
@@ -9238,12 +8713,14 @@ export default function App() {
                     setActiveTab('store');
                     setIsLeftMenuOpen(false);
                   }}
-                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                  className="w-full p-3.5 bg-white hover:bg-amber-50 border-2 border-slate-200 hover:border-amber-400 rounded-2xl flex items-center justify-between text-xs font-black text-slate-950 transition-all cursor-pointer shadow-md"
                 >
-                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
-                  <span className="flex items-center gap-2">
-                    <span>متجر قطع غيار ومستلزمات السيارات</span>
-                    <ShoppingBag className="w-4 h-4 text-amber-500" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 rotate-180" />
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-xs sm:text-sm font-black text-slate-900">متجر قطع غيار ومستلزمات السيارات</span>
+                    <div className="p-1.5 bg-amber-100 rounded-xl text-amber-700">
+                      <ShoppingBag className="w-4 h-4" />
+                    </div>
                   </span>
                 </button>
 
@@ -9252,12 +8729,14 @@ export default function App() {
                     setActiveTab('directory');
                     setIsLeftMenuOpen(false);
                   }}
-                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                  className="w-full p-3.5 bg-white hover:bg-amber-50 border-2 border-slate-200 hover:border-amber-400 rounded-2xl flex items-center justify-between text-xs font-black text-slate-950 transition-all cursor-pointer shadow-md"
                 >
-                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
-                  <span className="flex items-center gap-2">
-                    <span>دليل الفنيين والخبراء المعتمدين</span>
-                    <Users className="w-4 h-4 text-amber-500" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 rotate-180" />
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-xs sm:text-sm font-black text-slate-900">دليل الفنيين والخبراء المعتمدين</span>
+                    <div className="p-1.5 bg-amber-100 rounded-xl text-amber-700">
+                      <Users className="w-4 h-4" />
+                    </div>
                   </span>
                 </button>
 
@@ -9268,30 +8747,32 @@ export default function App() {
                     setActiveTab('simulator');
                     setIsLeftMenuOpen(false);
                   }}
-                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                  className="w-full p-3.5 bg-white hover:bg-amber-50 border-2 border-slate-200 hover:border-amber-400 rounded-2xl flex items-center justify-between text-xs font-black text-slate-950 transition-all cursor-pointer shadow-md"
                 >
-                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
-                  <span className="flex items-center gap-2">
-                    <span>رادار ومهمات الفنيين</span>
-                    <Activity className="w-4 h-4 text-amber-500" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 rotate-180" />
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-xs sm:text-sm font-black text-slate-900">رادار ومهمات الفنيين</span>
+                    <div className="p-1.5 bg-amber-100 rounded-xl text-amber-700">
+                      <Activity className="w-4 h-4" />
+                    </div>
                   </span>
                 </button>
               </div>
 
               {/* Quick Contact & Emergency Call inside Left Drawer */}
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2 mt-4">
-                <span className="text-xs font-black text-amber-400 block">
+              <div className="p-4 bg-amber-400 border-2 border-amber-300 rounded-2xl space-y-2 mt-4 text-slate-950 shadow-lg">
+                <span className="text-xs font-black text-slate-950 block">
                   📞 الدعم المباشر والإدارة (آدم)
                 </span>
-                <p className="text-[10px] text-gray-300 font-medium">
+                <p className="text-[11px] text-slate-900 font-bold leading-snug">
                   اتصل مباشرة للحصول على مساعدة عاجلة أو استفسار بخصوص المعاملات:
                 </p>
                 <a
                   href="tel:+972538316779"
-                  className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all block text-center"
+                  className="w-full py-2.5 bg-slate-950 hover:bg-slate-900 text-amber-400 font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all block text-center shadow-md border border-amber-400"
                   dir="ltr"
                 >
-                  <Phone className="w-3.5 h-3.5" />
+                  <Phone className="w-4 h-4 text-amber-400" />
                   <span>+972 53-831-6779</span>
                 </a>
               </div>
@@ -9299,7 +8780,7 @@ export default function App() {
 
             {/* Footer inside drawer */}
             <div className="pt-4 border-t border-gray-800 text-center space-y-1">
-              <span className="text-[10px] text-gray-500 font-bold block">
+              <span className="text-[10px] text-gray-400 font-extrabold block">
                 عالم سيسترو © 2026 - جميع الحقوق محفوظة
               </span>
             </div>

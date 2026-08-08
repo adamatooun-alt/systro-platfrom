@@ -158,6 +158,16 @@ export interface PublicGroupMessage {
   text: string;
   timestamp: string;
   createdTime?: number;
+  isTaskAlert?: boolean;
+  taskId?: string;
+  serviceType?: ServiceType;
+  serviceName?: string;
+  price?: number;
+  clientPhone?: string;
+  locationName?: string;
+  taskStatus?: 'pending' | 'accepted' | 'completed';
+  acceptedByTechName?: string;
+  acceptedByTechId?: string;
 }
 
 export type StoreOrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';

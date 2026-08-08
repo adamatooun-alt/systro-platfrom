@@ -1,6 +1,6 @@
 {
-  "name": "Systro Live",
-  "description": "Systro Rescue (سيسترو إنقاذ) - Leading Roadside Assistance and Safe Escrow Financial Guarantee Platform.",
+  "name": "نظام سيسترو | Systro",
+  "description": "نظام سيسترو (Systro System) - منصة إنقاذ الطرق والخدمات المباشرة والضمان المالي المعلق.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

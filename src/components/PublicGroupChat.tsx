@@ -20,7 +20,8 @@ import {
   Radio,
   CheckCheck,
   Maximize2,
-  Minimize2
+  Minimize2,
+  CheckCircle2
 } from 'lucide-react';
 import { PublicGroupMessage } from '../types';
 
@@ -394,6 +395,81 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
     inputRef.current?.focus();
   };
 
+  const handleAcceptTaskInChat = async (msg: PublicGroupMessage) => {
+    const techName = currentUserName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician');
+    
+    // 1. Update local state
+    setMessages(prev => prev.map(m => {
+      if (m.id === msg.id || (m.taskId && m.taskId === msg.taskId)) {
+        return {
+          ...m,
+          taskStatus: 'accepted' as const,
+          acceptedByTechName: techName,
+          acceptedByTechId: currentUserEmail || 'tech_id'
+        };
+      }
+      return m;
+    }));
+
+    // 2. Automated acceptance reply message
+    const acceptReplyMsg: PublicGroupMessage = {
+      id: `msg_accept_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      senderName: techName,
+      senderEmail: currentUserEmail || '',
+      senderRole: 'technician',
+      senderAvatar: currentUserAvatar,
+      text: lang === 'ar'
+        ? `✅ تم قبول واستلام المهمة رقم #${msg.taskId || 'TASK'} بواسطة الفني (${techName})! وهو في طريقه لموقع الزبون الآن 🚚💨`
+        : `✅ Task #${msg.taskId || 'TASK'} accepted by Tech (${techName})! En route to client 🚚💨`,
+      timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      createdTime: Date.now()
+    };
+
+    try {
+      fetch('/api/public-group-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: acceptReplyMsg })
+      }).catch(e => console.warn(e));
+
+      if (msg.id) {
+        setDoc(doc(db, "public_group_chat", msg.id), {
+          ...msg,
+          taskStatus: 'accepted',
+          acceptedByTechName: techName
+        }, { merge: true }).catch(e => console.warn(e));
+      }
+
+      setDoc(doc(db, "public_group_chat", acceptReplyMsg.id), acceptReplyMsg).catch(e => console.warn(e));
+
+      if (msg.taskId) {
+        setDoc(doc(db, "requests", msg.taskId), {
+          status: 'accepted',
+          selectedTechnicianId: currentUserEmail || 'tech-01'
+        }, { merge: true }).catch(e => console.warn(e));
+
+        fetch('/api/requests/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: msg.taskId,
+            updates: { status: 'accepted', selectedTechnicianId: currentUserEmail || 'tech-01' }
+          })
+        }).catch(e => console.warn(e));
+      }
+
+      window.dispatchEvent(new CustomEvent('systro_chat_update', { detail: acceptReplyMsg }));
+
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+        bc.postMessage({ type: 'NEW_MESSAGE', message: acceptReplyMsg });
+        bc.close();
+      }
+    } catch (err) {
+      console.error("Error accepting task in chat:", err);
+    }
+  };
+
   return (
     <div className={isExpanded 
       ? "fixed inset-0 z-[100] bg-white p-4 md:p-6 flex flex-col justify-between h-full w-full animate-fade-in font-sans text-slate-900 overflow-hidden" 
@@ -543,6 +619,60 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
             const isMe = (currentUserEmail && msg.senderEmail === currentUserEmail) || msg.senderName === currentUserName;
             const isTech = msg.senderRole === 'technician';
             const isAdmin = msg.senderRole === 'admin';
+
+            const isTaskAlertMsg = msg.isTaskAlert || Boolean(msg.taskId) || msg.text?.includes('🚨 [بلاغ');
+            const isTaskAccepted = msg.taskStatus === 'accepted' || Boolean(msg.acceptedByTechName);
+
+            if (isTaskAlertMsg) {
+              return (
+                <div key={msg.id || `${msg.createdTime}_${msg.senderName}`} className="my-2.5">
+                  <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 text-right rtl:text-right ltr:text-left shadow-md space-y-3 relative overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-amber-200 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center font-black text-xs animate-bounce shadow-sm">
+                          🚨
+                        </div>
+                        <span className="text-xs font-black text-amber-950">
+                          {lang === 'ar' ? 'بلاغ عاجل - طلب خدمة إنقاذ' : 'Emergency Task Alert'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                        {msg.timestamp}
+                      </span>
+                    </div>
+
+                    {/* Task Details */}
+                    <div className="space-y-1.5 text-xs text-slate-900 font-bold leading-relaxed bg-white/90 p-3 rounded-xl border border-amber-200 shadow-inner">
+                      <p className="whitespace-pre-wrap">{msg.text}</p>
+                    </div>
+
+                    {/* Status & Accept Task Button */}
+                    <div className="pt-1 flex flex-col sm:flex-row items-center justify-between gap-2">
+                      {isTaskAccepted ? (
+                        <div className="w-full py-2.5 px-4 bg-emerald-100 border border-emerald-400 rounded-xl text-emerald-950 text-xs font-black flex items-center justify-center gap-2 shadow-sm">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span>
+                            {lang === 'ar'
+                              ? `تم قبول المهمة بواسطة: ${msg.acceptedByTechName || 'فني معتمد'} ✅`
+                              : `Task Accepted by: ${msg.acceptedByTechName || 'Technician'} ✅`}
+                          </span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleAcceptTaskInChat(msg)}
+                          className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border-2 border-emerald-300"
+                        >
+                          <Wrench className="w-4 h-4 text-white animate-spin" />
+                          <span>{lang === 'ar' ? 'قبول المهمة واستلام البلاغ الآن 🛠️' : 'Accept & Claim Task Now 🛠️'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div 
