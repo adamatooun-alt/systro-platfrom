@@ -4865,7 +4865,7 @@ export default function App() {
               }}
               className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'world' || isLeftMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
-              {lang === 'ar' ? 'عالم 🌐' : lang === 'he' ? 'עולם 🌐' : 'World 🌐'}
+              {lang === 'ar' ? 'عامة 🌐' : lang === 'he' ? 'עולם 🌐' : 'World 🌐'}
             </button>
             <button 
               onClick={() => {
@@ -7567,7 +7567,7 @@ export default function App() {
           className={`flex flex-col items-center gap-0.5 transition-all ${activeTab === 'world' || isLeftMenuOpen ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
         >
           <Globe className="w-5 h-5" />
-          <span className="text-[10px]">{lang === 'ar' ? 'عالم 🌐' : 'World 🌐'}</span>
+          <span className="text-[10px]">{lang === 'ar' ? 'عامة 🌐' : 'World 🌐'}</span>
         </button>
 
         <button
