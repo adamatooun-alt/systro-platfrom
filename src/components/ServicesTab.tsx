@@ -132,6 +132,100 @@ export default function ServicesTab({
   // Active customer request object if any
   const myActiveRequest = allRequests.find(r => r.id === activeRequestId);
 
+  const handleOrderServiceAndBroadcast = async (srv: any) => {
+    // 1. Ensure location is pinned
+    let currentLoc = pinnedLocation;
+    if (!currentLoc) {
+      currentLoc = { lat: 31.7683, lng: 35.2137 };
+      if (setPinnedLocation) setPinnedLocation(currentLoc);
+    }
+
+    let locationCoordsText = 'القدس - موقع محدد على الخريطة 📍';
+    if (mapPctToLatLng && currentLoc) {
+      const realLatLng = mapPctToLatLng(currentLoc.lat, currentLoc.lng);
+      locationCoordsText = `إحداثيات GPS: (${realLatLng.lat.toFixed(4)}, ${realLatLng.lng.toFixed(4)}) 📍`;
+    }
+
+    const now = Date.now();
+    const formattedTime = new Date(now).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+    const custName = loggedInUserName || (lang === 'ar' ? 'زبون سيسترو' : 'Systro Client');
+    const custEmail = loggedInUserEmail || 'client@systro.live';
+    const taskId = `REQ_${now}_${Math.random().toString(36).substring(2, 6)}`;
+
+    const broadcastText = lang === 'ar'
+      ? `🚨 [بطاقة مهمة جديدة - طلب خدمة طوارئ]\n----------------------------------------\n🛠️ الخدمة: ${srv.name}\n📍 الموقع: ${locationCoordsText}\n👤 الزبون: ${custName}\n💰 السعر التقديري: ${srv.basePrice} ₪\n⏰ الوقت: ${formattedTime}\n----------------------------------------\nللتواصل الشخصي والاتفاق المباشر مع الزبون، اضغط على "🔒 محادثة خاصة مع صاحب الطلب" بالأسفل.`
+      : `🚨 [NEW SERVICE TASK CARD]\n----------------------------------------\n🛠️ Service: ${srv.name}\n📍 Location: ${locationCoordsText}\n👤 Customer: ${custName}\n💰 Estimated Price: ${srv.basePrice} ₪\n⏰ Time: ${formattedTime}\n----------------------------------------\nClick "🔒 Direct Chat" below to open a private 1-on-1 chat with customer.`;
+
+    const taskMsgObj = {
+      id: `msg_task_${now}_${Math.random().toString(36).substring(2, 7)}`,
+      senderName: custName,
+      senderEmail: custEmail,
+      senderRole: 'client' as const,
+      senderAvatar: userAvatar || '',
+      text: broadcastText,
+      timestamp: formattedTime,
+      createdTime: now,
+      isTaskAlert: true,
+      taskId: taskId,
+      serviceName: srv.name,
+      basePrice: srv.basePrice,
+      locationText: locationCoordsText
+    };
+
+    // 2. Select service and set role to client
+    setSelectedService(srv.id);
+    setUserRole('client');
+
+    // 3. Post message to server and local channels
+    try {
+      fetch('/api/public-group-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: taskMsgObj })
+      }).catch(e => console.warn(e));
+
+      import('../firebase').then(({ db }) => {
+        import('firebase/firestore').then(({ doc, setDoc, serverTimestamp }) => {
+          setDoc(doc(db, 'public_group_chat', taskMsgObj.id), {
+            ...taskMsgObj,
+            createdAtServer: serverTimestamp()
+          }).catch(e => console.warn(e));
+        });
+      });
+
+      window.dispatchEvent(new CustomEvent('systro_chat_update', { detail: taskMsgObj }));
+
+      if ('BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('systro_chat_channel_v2');
+        bc.postMessage({ type: 'NEW_MESSAGE', message: taskMsgObj });
+        bc.close();
+      }
+    } catch (err) {
+      console.warn("Broadcast notice:", err);
+    }
+
+    // 4. Trigger bidding simulation
+    if (triggerBidsSimulation) {
+      await triggerBidsSimulation(srv.id, srv.basePrice);
+    }
+
+    // 5. Toast notification
+    triggerToast(
+      lang === 'ar'
+        ? `🚀 تم إنشاء ونشر بطاقة الخدمة (${srv.name}) بنجاح في المحادثة الجماعية! القناة حية وجاهزة للمحادثات الخاصة.`
+        : `🚀 Service (${srv.name}) card created and broadcasted to public group chat!`,
+      'success'
+    );
+
+    // 6. Scroll down to Public Group Chat
+    setTimeout(() => {
+      const chatEl = document.getElementById('live-public-group-chat-container');
+      if (chatEl) {
+        chatEl.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 300);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 animate-fade-in space-y-8">
       
@@ -515,8 +609,73 @@ export default function ServicesTab({
 
 
 
+      {/* CATALOG OF SERVICES LIST */}
+      <div className="pt-8 border-t border-gray-900 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-black text-white flex items-center gap-2">
+              <Wrench className="w-6 h-6 text-amber-500" />
+              <span>{lang === 'ar' ? 'قائمة الخدمات المتاحة وطلب الخدمة المباشر 🛠️' : 'Available Road Services Catalog'}</span>
+            </h3>
+            <p className="text-xs text-gray-400 font-medium mt-1">
+              {lang === 'ar'
+                ? 'انقر على "اطلب الخدمة الآن ونشر البلاغ" لبث بطاقة طلبك فوراً على المحادثة الجماعية العامة وفتح قناة تواصل خاصة.'
+                : 'Click "Order Service Now & Publish Alert" to broadcast your task card to the group chat and start private messaging.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {servicesList.map(srv => {
+            const IconComp = srv.icon;
+            return (
+              <div 
+                key={srv.id} 
+                className="bg-[#0A0B10]/90 border-2 border-gray-800 hover:border-amber-500/60 rounded-3xl p-6 flex flex-col justify-between gap-5 transition-all hover:shadow-xl hover:shadow-amber-500/5 relative overflow-hidden group"
+              >
+                {/* Top Badge & Icon */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 group-hover:scale-110 transition-transform">
+                    <IconComp className="w-7 h-7" />
+                  </div>
+                  <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+                    {lang === 'ar' ? 'خدمة نشطة 24/7' : '24/7 ACTIVE'}
+                  </span>
+                </div>
+
+                {/* Details */}
+                <div className="space-y-2">
+                  <h4 className="text-lg font-black text-white group-hover:text-amber-400 transition-colors">
+                    {srv.name}
+                  </h4>
+                  <p className="text-xs text-slate-300 font-semibold leading-relaxed line-clamp-3">
+                    {srv.desc}
+                  </p>
+                </div>
+
+                {/* Price & Action Button */}
+                <div className="pt-3 border-t border-gray-800 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-bold">{lang === 'ar' ? 'السعر التقديري الأساسي:' : 'Estimated Base Price:'}</span>
+                    <span className="text-base font-black text-amber-400 font-mono">{srv.basePrice} ₪</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOrderServiceAndBroadcast(srv)}
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-2xl shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400"
+                  >
+                    <span>اطلب الخدمة الآن ونشر البلاغ 🚀</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Live Public Group Chat section at bottom of Services Tab */}
-      <div className="pt-8 border-t border-gray-900">
+      <div id="live-public-group-chat-container" className="pt-8 border-t border-gray-900">
         <PublicGroupChat 
           lang={lang} 
           currentUserRole={userRole || 'client'}
