@@ -120,9 +120,7 @@ export const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ lang, trigge
       {/* Floating PWA Install Bar at Top */}
       <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-slate-950 px-3 sm:px-4 py-2.5 shadow-xl border-b border-amber-300 flex items-center justify-between gap-2.5 text-xs font-bold relative z-40 animate-fade-in select-none">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-slate-950 text-amber-400 flex items-center justify-center shrink-0 shadow-md font-black text-sm">
-            <Smartphone className="w-4 h-4 animate-bounce" />
-          </div>
+          <img src="/icon.svg" alt="Systro Logo" className="w-8 h-8 rounded-xl shrink-0 shadow-md object-contain" />
           <div className="truncate text-right rtl:text-right ltr:text-left">
             <span className="font-black text-slate-950 block text-xs sm:text-sm leading-tight">
               {lang === 'ar' ? 'تطبيق سيسترو للإنقاذ والتكسي والمتجر 📲' : 'Systro App - Emergency, Taxi & Store 📲'}
@@ -174,9 +172,7 @@ export const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ lang, trigge
 
             {/* Icon & Title Header */}
             <div className="text-center space-y-3 pt-2">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-400 text-slate-950 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30">
-                <Smartphone className="w-9 h-9 animate-pulse" />
-              </div>
+              <img src="/icon.svg" alt="Systro Logo" className="w-16 h-16 rounded-2xl mx-auto shadow-xl shadow-sky-500/30 object-contain border border-sky-400/30" />
 
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-black">
                 <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />

@@ -309,61 +309,8 @@ export default function LoginPortal({
         <div className="flex flex-col items-center gap-2 text-center w-full">
           
           {/* Compact Systro Logo */}
-          <div className="flex items-center justify-center gap-2.5 select-none animate-fade-in">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 relative rounded-[18px] sm:rounded-[22px] overflow-hidden p-[2px] bg-gradient-to-tr from-blue-400 via-cyan-300 to-teal-400 shadow-[0_8px_20px_rgba(37,99,235,0.35)] flex items-center justify-center shrink-0">
-              <div className="absolute inset-0 bg-gradient-to-tr from-[#1E3A8A] via-[#2563EB] to-[#06B6D4] rounded-[16px] sm:rounded-[20px] overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-1/2 bg-white/10 rounded-t-[16px] sm:rounded-[20px] filter blur-[0.5px]"></div>
-              </div>
-              
-              <svg className="w-8 h-8 sm:w-11 sm:h-11 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-                    <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#1E3A8A" floodOpacity="0.5" />
-                  </filter>
-                  <linearGradient id="sGrad" x1="10%" y1="0%" x2="90%" y2="100%">
-                    <stop offset="0%" stopColor="#FFFFFF" />
-                    <stop offset="50%" stopColor="#E0F2FE" />
-                    <stop offset="100%" stopColor="#38BDF8" />
-                  </linearGradient>
-                </defs>
-                
-                <path d="M15 70 C 35 85, 70 65, 85 40" stroke="#FFFFFF" strokeWidth="1.5" strokeOpacity="0.2" strokeDasharray="3 3" />
-                <path d="M20 55 C 40 70, 75 55, 80 25" stroke="#38BDF8" strokeWidth="1.2" strokeOpacity="0.35" />
-                
-                <circle cx="85" cy="40" r="3.5" fill="#FFFFFF" />
-                <circle cx="80" cy="25" r="2.5" fill="#38BDF8" />
-                <circle cx="20" cy="55" r="3" fill="#38BDF8" />
-                <circle cx="33" cy="67" r="4" fill="#E0F2FE" />
-                <circle cx="15" cy="70" r="2" fill="#FFFFFF" />
-                <circle cx="68" cy="35" r="4.5" fill="#FFFFFF" />
-
-                <path 
-                  d="M 75,32 
-                     C 70,22  45,22  32,28 
-                     C 20,34  22,46  38,48 
-                     C 58,50  78,48  74,68 
-                     C 70,82  42,84  25,74" 
-                  stroke="url(#sGrad)" 
-                  strokeWidth="11" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                  filter="url(#shadow)"
-                />
-                
-                <path 
-                  d="M 70,30 
-                     C 66,24  46,24  35,29 
-                     C 25,34  26,44  39,46 
-                     C 56,48  73,46  71,64 
-                     C 68,76  44,78  28,70" 
-                  stroke="#FFFFFF" 
-                  strokeWidth="3" 
-                  strokeLinecap="round"
-                  strokeOpacity="0.85"
-                />
-              </svg>
-            </div>
-            
+          <div className="flex items-center justify-center gap-3 select-none animate-fade-in">
+            <img src="/icon.svg" alt="Systro Logo" className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl shadow-[0_8px_25px_rgba(0,182,212,0.4)] object-contain border border-sky-400/30" />
             <span className="text-2xl sm:text-3xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#38BDF8] via-[#0ea5e9] to-[#2563eb] select-none font-sans filter drop-shadow-[0_2px_10px_rgba(6,182,212,0.2)]">
               Systro
             </span>

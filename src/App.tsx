@@ -4782,28 +4782,7 @@ export default function App() {
           
           {/* Logo Brand matching Images */}
           <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
-            <div className="w-12 h-12 relative rounded-2xl overflow-hidden p-[1.5px] bg-gradient-to-tr from-blue-600 via-sky-400 to-blue-400 shadow-lg shadow-blue-500/25 flex items-center justify-center shrink-0 border border-sky-300/30">
-              <div className="absolute inset-0 bg-gradient-to-b from-[#0B152C] via-[#0D1B3E] to-[#060B18] rounded-[14px] overflow-hidden flex items-center justify-center">
-                <svg className="w-10 h-10" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Outer Dashed Golden Circle Ring */}
-                  <circle cx="256" cy="256" r="215" fill="none" stroke="#F59E0B" strokeWidth="18" strokeDasharray="26 14" opacity="0.95" />
-                  {/* Inner Blue Dash Ring */}
-                  <circle cx="256" cy="256" r="186" fill="none" stroke="#38BDF8" strokeWidth="4" strokeDasharray="8 8" opacity="0.6" />
-                  {/* Central Golden Shield */}
-                  <g transform="translate(116, 96) scale(0.55)">
-                    <path d="M256 32 L420 96 V224 C420 340 336 438 256 480 C176 438 92 340 92 224 V96 L256 32 Z" fill="url(#goldGradHeader)" stroke="#FEF08A" strokeWidth="12" />
-                    <path d="M275 110 L165 270 H260 L235 410 L345 250 H250 L275 110 Z" fill="#0D1B3E" stroke="#060B18" strokeWidth="3" />
-                  </g>
-                  <defs>
-                    <linearGradient id="goldGradHeader" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#FDE047" />
-                      <stop offset="50%" stopColor="#F59E0B" />
-                      <stop offset="100%" stopColor="#D97706" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-            </div>
+            <img src="/icon.svg" alt="Systro Logo" className="w-12 h-12 rounded-2xl shadow-lg shadow-sky-500/20 object-contain shrink-0 border border-sky-400/30" />
             <div className="flex flex-col justify-center gap-0.5">
               <h1 className="text-base sm:text-xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-blue-300 to-blue-500 drop-shadow-[0_1px_2px_rgba(14,165,233,0.15)] leading-tight">
                 {t.logoTitle} <span className="text-sky-400 font-black">{t.logoRescue}</span>
@@ -8643,10 +8622,9 @@ export default function App() {
                 >
                   ✕
                 </button>
-                <div className="flex items-center gap-2 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/30">
-                  <span className="w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping"></span>
-                  <h3 className="text-base font-black text-amber-400 flex items-center gap-1.5">
-                    <Globe className="w-5 h-5 text-amber-400" />
+                <div className="flex items-center gap-2 bg-blue-500/15 px-3 py-1.5 rounded-full border border-blue-500/30">
+                  <img src="/icon.svg" alt="Systro Logo" className="w-6 h-6 rounded-lg object-contain shadow-sm" />
+                  <h3 className="text-base font-black text-sky-300 flex items-center gap-1.5">
                     <span>{lang === 'ar' ? 'عالم سيسترو' : lang === 'he' ? 'עולם סיסטרו' : 'Systro World'}</span>
                   </h3>
                 </div>
