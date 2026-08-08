@@ -448,8 +448,10 @@ async function startServer() {
 
   // Global 24-Hour Retention Public Group Chat for all accounts and devices
   const PUBLIC_CHAT_FILE_PATH = path.join(process.cwd(), 'data', 'public_group_chat.json');
+  const PRIVATE_CHAT_FILE_PATH = path.join(process.cwd(), 'data', 'private_chats.json');
   const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
   const globalPublicGroupChatMessages = new Map<string, any>();
+  const globalPrivateChatMessages = new Map<string, any>();
 
   const filter24HoursServer = (list: any[]) => {
     const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
@@ -465,6 +467,37 @@ async function startServer() {
       fs.writeFileSync(PUBLIC_CHAT_FILE_PATH, JSON.stringify(list, null, 2), 'utf-8');
     } catch (err) {
       console.warn('Notice saving public chat file:', err);
+    }
+  };
+
+  const savePrivateChatToFile = () => {
+    try {
+      const dir = path.dirname(PRIVATE_CHAT_FILE_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const list = filter24HoursServer(Array.from(globalPrivateChatMessages.values()));
+      list.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
+      fs.writeFileSync(PRIVATE_CHAT_FILE_PATH, JSON.stringify(list, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('Notice saving private chat file:', err);
+    }
+  };
+
+  const loadPrivateChatFromFile = () => {
+    try {
+      if (fs.existsSync(PRIVATE_CHAT_FILE_PATH)) {
+        const raw = fs.readFileSync(PRIVATE_CHAT_FILE_PATH, 'utf-8');
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          const valid = filter24HoursServer(list);
+          valid.forEach(m => {
+            if (m && m.id) {
+              globalPrivateChatMessages.set(m.id, m);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Notice loading private chat file:', err);
     }
   };
 
@@ -515,6 +548,7 @@ async function startServer() {
   };
 
   loadPublicChatFromFile();
+  loadPrivateChatFromFile();
 
   // GET /api/public-group-chat
   app.get('/api/public-group-chat', (req, res) => {
@@ -534,6 +568,45 @@ async function startServer() {
     const valid = filter24HoursServer(Array.from(globalPublicGroupChatMessages.values()));
     valid.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
     res.json({ success: true, count: valid.length, messages: valid });
+  });
+
+  // GET /api/private-chat
+  app.get('/api/private-chat', (req, res) => {
+    const { chatId, userIdentifier } = req.query;
+    const all = filter24HoursServer(Array.from(globalPrivateChatMessages.values()));
+    
+    let filtered = all;
+    if (chatId) {
+      filtered = all.filter(m => m.chatId === chatId);
+    } else if (userIdentifier) {
+      const userClean = String(userIdentifier).toLowerCase();
+      filtered = all.filter(m => 
+        (m.senderEmail && m.senderEmail.toLowerCase() === userClean) ||
+        (m.senderName && m.senderName.toLowerCase() === userClean) ||
+        (m.recipientEmail && m.recipientEmail.toLowerCase() === userClean) ||
+        (m.recipientName && m.recipientName.toLowerCase() === userClean)
+      );
+    }
+    filtered.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
+    res.json({ success: true, count: filtered.length, messages: filtered });
+  });
+
+  // POST /api/private-chat
+  app.post('/api/private-chat', (req, res) => {
+    const { message } = req.body;
+    if (message && message.chatId) {
+      const key = message.id || `pmsg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const newMsgObj = { ...message, id: key };
+      globalPrivateChatMessages.set(key, newMsgObj);
+      savePrivateChatToFile();
+
+      const all = filter24HoursServer(Array.from(globalPrivateChatMessages.values()));
+      const chatMsgs = all.filter(m => m.chatId === message.chatId);
+      chatMsgs.sort((a, b) => (a.createdTime || 0) - (b.createdTime || 0));
+      res.json({ success: true, count: chatMsgs.length, messages: chatMsgs, newMessage: newMsgObj });
+      return;
+    }
+    res.status(400).json({ error: 'message object with chatId is required' });
   });
 
   app.post('/api/user-session/heartbeat', (req, res) => {

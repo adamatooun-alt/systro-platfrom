@@ -170,6 +170,21 @@ export interface PublicGroupMessage {
   acceptedByTechId?: string;
 }
 
+export interface PrivateMessage {
+  id: string;
+  chatId: string;
+  senderName: string;
+  senderEmail?: string;
+  senderRole: 'client' | 'technician' | 'admin';
+  senderAvatar?: string;
+  recipientName: string;
+  recipientEmail?: string;
+  recipientRole?: 'client' | 'technician' | 'admin';
+  text: string;
+  timestamp: string;
+  createdTime?: number;
+}
+
 export type StoreOrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 export interface StoreOrder {
