@@ -170,6 +170,29 @@ export default function ServicesTab({
         </button>
       </div>
 
+      {/* Direct Taxi Booking Banner inside Customer Dashboard */}
+      <div className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/15 to-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-right">
+        <div className="space-y-1">
+          <h4 className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-1.5 justify-start">
+            <Car className="w-4 h-4 text-amber-400" />
+            <span>{lang === 'ar' ? '🚕 هل تريد حجز تكسي وتوصيل VIP سريع؟' : '🚕 Need a Special Taxi or VIP Ride?'}</span>
+          </h4>
+          <p className="text-[11px] text-gray-300 font-semibold leading-relaxed">
+            {lang === 'ar'
+              ? 'يمكنك الانتقال فوراً لبوابة حجز التكسي والسفريات لتحديد موقع الاستلام والوصول وحساب التكلفة الفورية.'
+              : 'Switch instantly to Taxi booking portal to set pickup, dropoff, and calculate fare.'}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('taxi')}
+          className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer flex items-center gap-1.5 active:scale-95"
+        >
+          <span>{lang === 'ar' ? 'انتقال لبوابة التكسي 🚕' : 'Go to Taxi Portal 🚕'}</span>
+        </button>
+      </div>
+
       {/* CUSTOMER INTERACTIVE MAP & RESCUE REQUEST DISPATCHER HUB */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         

@@ -252,8 +252,8 @@ export default function App() {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory'
-  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory'>(() => {
+  // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world'
+  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world'>(() => {
     try {
       if (typeof window !== 'undefined') {
         const savedReqId = localStorage.getItem('systro_active_request_id') || sessionStorage.getItem('systro_active_request_id');
@@ -262,6 +262,8 @@ export default function App() {
     } catch (e) {}
     return 'home';
   });
+
+  const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
 
   // --- FCM Real-Time In-App Notification System ---
   const [notifications, setNotifications] = useState<InAppNotification[]>(() => {
@@ -4845,11 +4847,12 @@ export default function App() {
 
             <button 
               onClick={() => {
-                setActiveTab('taxi');
+                setActiveTab('world');
+                setIsLeftMenuOpen(true);
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'taxi' ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'world' || isLeftMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'text-orange-100/75 hover:text-white hover:bg-white/5'}`}
             >
-              {lang === 'ar' ? 'تكسي 🚕' : lang === 'he' ? 'מונית 🚕' : 'Taxi 🚕'}
+              {lang === 'ar' ? 'عالم 🌐' : lang === 'he' ? 'עולם 🌐' : 'World 🌐'}
             </button>
             <button 
               onClick={() => {
@@ -5171,6 +5174,199 @@ export default function App() {
       )}
 
 
+
+      {/* SYSTRO WORLD HUB (عالم سيسترو) */}
+      {activeTab === 'world' && (
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 animate-fade-in space-y-8 text-right rtl:text-right ltr:text-left">
+          
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-[#0F1424] via-[#161D33] to-[#0F1424] border border-amber-500/30 p-6 md:p-8 rounded-3xl space-y-4 shadow-2xl relative overflow-hidden">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-amber-500/15 border border-amber-500/30 rounded-full text-amber-400 text-xs font-black">
+                  <Globe className="w-4 h-4 text-amber-400 animate-spin-slow" />
+                  <span>{lang === 'ar' ? 'عالم سيسترو الموحد والخدمات المباشرة 🌐' : 'Systro Global World Hub 🌐'}</span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black text-white">
+                  {lang === 'ar' ? 'أهلاً بك في عالم سيسترو' : 'Welcome to Systro World'}
+                </h2>
+                <p className="text-xs md:text-sm text-gray-300 font-semibold max-w-2xl leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'مركز شامل يربطك فوراً بكافة خدمات الطرق، طلبات التكسي المباشرة، متجر قطع الغيار، ودليل الفنيين والخبراء المعتمدين بالشبكة.' 
+                    : 'A unified global hub connecting you instantly to roadside emergency rescue, direct taxi booking, auto parts store, and verified technician network.'}
+                </p>
+              </div>
+
+              {/* Action button to open left side drawer menu */}
+              <button
+                onClick={() => setIsLeftMenuOpen(true)}
+                className="px-5 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs rounded-2xl shadow-xl transition-all cursor-pointer flex items-center gap-2 shrink-0 active:scale-95"
+              >
+                <Globe className="w-5 h-5 text-black" />
+                <span>{lang === 'ar' ? 'فتح قائمة عالم الجانبية (من اليسار) ⬅️' : 'Open World Menu (Left) ⬅️'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* World Modules Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* Module 1: VIP Taxi Rides */}
+            <div className="p-6 bg-[#0F1424] border border-amber-500/30 hover:border-amber-500/60 rounded-3xl space-y-4 transition-all hover:shadow-xl hover:shadow-amber-500/10 group">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+                <Car className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <span>🚕</span>
+                  <span>{lang === 'ar' ? 'تكسي وسفريات VIP' : 'VIP Taxi & Rides'}</span>
+                </h3>
+                <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'احجز رحلاتك وتوصيلك الخاص بمركبات تكسي مجهزة وسائقين معتمدين بكل سهولة.' 
+                    : 'Book private VIP rides and taxi transfers with verified driver network.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab('taxi')}
+                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 font-bold"
+              >
+                <span>{lang === 'ar' ? 'دخول بوابة التكسي 🚕' : 'Go to Taxi Hub 🚕'}</span>
+              </button>
+            </div>
+
+            {/* Module 2: Roadside Services (Customer Portal) */}
+            <div className="p-6 bg-[#0F1424] border border-gray-800 hover:border-amber-500/50 rounded-3xl space-y-4 transition-all hover:shadow-xl group">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                <Wrench className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <span>🛠️</span>
+                  <span>{lang === 'ar' ? 'خدمات الطرق والإنقاذ' : 'Roadside Rescue'}</span>
+                </h3>
+                <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'طلب ونش سحب، بنشر إطارات، اشتراك بطارية، أو شحن وقود مع تتبع الخريطة مباشرة.' 
+                    : 'Request towing, flat tire, battery jump start or fuel delivery with live GPS map.'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setUserRole('client');
+                  sessionStorage.setItem('systro_user_role', 'client');
+                  setActiveTab('services');
+                }}
+                className="w-full py-2.5 bg-[#1A233A] hover:bg-[#222E4D] text-white font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-gray-700 font-bold"
+              >
+                <span>{lang === 'ar' ? 'دخول لوحة الزبون 👤' : 'Open Customer Portal 👤'}</span>
+              </button>
+            </div>
+
+            {/* Module 3: Technicians Directory */}
+            <div className="p-6 bg-[#0F1424] border border-gray-800 hover:border-amber-500/50 rounded-3xl space-y-4 transition-all hover:shadow-xl group">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                <Users className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <span>👥</span>
+                  <span>{lang === 'ar' ? 'دليل الفنيين والخبراء' : 'Technicians Directory'}</span>
+                </h3>
+                <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'تصفح قائمة الفنيين المفعلين، تخصصاتهم، تقييماتهم ورقم تواصلهم المباشر.' 
+                    : 'Browse directory of active technicians, specialties, ratings and direct contact.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab('directory')}
+                className="w-full py-2.5 bg-[#1A233A] hover:bg-[#222E4D] text-white font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-gray-700 font-bold"
+              >
+                <span>{lang === 'ar' ? 'استعراض دليل الفنيين 👥' : 'Browse Directory 👥'}</span>
+              </button>
+            </div>
+
+            {/* Module 4: Auto Parts Store */}
+            <div className="p-6 bg-[#0F1424] border border-gray-800 hover:border-amber-500/50 rounded-3xl space-y-4 transition-all hover:shadow-xl group">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+                <ShoppingBag className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <span>🛒</span>
+                  <span>{lang === 'ar' ? 'متجر قطع الغيار والزيوت' : 'Auto Parts Store'}</span>
+                </h3>
+                <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'تسوق أفضل قطع غيار السيارات الأصلية، بطاريات، وزيوت مع خدمة الشحن والتوصيل.' 
+                    : 'Shop genuine car parts, batteries, lubricants with direct delivery.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab('store')}
+                className="w-full py-2.5 bg-[#1A233A] hover:bg-[#222E4D] text-white font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-gray-700 font-bold"
+              >
+                <span>{lang === 'ar' ? 'دخول المتجر 🛒' : 'Open Store 🛒'}</span>
+              </button>
+            </div>
+
+            {/* Module 5: Operations Radar */}
+            <div className="p-6 bg-[#0F1424] border border-gray-800 hover:border-amber-500/50 rounded-3xl space-y-4 transition-all hover:shadow-xl group">
+              <div className="w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400 group-hover:scale-110 transition-transform">
+                <Activity className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <span>📡</span>
+                  <span>{lang === 'ar' ? 'رادار ومهمات الفنيين' : 'Operations Radar'}</span>
+                </h3>
+                <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'لوحة متابعة البلاغات والمهمات الحية للفنيين والخبراء المستقلين بالشبكة.' 
+                    : 'Monitor live emergency alerts and task requests on the radar.'}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setUserRole('technician');
+                  sessionStorage.setItem('systro_user_role', 'technician');
+                  setActiveTab('simulator');
+                }}
+                className="w-full py-2.5 bg-[#1A233A] hover:bg-[#222E4D] text-white font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-gray-700 font-bold"
+              >
+                <span>{lang === 'ar' ? 'دخول رادار الفنيين 🛠️' : 'Open Provider Radar 🛠️'}</span>
+              </button>
+            </div>
+
+            {/* Module 6: Escrow Vault & Security */}
+            <div className="p-6 bg-[#0F1424] border border-gray-800 hover:border-amber-500/50 rounded-3xl space-y-4 transition-all hover:shadow-xl group">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <span>🛡️</span>
+                  <span>{lang === 'ar' ? 'خزنة الضمان المالي 100%' : '100% Escrow Vault'}</span>
+                </h3>
+                <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                  {lang === 'ar' 
+                    ? 'حماية وأمان مالي متكامل للعميل والفني مع ضمان حجز المبالغ لحين إتمام الخدمة.' 
+                    : 'Full payment protection for both clients and technicians with escrow locking.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsSentinelOpen(true)}
+                className="w-full py-2.5 bg-[#1A233A] hover:bg-[#222E4D] text-white font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-gray-700 font-bold"
+              >
+                <span>{lang === 'ar' ? 'تفقد الضمان المالي 🛡️' : 'Check Escrow Security 🛡️'}</span>
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
       {/* MAIN INTERACTIVE SIMULATOR SUITE TAB */}
       {activeTab === 'simulator' && (
@@ -6296,30 +6492,8 @@ export default function App() {
                                 <div className="flex items-center gap-2 shrink-0 flex-wrap self-start sm:self-center">
                                   <button
                                     type="button"
-                                    onClick={() => setShowMyOwnRequestsInTechList(prev => !prev)}
-                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold flex items-center gap-1.5 transition-all cursor-pointer border ${
-                                      showMyOwnRequestsInTechList 
-                                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/35 hover:bg-amber-500/25' 
-                                        : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'
-                                    }`}
-                                    title={lang === 'ar' ? 'تبديل إظهار الطلبات التي أنشأتها أنت كزبون في لوحة الفني' : 'Toggle showing requests created by you'}
-                                  >
-                                    <span>{showMyOwnRequestsInTechList ? (lang === 'ar' ? '👁️ إظهار طلباتي كزبون' : '👁️ Show My Client Tasks') : (lang === 'ar' ? '🙈 إخفاء طلباتي كزبون' : '🙈 Hide My Client Tasks')}</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={handleTestPublishTask}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-emerald-500"
-                                    title={lang === 'ar' ? 'اختبار نشر مهمة جديدة من قبل زبون وتعميمها فوراً لكافة الفنيين' : 'Test publishing & broadcasting task'}
-                                  >
-                                    <span>🧪 {lang === 'ar' ? 'نشر مهمة تجريبية 🚀' : 'Test Publish Task 🚀'}</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
                                     onClick={handleManualRefreshRequests}
-                                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-amber-600 shrink-0"
+                                    className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-[11px] flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95 border border-amber-600 shrink-0"
                                     title={lang === 'ar' ? 'تحديث وتفقد قائمة المهمات الآن' : 'Refresh live task orders now'}
                                   >
                                     <RefreshCw className="w-3.5 h-3.5 text-slate-950" />
@@ -6343,19 +6517,11 @@ export default function App() {
                                   <div className="flex items-center justify-center gap-2 pt-2">
                                     <button
                                       type="button"
-                                      onClick={handleTestPublishTask}
-                                      className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-lg active:scale-95 inline-flex items-center gap-1.5"
-                                    >
-                                      <span>🧪 {lang === 'ar' ? 'إجراء تجربة نشر مهمة زبون 🚀' : 'Test Publish Client Task 🚀'}</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
                                       onClick={handleManualRefreshRequests}
-                                      className="px-3.5 py-2 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
+                                      className="px-4 py-2 bg-amber-500 text-black hover:bg-amber-400 rounded-xl text-xs font-black transition-all cursor-pointer shadow inline-flex items-center gap-1.5"
                                     >
                                       <RefreshCw className="w-3.5 h-3.5" />
-                                      <span>{lang === 'ar' ? 'فحص المهمات 🔄' : 'Check Tasks 🔄'}</span>
+                                      <span>{lang === 'ar' ? 'فحص وتحديث المهمات 🔄' : 'Check & Refresh Tasks 🔄'}</span>
                                     </button>
                                   </div>
                                 </div>
@@ -7864,7 +8030,7 @@ export default function App() {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-3">
                 <h3 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <Users className="w-5 h-5 text-amber-500" />
-                  <span>{lang === 'ar' ? 'المستخدمين المسجلين بالشبكة' : lang === 'he' ? 'משתמשים רשומים ברשת' : 'Registered Users Network'}</span>
+                  <span>{lang === 'ar' ? 'قائمة وسجل من قام بدخول المنصة والمستخدمين المسجلين' : lang === 'he' ? 'רשימת משתמשים שנכנסו לפלטפורמה' : 'Platform Entry List & Registered Users'}</span>
                 </h3>
                 <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-bold">
                   {lang === 'ar' ? `المجموع: ${registeredUsers.length}` : lang === 'he' ? `סה"כ: ${registeredUsers.length}` : `Total: ${registeredUsers.length}`}
@@ -7938,9 +8104,15 @@ export default function App() {
                             </span>
                             <h4 className="text-xs font-black text-slate-800">{u.name || 'Anonymous'}</h4>
                           </div>
-                          <p className="text-[10px] font-mono text-slate-500 truncate">{u.email}</p>
+                          <p className="text-[10px] font-mono text-slate-500 truncate">✉️ {u.email}</p>
                           {u.phone && (
-                            <p className="text-[10px] text-slate-600 font-bold">{u.phone}</p>
+                            <p className="text-[10px] text-slate-600 font-bold">📞 {u.phone}</p>
+                          )}
+                          {(u.lastLoginFormatted || u.deviceInfo) && (
+                            <div className="flex items-center gap-2 pt-1 text-[9px] text-slate-400 font-mono">
+                              {u.lastLoginFormatted && <span>🕒 {u.lastLoginFormatted}</span>}
+                              {u.deviceInfo && <span>• {u.deviceInfo}</span>}
+                            </div>
                           )}
                         </div>
                         <div className="flex gap-2">
@@ -7982,6 +8154,118 @@ export default function App() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Active Technicians Ready to Work Dashboard */}
+            <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-4 text-right">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                <h3 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
+                  <Wrench className="w-5 h-5 text-emerald-600" />
+                  <span>{lang === 'ar' ? 'قائمة الفنيين المفعلين للخدمة ويريدون العمل (أونلاين) 🟢' : 'Active Technicians Ready to Work (Online) 🟢'}</span>
+                </h3>
+                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 font-extrabold">
+                  {lang === 'ar' 
+                    ? `النشطين حالياً: ${technicians.filter(t => t.isOnline || t.isAvailable).length}` 
+                    : `Active: ${technicians.filter(t => t.isOnline || t.isAvailable).length}`}
+                </span>
+              </div>
+
+              {technicians.filter(t => t.isOnline || t.isAvailable).length === 0 ? (
+                <div className="text-center py-8 text-slate-400 font-semibold text-xs">
+                  {lang === 'ar' ? 'لا يوجد فنيين متصلين بالشبكة حالياً' : 'No online technicians currently'}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {technicians.filter(t => t.isOnline || t.isAvailable).map(tech => (
+                    <div key={tech.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={tech.avatar || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120'} 
+                          alt={tech.name} 
+                          className="w-11 h-11 rounded-full border-2 border-emerald-500 object-cover shrink-0"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-xs font-black text-slate-900">{tech.arName || tech.name}</h4>
+                            <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                              <Star className="w-2.5 h-2.5 fill-current text-amber-500" />
+                              <span>{tech.rating || 5.0}</span>
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-mono" dir="ltr">{tech.phone}</p>
+                          {tech.email && <p className="text-[9px] text-slate-400 font-mono truncate">{tech.email}</p>}
+                          <span className="text-[10px] text-amber-700 font-bold block">
+                            🚗 {tech.arCarModel || tech.carModel} {tech.plateNumber ? `(${tech.plateNumber})` : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-left shrink-0">
+                        <span className="px-2.5 py-1 bg-emerald-500 text-black font-black text-[10px] rounded-full flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-black rounded-full animate-pulse"></span>
+                          <span>{lang === 'ar' ? 'جاهز للعمل 🟢' : 'Ready 🟢'}</span>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Store Aircrafts & VIP Taxi Requests Dashboard */}
+            <div className="p-6 bg-white border border-slate-200 shadow-sm rounded-3xl space-y-4 text-right">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                <div className="space-y-1">
+                  <h3 className="text-xs md:text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <ShoppingBag className="w-5 h-5 text-amber-500" />
+                    <span>{lang === 'ar' ? 'طلبات الطائرات والسيارات والمشتريات من المتجر ✈️🚕' : 'Store Aircrafts & Taxi Booking Requests ✈️🚕'}</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    {lang === 'ar' ? 'استعراض أسماء العملاء، بريدهم الإلكتروني ورقم التلفون الخاص بكل طلب' : 'View customer names, emails, and phone numbers for all store/taxi orders'}
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200 font-extrabold">
+                  {lang === 'ar' ? `المجموع: ${allRequests.filter(r => r.serviceType === 'taxi' || r.serviceType === 'store' || r.description?.includes('طائرة') || r.description?.includes('متجر')).length}` : `Total: ${allRequests.filter(r => r.serviceType === 'taxi' || r.serviceType === 'store').length}`}
+                </span>
+              </div>
+
+              {allRequests.filter(r => r.serviceType === 'taxi' || r.serviceType === 'store' || r.description?.includes('طائرة') || r.description?.includes('متجر')).length === 0 ? (
+                <div className="text-center py-8 text-slate-400 font-semibold text-xs">
+                  {lang === 'ar' ? 'لا توجد طلبات متجر أو طائرات حالياً' : 'No store or aircraft requests currently'}
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                  {allRequests.filter(r => r.serviceType === 'taxi' || r.serviceType === 'store' || r.description?.includes('طائرة') || r.description?.includes('متجر')).map(item => (
+                    <div key={item.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-300">
+                            {item.serviceType === 'taxi' ? '🚕 تكسي VIP' : '✈️ مشتريات طائرات ومتجر'}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">ID: #{item.id.substring(0, 8)}</span>
+                        </div>
+                        <h4 className="text-xs font-black text-slate-900">{item.clientName}</h4>
+                        <p className="text-[10px] text-slate-600 font-mono" dir="ltr">✉️ البريد: {item.requestedBy || 'غير محدد'}</p>
+                        <p className="text-[10px] text-amber-700 font-bold font-mono" dir="ltr">📞 التلفون: {item.clientPhone || 'غير محدد'}</p>
+                        <p className="text-[11px] text-slate-700 font-semibold leading-relaxed mt-1">
+                          {item.description}
+                        </p>
+                      </div>
+
+                      <div className="text-left shrink-0 space-y-1">
+                        <span className="text-xs font-black text-emerald-600 font-mono block">
+                          {item.approximatePrice || 150} ₪
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-mono block">
+                          {item.timestamp ? new Date(item.timestamp).toLocaleDateString('ar-EG') : ''}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -8548,11 +8832,14 @@ export default function App() {
         </button>
 
         <button 
-          onClick={() => setActiveTab('taxi')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'taxi' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
+          onClick={() => {
+            setActiveTab('world');
+            setIsLeftMenuOpen(true);
+          }}
+          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'world' || isLeftMenuOpen ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-orange-100/70 hover:text-white'}`}
         >
-          <Car className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'تكسي' : lang === 'he' ? 'מונית' : 'Taxi'}</span>
+          <Globe className="w-5 h-5 shrink-0" />
+          <span>{lang === 'ar' ? 'عالم' : lang === 'he' ? 'עולם' : 'World'}</span>
         </button>
 
         <button 
@@ -8866,6 +9153,154 @@ export default function App() {
               </span>
               <span className="text-[9px] text-gray-500 font-bold block">
                 {lang === 'ar' ? 'نسخة الطوارئ المعتمدة' : lang === 'he' ? 'גרסת חירום רשמית ומאושרת' : 'Emergency Certified Suite'}
+              </span>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Left Menu Drawer (Opens from the left - عالم سيسترو) */}
+      {isLeftMenuOpen && (
+        <div className="fixed inset-0 z-[80] flex justify-start bg-black/80 backdrop-blur-md animate-fade-in select-none">
+          <div className="w-full max-w-xs sm:max-w-sm bg-[#090D1A] border-r border-amber-500/30 h-full flex flex-col justify-between shadow-2xl p-5 text-right rtl:text-right ltr:text-left overflow-y-auto">
+            
+            {/* Header */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                <button
+                  onClick={() => setIsLeftMenuOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white flex items-center justify-center text-sm font-bold cursor-pointer transition-colors"
+                >
+                  ✕
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping"></span>
+                  <h3 className="text-base font-black text-white flex items-center gap-1.5">
+                    <Globe className="w-5 h-5 text-amber-500" />
+                    <span>{lang === 'ar' ? 'عالم سيسترو' : lang === 'he' ? 'עולם סיסטרו' : 'Systro World'}</span>
+                  </h3>
+                </div>
+              </div>
+
+              {/* World Menu Quick Links */}
+              <div className="space-y-2 pt-2">
+                <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                  {lang === 'ar' ? '🌐 أقسام القائمة الرئيسية:' : '🌐 World Navigation Hub:'}
+                </p>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('home');
+                    setIsLeftMenuOpen(false);
+                  }}
+                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
+                  <span className="flex items-center gap-2">
+                    <span>الرئيسية</span>
+                    <Home className="w-4 h-4 text-amber-500" />
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setUserRole('client');
+                    sessionStorage.setItem('systro_user_role', 'client');
+                    setActiveTab('services');
+                    setIsLeftMenuOpen(false);
+                  }}
+                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
+                  <span className="flex items-center gap-2">
+                    <span>لوحة الزبون والخدمات</span>
+                    <Wrench className="w-4 h-4 text-amber-500" />
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('taxi');
+                    setIsLeftMenuOpen(false);
+                  }}
+                  className="w-full p-3 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 rounded-2xl flex items-center justify-between text-xs font-black text-amber-300 transition-all cursor-pointer hover:scale-[1.01]"
+                >
+                  <span className="text-[10px] bg-amber-500 text-black px-2 py-0.5 rounded-full font-black">جديد 🚕</span>
+                  <span className="flex items-center gap-2">
+                    <span>بوابة حجز تكسي وسفريات VIP</span>
+                    <Car className="w-4 h-4 text-amber-400" />
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('store');
+                    setIsLeftMenuOpen(false);
+                  }}
+                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
+                  <span className="flex items-center gap-2">
+                    <span>متجر قطع غيار ومستلزمات السيارات</span>
+                    <ShoppingBag className="w-4 h-4 text-amber-500" />
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('directory');
+                    setIsLeftMenuOpen(false);
+                  }}
+                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
+                  <span className="flex items-center gap-2">
+                    <span>دليل الفنيين والخبراء المعتمدين</span>
+                    <Users className="w-4 h-4 text-amber-500" />
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setUserRole('technician');
+                    sessionStorage.setItem('systro_user_role', 'technician');
+                    setActiveTab('simulator');
+                    setIsLeftMenuOpen(false);
+                  }}
+                  className="w-full p-3 bg-[#101528] hover:bg-[#18203B] border border-gray-800 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
+                  <span className="flex items-center gap-2">
+                    <span>رادار ومهمات الفنيين</span>
+                    <Activity className="w-4 h-4 text-amber-500" />
+                  </span>
+                </button>
+              </div>
+
+              {/* Quick Contact & Emergency Call inside Left Drawer */}
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2 mt-4">
+                <span className="text-xs font-black text-amber-400 block">
+                  📞 الدعم المباشر والإدارة (آدم)
+                </span>
+                <p className="text-[10px] text-gray-300 font-medium">
+                  اتصل مباشرة للحصول على مساعدة عاجلة أو استفسار بخصوص المعاملات:
+                </p>
+                <a
+                  href="tel:+972538316779"
+                  className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all block text-center"
+                  dir="ltr"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>+972 53-831-6779</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Footer inside drawer */}
+            <div className="pt-4 border-t border-gray-800 text-center space-y-1">
+              <span className="text-[10px] text-gray-500 font-bold block">
+                عالم سيسترو © 2026 - جميع الحقوق محفوظة
               </span>
             </div>
 
