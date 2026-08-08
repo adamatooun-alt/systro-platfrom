@@ -4822,11 +4822,11 @@ export default function App() {
             </button>
           )}
 
-          {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 bg-gradient-to-r from-blue-800 via-blue-600 to-sky-600 p-1 rounded-xl border border-blue-400/30 shrink-0 shadow-lg shadow-blue-500/15">
+          {/* Center Navigation Links (Visible on all devices with horizontal scroll on mobile) */}
+          <nav className="flex items-center gap-1 bg-gradient-to-r from-blue-900 via-blue-700 to-sky-700 p-1 rounded-xl border border-blue-400/40 shrink-0 shadow-lg shadow-blue-500/15 overflow-x-auto max-w-[55vw] md:max-w-none scrollbar-none">
             <button 
               onClick={() => setActiveTab('home')}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'home' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'home' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
               {t.home}
             </button>
@@ -4836,7 +4836,7 @@ export default function App() {
                 sessionStorage.setItem('systro_user_role', 'client');
                 setActiveTab('services');
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'services' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'services' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
               {lang === 'ar' ? 'الخدمات (الزبون) 👤' : t.services}
             </button>
@@ -4846,9 +4846,14 @@ export default function App() {
                 sessionStorage.setItem('systro_user_role', 'technician');
                 setActiveTab('simulator');
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 relative ${activeTab === 'simulator' ? 'bg-amber-500 text-slate-950 font-black shadow-sm' : 'text-amber-300 hover:text-white hover:bg-white/10'}`}
             >
-              {lang === 'ar' ? 'العمليات (الفني) 🛠️' : t.simulator}
+              <span>{lang === 'ar' ? 'العمليات (الفني) 🛠️' : t.simulator}</span>
+              {allRequests.filter(isPendingForTechnician).length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-mono font-black rounded-full px-1.5 py-0.2 animate-bounce">
+                  {allRequests.filter(isPendingForTechnician).length}
+                </span>
+              )}
             </button>
 
             <button 
@@ -4856,7 +4861,7 @@ export default function App() {
                 setActiveTab('world');
                 setIsLeftMenuOpen(true);
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'world' || isLeftMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'world' || isLeftMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
               {lang === 'ar' ? 'عالم 🌐' : lang === 'he' ? 'עולם 🌐' : 'World 🌐'}
             </button>
@@ -4864,7 +4869,7 @@ export default function App() {
               onClick={() => {
                 setActiveTab('store');
               }}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${activeTab === 'store' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'store' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
               {lang === 'ar' ? 'المتجر 🛒' : lang === 'he' ? 'חנות 🛒' : 'Store 🛒'}
             </button>
@@ -5043,16 +5048,16 @@ export default function App() {
         </div>
       </header>
 
-      {/* Real-time Task Orders Bar (Visible ONLY for Technicians when open client task requests exist) */}
-      {userRole === 'technician' && allRequests.filter(isPendingForTechnician).length > 0 && (
-        <div className="bg-gradient-to-r from-slate-900 via-amber-950/80 to-slate-900 text-amber-300 px-4 py-2 shadow-lg flex items-center justify-between gap-3 text-xs font-bold select-none z-30 sticky top-20 border-b border-amber-500/30">
+      {/* Real-time Task Orders Bar (Visible whenever open client task requests exist) */}
+      {allRequests.filter(isPendingForTechnician).length > 0 && (
+        <div className="bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 text-amber-300 px-4 py-2.5 shadow-xl flex items-center justify-between gap-3 text-xs font-bold select-none z-30 sticky top-14 sm:top-16 border-b border-amber-500/50 animate-fade-in">
           <div className="flex items-center gap-2 max-w-4xl truncate">
-            <span className="bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black shrink-0 shadow">
-              📋 {lang === 'ar' ? 'مهمة جديدة' : 'NEW TASK'}
+            <span className="bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black shrink-0 shadow animate-pulse">
+              🚨 {lang === 'ar' ? 'مهمة جديدة' : 'NEW TASK'}
             </span>
-            <span className="truncate text-white text-[11px]">
+            <span className="truncate text-white text-[11px] font-bold">
               {lang === 'ar' 
-                ? `يوجد (${allRequests.filter(isPendingForTechnician).length}) مهمة/طلب خدمات نشط بانتظار استجابة وتأكيد عروض الفنيين!` 
+                ? `يوجد (${allRequests.filter(isPendingForTechnician).length}) طلب خدمة/مهمة إغاثة جديدة بانتظار استجابة الفنيين!` 
                 : `There are (${allRequests.filter(isPendingForTechnician).length}) active task orders awaiting technician response!`}
             </span>
           </div>
@@ -5060,13 +5065,18 @@ export default function App() {
           <button
             onClick={() => {
               setUserRole('technician');
+              sessionStorage.setItem('systro_user_role', 'technician');
               setActiveTab('simulator');
-              triggerToast(lang === 'ar' ? 'تم الانتقال لقائمة المهمات المتاحة!' : 'Switched to Task Orders Dispatch Queue!', 'info');
+              triggerToast(lang === 'ar' ? 'تم الانتقال إلى لوحة الفني لاستلام وتلبية المهمة!' : 'Switched to Technician Control Hub!', 'info');
+              const alertsEl = document.getElementById('technician-rescue-alerts-list');
+              if (alertsEl) {
+                alertsEl.scrollIntoView({ behavior: 'smooth' });
+              }
             }}
-            className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-400/50 rounded-lg text-[10px] font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow active:scale-95"
+            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-400/60 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:scale-95"
           >
             <Briefcase className="w-3.5 h-3.5 text-slate-950" />
-            <span>{lang === 'ar' ? 'استعراض المهمات 📋' : 'Browse Tasks 📋'}</span>
+            <span>{lang === 'ar' ? 'استلام وتلبية المهمة 🛠️' : 'Receive Task 🛠️'}</span>
           </button>
         </div>
       )}
@@ -7507,6 +7517,65 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* MOBILE FIXED BOTTOM NAVIGATION BAR */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-[#0A0D18]/95 backdrop-blur-xl border-t border-amber-500/40 px-2 py-2 flex items-center justify-around text-center shadow-2xl select-none">
+        <button
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center gap-0.5 transition-all ${activeTab === 'home' ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
+        >
+          <Home className="w-5 h-5" />
+          <span className="text-[10px]">{lang === 'ar' ? 'الرئيسية' : 'Home'}</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setUserRole('client');
+            sessionStorage.setItem('systro_user_role', 'client');
+            setActiveTab('services');
+          }}
+          className={`flex flex-col items-center gap-0.5 transition-all ${activeTab === 'services' ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
+        >
+          <Wrench className="w-5 h-5" />
+          <span className="text-[10px]">{lang === 'ar' ? 'الزبون 👤' : 'Client 👤'}</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setUserRole('technician');
+            sessionStorage.setItem('systro_user_role', 'technician');
+            setActiveTab('simulator');
+          }}
+          className={`flex flex-col items-center gap-0.5 transition-all relative ${activeTab === 'simulator' ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
+        >
+          <Briefcase className="w-5 h-5" />
+          <span className="text-[10px]">{lang === 'ar' ? 'الفني 🛠️' : 'Tech 🛠️'}</span>
+          {allRequests.filter(isPendingForTechnician).length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-mono font-black rounded-full w-4 h-4 flex items-center justify-center animate-bounce shadow">
+              {allRequests.filter(isPendingForTechnician).length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('world');
+            setIsLeftMenuOpen(true);
+          }}
+          className={`flex flex-col items-center gap-0.5 transition-all ${activeTab === 'world' || isLeftMenuOpen ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
+        >
+          <Globe className="w-5 h-5" />
+          <span className="text-[10px]">{lang === 'ar' ? 'عالم 🌐' : 'World 🌐'}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('store')}
+          className={`flex flex-col items-center gap-0.5 transition-all ${activeTab === 'store' ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
+        >
+          <ShoppingBag className="w-5 h-5" />
+          <span className="text-[10px]">{lang === 'ar' ? 'المتجر 🛒' : 'Store 🛒'}</span>
+        </button>
+      </nav>
 
     </div>
   );
