@@ -1,6 +1,6 @@
 {
-  "name": "نظام سيسترو | Systro",
-  "description": "نظام سيسترو (Systro System) - منصة إنقاذ الطرق والخدمات المباشرة والضمان المالي المعلق.",
+  "name": "system systro نظام سيسترو",
+  "description": "system systro نظام سيسترو - منصة للأعمال والخدمات والخدمات المباشرة والضمان المالي",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

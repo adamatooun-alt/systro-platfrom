@@ -5386,12 +5386,12 @@ export default function App() {
             <div className="space-y-1">
               <h2 className="text-lg md:text-xl font-black text-white flex items-center gap-2">
                 <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping"></span>
-                <span>{lang === 'ar' ? '🛠️ لوحة تحكم وتلبية العمليات للفني (Technician Control Hub)' : '🛠️ Technician Operations & Dispatch Hub'}</span>
+                <span>{lang === 'ar' ? '🛠️ لوحة تحكم وتلبية العمليات للفني (Technician Control Hub)' : '🛠️ Technician Operations & Control Hub'}</span>
               </h2>
               <p className="text-xs text-gray-400 font-semibold">
                 {lang === 'ar' 
-                  ? 'استقبل بلاغات الاستغاثة الطارئة، تصفح مواقع المركبات المتعطلة، وقدم عروضك أو لَبِّ الطلبات فوراً.' 
-                  : 'Monitor live emergency alerts, view stranded vehicle locations, and accept tasks immediately.'}
+                  ? 'إدارة حساب الفني، تحديث بياناتك، متابعة الجاهزية والخريطة المباشرة.' 
+                  : 'Manage technician profile, update your status, and view radar location.'}
               </p>
             </div>
 
@@ -5405,59 +5405,71 @@ export default function App() {
             </div>
           </div>
 
-          {/* TECHNICIAN ONLINE STATUS BANNER (Only displayed when active) */}
-          {(activeTechDoc?.isOnline ?? false) && (
-            <div className="p-5 rounded-3xl border-2 transition-all shadow-xl select-none flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-950/80 via-[#0D1E16] to-[#0A0B10] border-emerald-500/60 shadow-emerald-950/30">
-              <div className="flex items-start gap-3.5">
-                <div className="p-3 rounded-2xl shrink-0 border mt-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse">
-                  <UserCheck className="w-6 h-6" />
-                </div>
-                <div className="space-y-1 text-right rtl:text-right ltr:text-left">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm md:text-base font-black text-white">
-                      {lang === 'ar' 
-                        ? 'حساب الفني نشط ومتاح بالشبكة للعمل وتتبع المهمات 🟢' 
-                        : 'Technician Account Active & Online 🟢'}
-                    </h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-black">
-                      {lang === 'ar' ? 'فني مسجل ونشط 🟢' : 'Registered & Active 🟢'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-300 font-semibold leading-relaxed">
-                    {lang === 'ar'
-                      ? 'أنت الآن مسجل ومتاح بالشبكة! يتم بث بلاغات الطوارئ لك وتظهر موقعك على الخريطة للزبائن لتلبية طلباتهم فوراً.'
-                      : 'You are registered & online! Receiving live emergency requests.'}
-                  </p>
-                </div>
+          {/* TECHNICIAN ONLINE STATUS BANNER */}
+          <div className={`p-5 rounded-3xl border-2 transition-all shadow-xl select-none flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
+            (activeTechDoc?.isOnline ?? false) 
+              ? 'bg-gradient-to-r from-emerald-950/80 via-[#0D1E16] to-[#0A0B10] border-emerald-500/60 shadow-emerald-950/30'
+              : 'bg-gradient-to-r from-amber-950/80 via-[#1C1608] to-[#0A0B10] border-amber-500/60 shadow-amber-950/30'
+          }`}>
+            <div className="flex items-start gap-3.5">
+              <div className={`p-3 rounded-2xl shrink-0 border mt-0.5 ${
+                (activeTechDoc?.isOnline ?? false) 
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 animate-pulse'
+                  : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+              }`}>
+                <UserCheck className="w-6 h-6" />
               </div>
-
-              <button
-                type="button"
-                onClick={handleToggleTechMode}
-                className="px-6 py-3.5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer flex items-center gap-2 shadow-lg shrink-0 w-full md:w-auto justify-center bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40"
-              >
-                <Power className="w-4 h-4 text-red-400" />
-                <span>
-                  {lang === 'ar' ? 'إيقاف وضع الفني (التحويل لغير متاح) 🔴' : 'Deactivate Tech Mode (Go Offline) 🔴'}
-                </span>
-              </button>
+              <div className="space-y-1 text-right rtl:text-right ltr:text-left">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm md:text-base font-black text-white">
+                    {(activeTechDoc?.isOnline ?? false)
+                      ? (lang === 'ar' ? 'حساب الفني نشط ومتاح بالشبكة للعمل وتتبع المهمات 🟢' : 'Technician Account Active & Online 🟢')
+                      : (lang === 'ar' ? 'وضع الظهور للفني متوقف حالياً (غير متاح) 🔴' : 'Technician Account Offline 🔴')}
+                  </h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    (activeTechDoc?.isOnline ?? false) ? 'bg-emerald-500 text-black' : 'bg-amber-500 text-black'
+                  }`}>
+                    {(activeTechDoc?.isOnline ?? false) 
+                      ? (lang === 'ar' ? 'فني مسجل ونشط 🟢' : 'Registered & Active 🟢')
+                      : (lang === 'ar' ? 'وضع التوقف 🔴' : 'Offline Mode 🔴')}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 font-semibold leading-relaxed">
+                  {(activeTechDoc?.isOnline ?? false)
+                    ? (lang === 'ar' ? 'أنت الآن مسجل ومتاح بالشبكة! يتم بث موقعك على الخريطة للزبائن وتلقي طلبات الطوارئ المباشرة.' : 'You are registered & online!')
+                    : (lang === 'ar' ? 'اضغط على زر تفعيل وضع الفني أدناه لتصبح متاحاً بالشبكة وتستقبل بلاغات الطوارئ.' : 'Click activate button below to go online.')}
+                </p>
+              </div>
             </div>
-          )}
+
+            <button
+              type="button"
+              onClick={handleToggleTechMode}
+              className={`px-6 py-3.5 rounded-2xl text-xs md:text-sm font-black transition-all cursor-pointer flex items-center gap-2 shadow-lg shrink-0 w-full md:w-auto justify-center ${
+                (activeTechDoc?.isOnline ?? false)
+                  ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-black font-black shadow-emerald-500/20'
+              }`}
+            >
+              <Power className={`w-4 h-4 ${(activeTechDoc?.isOnline ?? false) ? 'text-red-400' : 'text-black'}`} />
+              <span>
+                {(activeTechDoc?.isOnline ?? false)
+                  ? (lang === 'ar' ? 'إيقاف وضع الفني (التحويل لغير متاح) 🔴' : 'Deactivate Tech Mode (Go Offline) 🔴')
+                  : (lang === 'ar' ? 'تفعيل وضع الظهور للفني (التحويل لمتاح) 🟢' : 'Activate Tech Mode (Go Online) 🟢')}
+              </span>
+            </button>
+          </div>
 
           {/* Dynamic grid split */}
-          {(activeTechDoc?.isOnline ?? false) && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             {/* Left Column: Technician Live Emergency Radar Map */}
             <div className="lg:col-span-5 bg-[#0F1424] border border-gray-800 p-5 rounded-3xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
                 <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
                   <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-                  <span>{lang === 'ar' ? 'خريطة رادار بلاغات الطوارئ المباشرة 📡' : 'Live Emergency Radar Map 📡'}</span>
+                  <span>{lang === 'ar' ? 'خريطة رادار الفني المباشرة 📡' : 'Live Technician Radar Map 📡'}</span>
                 </h3>
-                <span className="bg-red-500/15 text-red-400 border border-red-500/20 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest select-none self-start">
-                  {allRequests.filter(isPendingForTechnician).length} {lang === 'ar' ? 'بلاغات طارئة' : 'Alerts'}
-                </span>
               </div>
 
               {/* Map Rendering Container */}
@@ -5493,28 +5505,8 @@ export default function App() {
                       internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
                       style={{ width: '100%', height: '100%' }}
                     >
-                      {/* Active emergency requests pinned on technician radar map */}
-                      {allRequests.filter(isPendingForTechnician).map(req => (
-                        <AdvancedMarker 
-                          key={req.id} 
-                          position={{ lat: req.locationLat, lng: req.locationLng }} 
-                          title={lang === 'ar' ? `نداء استغاثة: ${req.serviceType} 🚨` : `Emergency: ${req.serviceType} 🚨`}
-                          onClick={() => {
-                            setSelectedBidRequest(req);
-                            setCustomBidPrice(String(req.approximatePrice || 150));
-                            triggerToast(lang === 'ar' ? `تم تحديد طلب ${req.serviceType} في ${req.arLocationName || req.locationName}` : `Selected request ${req.serviceType}`, 'info');
-                          }}
-                        >
-                          <Pin background="#EF4444" borderColor="#991B1B" glyphColor="#FFFFFF" />
-                        </AdvancedMarker>
-                      ))}
-
-                      {/* Technician location marker */}
                       {providerLat && providerLng && (
-                        <AdvancedMarker 
-                          position={{ lat: providerLat, lng: providerLng }} 
-                          title={lang === 'ar' ? 'موقعي الفعلي كفني 🛠️' : 'My Location 🛠️'}
-                        >
+                        <AdvancedMarker position={{ lat: providerLat, lng: providerLng }}>
                           <Pin background="#F59E0B" borderColor="#B45309" glyphColor="#FFFFFF" />
                         </AdvancedMarker>
                       )}
@@ -5534,1549 +5526,207 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right Column: Service Provider Control Dashboard */}
+            {/* Right Column: Service Provider Control Dashboard & Details */}
             <div className="lg:col-span-7 bg-[#111827]/60 border border-gray-800 p-6 rounded-3xl space-y-6 flex flex-col justify-between">
               
-              {/* SERVICE PROVIDER DASHBOARD (Palestine Rescue Live Hub) */}
               <div className="space-y-6 text-right">
-                  {/* Live Badge Status Header */}
-                  <div className="p-4 bg-[#0A0B10]/95 border border-gray-900 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 select-none">
-                    <div className="flex items-center gap-3">
-                      <img 
-                        src={activeTechDoc?.avatar || userAvatar || providerAvatar || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120"} 
-                        alt="Technician" 
-                        className="w-12 h-12 rounded-full border border-amber-500/35 object-cover" 
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="text-right">
-                        <h4 className="text-xs font-black text-white flex items-center gap-1.5">
-                          <span>{activeTechDoc?.name || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician')}</span>
-                          <span className="bg-emerald-500/15 text-emerald-400 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                            <Star className="w-2.5 h-2.5 fill-current" />
-                            <span>{activeTechDoc?.rating || '5.0'}</span>
-                          </span>
-                        </h4>
-                        <span className="text-[10px] text-gray-500 font-extrabold block">
-                          {activeTechDoc?.carModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service')} 
-                          {activeTechDoc?.plateNumber ? ` (${activeTechDoc.plateNumber})` : providerPlate ? ` (${providerPlate})` : ''}
+                {/* Live Badge Status Header */}
+                <div className="p-4 bg-[#0A0B10]/95 border border-gray-900 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 select-none">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={activeTechDoc?.avatar || userAvatar || providerAvatar || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=120"} 
+                      alt="Technician" 
+                      className="w-12 h-12 rounded-full border border-amber-500/35 object-cover" 
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="text-right">
+                      <h4 className="text-xs font-black text-white flex items-center gap-1.5">
+                        <span>{activeTechDoc?.name || loggedInUserName || providerName || (lang === 'ar' ? 'فني معتمد' : 'Verified Technician')}</span>
+                        <span className="bg-emerald-500/15 text-emerald-400 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                          <Star className="w-2.5 h-2.5 fill-current" />
+                          <span>{activeTechDoc?.rating || '5.0'}</span>
                         </span>
-                      </div>
+                      </h4>
+                      <span className="text-[10px] text-gray-500 font-extrabold block">
+                        {activeTechDoc?.carModel || providerVehicle || (lang === 'ar' ? 'خدمة معتمدة' : 'Verified Service')} 
+                        {activeTechDoc?.plateNumber ? ` (${activeTechDoc.plateNumber})` : providerPlate ? ` (${providerPlate})` : ''}
+                      </span>
                     </div>
+                  </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                      {/* Go Online / Availability Toggle Button (زر الظهور) */}
-                      <button
-                        type="button"
-                        onClick={handleToggleTechMode}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shadow-lg ${
-                          (activeTechDoc?.isOnline ?? false)
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                            : 'bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30'
-                        }`}
-                      >
-                        <span className={`w-2.5 h-2.5 rounded-full ${
-                          (activeTechDoc?.isOnline ?? false) ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'
-                        }`}></span>
-                        <span>
-                          {lang === 'ar' 
-                            ? ((activeTechDoc?.isOnline ?? false) ? 'وضع الفني: متاح بالشبكة 🟢' : 'وضع الفني: غير متاح (متوقف) 🔴')
-                            : ((activeTechDoc?.isOnline ?? false) ? 'Tech Status: Active 🟢' : 'Tech Status: Offline 🔴')}
-                        </span>
-                      </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Go Online / Availability Toggle Button */}
+                    <button
+                      type="button"
+                      onClick={handleToggleTechMode}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shadow-lg ${
+                        (activeTechDoc?.isOnline ?? false)
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                          : 'bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30'
+                      }`}
+                    >
+                      <span className={`w-2.5 h-2.5 rounded-full ${
+                        (activeTechDoc?.isOnline ?? false) ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'
+                      }`}></span>
+                      <span>
+                        {lang === 'ar' 
+                          ? ((activeTechDoc?.isOnline ?? false) ? 'وضع الفني: متاح بالشبكة 🟢' : 'وضع الفني: غير متاح (متوقف) 🔴')
+                          : ((activeTechDoc?.isOnline ?? false) ? 'Tech Status: Active 🟢' : 'Tech Status: Offline 🔴')}
+                      </span>
+                    </button>
 
-                      {/* Edit Details Action Button */}
-                      <button
-                        onClick={() => {
-                          setProviderName(activeTechDoc?.name || loggedInUserName || '');
-                          setProviderAvatar(activeTechDoc?.avatar || userAvatar || '');
-                          setProviderVehicle(activeTechDoc?.carModel || providerVehicle || '');
-                          setProviderPlate(activeTechDoc?.plateNumber || providerPlate || '');
-                          setIsEditingTechProfile(!isEditingTechProfile);
-                        }}
-                        className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-black border border-amber-500/20 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 cursor-pointer"
-                      >
-                            <Edit className="w-3.5 h-3.5" />
-                            <span>{lang === 'ar' ? 'تعديل التفاصيل' : 'Edit Details'}</span>
-                          </button>
+                    {/* Edit Details Action Button */}
+                    <button
+                      onClick={() => {
+                        setProviderName(activeTechDoc?.name || loggedInUserName || '');
+                        setProviderAvatar(activeTechDoc?.avatar || userAvatar || '');
+                        setProviderVehicle(activeTechDoc?.carModel || providerVehicle || '');
+                        setProviderPlate(activeTechDoc?.plateNumber || providerPlate || '');
+                        setIsEditingTechProfile(!isEditingTechProfile);
+                      }}
+                      className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-black border border-amber-500/20 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>{lang === 'ar' ? 'تعديل التفاصيل' : 'Edit Details'}</span>
+                    </button>
 
-                          {/* Location pin alert badge */}
-                          <div className="text-center sm:text-right rtl:sm:text-right ltr:sm:text-left bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl">
-                            <span className="text-[9px] text-blue-400 font-bold block uppercase">{lang === 'ar' ? 'تموضع المركبة المباشر:' : 'Live Vehicle GPS:'}</span>
-                            <span className="text-[10px] text-white font-extrabold font-mono block">
-                              {providerLat ? `Lat: ${providerLat.toFixed(2)}, Lng: ${providerLng?.toFixed(2)}` : (lang === 'ar' ? 'متصل بالـ GPS 📡' : 'Connected to GPS 📡')}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* LIVE PENDING TASK ORDERS BANNER FOR TECHNICIAN */}
-                      {allRequests.filter(isPendingForTechnician).length > 0 && (
-                        <div className="p-4 bg-gradient-to-r from-[#0F172A] via-[#1E1B4B] to-[#0A0B10] border border-amber-500/30 rounded-3xl space-y-3 shadow-xl text-right">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                <Briefcase className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-black rounded-full uppercase tracking-wider">
-                                  {lang === 'ar' ? 'قائمة المهمات والطلبات الحية 📋' : 'LIVE TASK ORDERS DISPATCH 📋'}
-                                </span>
-                                <h4 className="text-sm sm:text-base font-black text-white mt-1">
-                                  {lang === 'ar'
-                                    ? `يوجد ${allRequests.filter(isPendingForTechnician).length} مهمة مطلوبة بانتظار استجابتك وتأكيد قبولك!`
-                                    : `There are ${allRequests.filter(isPendingForTechnician).length} task orders awaiting technician response!`}
-                                </h4>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                const targetSection = document.getElementById('technician-rescue-alerts-list');
-                                if (targetSection) {
-                                  targetSection.scrollIntoView({ behavior: 'smooth' });
-                                }
-                              }}
-                              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>{lang === 'ar' ? 'استعراض قائمة المهمات 📋' : 'View Task Orders 📋'}</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Collapsible Edit Profile Form */}
-                      {isEditingTechProfile && (
-                        <div className="p-5 bg-gradient-to-br from-[#0F1424] to-[#0A0B10] border border-amber-500/25 rounded-3xl space-y-4 shadow-xl text-right animate-fadeIn">
-                          <div className="flex items-center justify-between border-b border-gray-950 pb-3">
-                            <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
-                              <Settings className="w-4 h-4 animate-spin-slow" />
-                              <span>{lang === 'ar' ? 'تعديل بيانات الفني والملف' : 'Modify Technician Profile'}</span>
-                            </span>
-                            <button onClick={() => setIsEditingTechProfile(false)} className="text-gray-500 hover:text-white transition-colors cursor-pointer">
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          <div className="space-y-4">
-                            {/* Profile Info Note */}
-                            <div className="flex items-center justify-between bg-[#050609] p-3 rounded-xl border border-gray-800">
-                              <div className="flex items-center gap-2.5">
-                                <img 
-                                  src={userAvatar || activeTechDoc?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'} 
-                                  alt="Avatar" 
-                                  className="w-9 h-9 rounded-full object-cover border border-amber-500/50 shrink-0"
-                                  referrerPolicy="no-referrer"
-                                />
-                                <div>
-                                  <h5 className="text-xs font-bold text-white">{loggedInUserName || activeTechDoc?.name}</h5>
-                                  <p className="text-[10px] text-gray-400">{lang === 'ar' ? 'الاسم والصورة مُدارة من الملف الشخصي العام' : 'Name & picture managed from account profile'}</p>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setProfileNameInput(loggedInUserName || activeTechDoc?.name || '');
-                                  setProfilePhoneInput(phoneNumber);
-                                  setProfileAvatarInput(userAvatar || activeTechDoc?.avatar || '');
-                                  setShowProfileModal(true);
-                                }}
-                                className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-amber-400 border border-amber-500/20 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0"
-                              >
-                                <User className="w-3 h-3" />
-                                <span>{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
-                              </button>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-2">
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await updateDoc(doc(db, "technicians", loggedInUserEmail), {
-                                      name: loggedInUserName || activeTechDoc.name,
-                                      arName: loggedInUserName || activeTechDoc.arName || activeTechDoc.name,
-                                      avatar: userAvatar || activeTechDoc.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"
-                                    });
-                                    setIsEditingTechProfile(false);
-                                    triggerToast(lang === 'ar' ? 'تم تحديث البيانات بنجاح!' : 'Profile updated successfully!', 'success');
-                                  } catch (err) {
-                                    console.error(err);
-                                    triggerToast(lang === 'ar' ? 'حدث خطأ أثناء تحديث البيانات!' : 'Error updating profile!', 'error');
-                                  }
-                                }}
-                                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl text-xs transition-colors cursor-pointer"
-                              >
-                                {lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes'}
-                              </button>
-                              <button
-                                onClick={() => setIsEditingTechProfile(false)}
-                                className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                              >
-                                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* NEW: Technician Notification Preference Panel */}
-                      <div className="p-5 bg-gradient-to-br from-[#0F1424] to-[#0A0B10] border border-amber-500/15 rounded-3xl space-y-4 shadow-xl text-right">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
-                          <div className="text-right">
-                            <h4 className="text-xs font-black text-amber-500 flex items-center justify-start gap-1.5">
-                              <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
-                              <span>{lang === 'ar' ? 'تفعيل إشعارات نداءات الاستغاثة الطارئة 📡' : 'Live Emergency Task Alert Settings 📡'}</span>
-                            </h4>
-                            <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                              {lang === 'ar' 
-                                ? 'اختر كيف ترغب في استقبال التنبيه الفوري بمجرد نشر أي زبون لنداء استغاثة طارئ على الطريق:' 
-                                : 'Choose how you want to be notified as soon as a driver requests emergency roadside assistance:'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {/* WhatsApp Channel */}
-                          <button
-                            onClick={() => {
-                              const nextVal = !notifyWhatsapp;
-                              setNotifyWhatsapp(nextVal);
-                              sessionStorage.setItem('systro_notify_whatsapp', String(nextVal));
-                              if (isLoggedIn && loggedInUserEmail && userRole === 'technician') {
-                                updateDoc(doc(db, "technicians", loggedInUserEmail), {
-                                  notifyWhatsapp: nextVal
-                                }).catch(e => console.error(e));
-                              }
-                              triggerToast(
-                                lang === 'ar'
-                                  ? (nextVal ? '✅ تم تفعيل إشعارات الواتساب الفورية بنجاح!' : '❌ تم إيقاف إشعارات الواتساب.')
-                                  : (nextVal ? '✅ WhatsApp alerts enabled successfully!' : '❌ WhatsApp alerts disabled.'),
-                                nextVal ? 'success' : 'warning'
-                              );
-                            }}
-                            className={`p-4 rounded-2xl border transition-all flex items-center gap-3 justify-between text-right cursor-pointer group ${
-                              notifyWhatsapp 
-                                ? 'bg-[#0F291E] border-emerald-500/40 text-emerald-300 shadow-lg shadow-emerald-950/20' 
-                                : 'bg-[#0A0B10] border-gray-850 text-gray-400 hover:border-gray-800 hover:text-gray-200'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`p-2.5 rounded-xl transition-all ${
-                                notifyWhatsapp ? 'bg-emerald-500/15 text-emerald-400' : 'bg-gray-900 text-gray-500 group-hover:text-gray-300'
-                              }`}>
-                                <MessageCircle className="w-5 h-5" />
-                              </div>
-                              <div className="text-right">
-                                <span className="text-xs font-black block">
-                                  {lang === 'ar' ? '1. إشعار عبر الواتس اب 💬' : '1. Notify via WhatsApp 💬'}
-                                </span>
-                                <span className="text-[9px] text-gray-500 font-bold block mt-0.5">
-                                  {lang === 'ar' ? 'إرسال التنبيه لهاتفك فوراً' : 'Instant messages to phone'}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center">
-                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
-                                notifyWhatsapp ? 'border-emerald-500 bg-emerald-500' : 'border-gray-700'
-                              }`}>
-                                {notifyWhatsapp && <Check className="w-3 h-3 text-black stroke-[3]" />}
-                              </div>
-                            </div>
-                          </button>
-
-                          {/* Email Channel */}
-                          <button
-                            onClick={() => {
-                              const nextVal = !notifyEmail;
-                              setNotifyEmail(nextVal);
-                              sessionStorage.setItem('systro_notify_email', String(nextVal));
-                              if (isLoggedIn && loggedInUserEmail && userRole === 'technician') {
-                                updateDoc(doc(db, "technicians", loggedInUserEmail), {
-                                  notifyEmail: nextVal
-                                }).catch(e => console.error(e));
-                              }
-                              triggerToast(
-                                lang === 'ar'
-                                  ? (nextVal ? `✅ تم تفعيل إشعارات الإيميل بنجاح إلى ${loggedInUserEmail}!` : '❌ تم إيقاف إشعارات البريد الإلكتروني.')
-                                  : (nextVal ? `✅ Email notifications active to ${loggedInUserEmail}!` : '❌ Email notifications disabled.'),
-                                nextVal ? 'success' : 'warning'
-                              );
-                            }}
-                            className={`p-4 rounded-2xl border transition-all flex items-center gap-3 justify-between text-right cursor-pointer group ${
-                              notifyEmail 
-                                ? 'bg-[#1E1F30] border-blue-500/40 text-blue-300 shadow-lg shadow-blue-950/20' 
-                                : 'bg-[#0A0B10] border-gray-850 text-gray-400 hover:border-gray-800 hover:text-gray-200'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`p-2.5 rounded-xl transition-all ${
-                                notifyEmail ? 'bg-blue-500/15 text-blue-400' : 'bg-gray-900 text-gray-500 group-hover:text-gray-300'
-                              }`}>
-                                <Mail className="w-5 h-5" />
-                              </div>
-                              <div className="text-right">
-                                <span className="text-xs font-black block">
-                                  {lang === 'ar' ? '2. إشعار عبر الإيميل 📧' : '2. Notify via Email 📧'}
-                                </span>
-                                <span className="text-[9px] text-gray-500 font-bold block mt-0.5 truncate max-w-[120px] sm:max-w-none">
-                                  {loggedInUserEmail}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center">
-                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
-                                notifyEmail ? 'border-blue-500 bg-blue-500' : 'border-gray-700'
-                              }`}>
-                                {notifyEmail && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                              </div>
-                            </div>
-                          </button>
-                        </div>
-
-                        {/* Test Notification Sound */}
-                        <div className="pt-2 select-none">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              playRescueAlertSound();
-                              triggerToast(
-                                lang === 'ar'
-                                  ? '🔊 تم تشغيل نغمة رادار الإنقاذ العاجل للتجربة بنجاح!'
-                                  : '🔊 Emergency Radar alarm chime played for testing successfully!',
-                                'success'
-                              );
-                            }}
-                            className="w-full py-2.5 bg-[#171C2F] hover:bg-[#1E253F] text-amber-400 hover:text-amber-300 border border-amber-500/10 hover:border-amber-500/25 rounded-xl text-[11px] font-black tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
-                          >
-                            <Volume2 className="w-4 h-4" />
-                            <span>{lang === 'ar' ? '🔊 تجربة نغمة التنبيه المخصصة للشبكة' : '🔊 Test Site Custom Notification Sound'}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* PRIVATE TECHNICIAN WORKSPACE & EMAIL LOGS CARD */}
-                      <div className="p-5 bg-gradient-to-br from-[#0D111E] to-[#0A0B10] border border-amber-500/30 rounded-3xl space-y-4 shadow-2xl text-right">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
-                          <div>
-                            <h4 className="text-xs font-black text-amber-500 flex items-center justify-start gap-2">
-                              <UserCheck className="w-4 h-4 text-amber-500" />
-                              <span>{lang === 'ar' ? `المساحة الشخصية وسجل الأنشطة للفني (${loggedInUserEmail})` : `Personal Workspace & History Logs (${loggedInUserEmail})`}</span>
-                            </h4>
-                            <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                              {lang === 'ar' 
-                                ? 'جميع بياناتك، إعداداتك، عروض أسعارك، وسجلات أعمالك محفوظة بأمان ومربوطة ببريدك الإلكتروني الخاط بك بدون تداخل مع الفنيين الآخرين.'
-                                : 'All your personal settings, vehicle specs, bids, and task records are saved securely linked to your email with 100% privacy.'}
-                            </p>
-                          </div>
-                          <span className="px-2.5 py-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full text-[10px] font-bold self-start sm:self-center">
-                            🟢 {lang === 'ar' ? 'حساب معتمد ومستقل' : 'Verified Partner Account'}
-                          </span>
-                        </div>
-
-                        {/* Quick Stats Grid linked to loggedInUserEmail */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-                          <div className="p-3 bg-[#05060A] border border-gray-900 rounded-2xl">
-                            <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'عروض الأسعار المقدمة' : 'Submitted Bids'}</span>
-                            <span className="text-sm font-black text-amber-400 font-mono">
-                              {incomingBids.filter(b => b.technicianId === loggedInUserEmail).length}
-                            </span>
-                          </div>
-                          <div className="p-3 bg-[#05060A] border border-gray-900 rounded-2xl">
-                            <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'المهمات المقبولة والجارية' : 'Active Rescues'}</span>
-                            <span className="text-sm font-black text-blue-400 font-mono">
-                              {allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && r.status !== 'completed').length}
-                            </span>
-                          </div>
-                          <div className="p-3 bg-[#05060A] border border-gray-900 rounded-2xl">
-                            <span className="text-[10px] text-gray-400 block font-bold mb-1">{lang === 'ar' ? 'المهمات المكتملة' : 'Completed Rescues'}</span>
-                            <span className="text-sm font-black text-emerald-400 font-mono">
-                              {allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && r.status === 'completed').length}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Recent Personal Bids & Log Entries for loggedInUserEmail */}
-                        <div className="space-y-2 pt-2 border-t border-gray-900">
-                          <h5 className="text-[11px] font-black text-gray-300 flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-amber-500" />
-                            <span>{lang === 'ar' ? 'سجل الحركات والعروض الأخيرة لبريدك الإلكتروني:' : 'Recent Account Bids & Activity Logs:'}</span>
-                          </h5>
-
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                            {incomingBids.filter(b => b.technicianId === loggedInUserEmail).length === 0 && (
-                              <div className="p-4 bg-[#05060A] rounded-2xl border border-gray-900 text-center text-xs text-gray-500 font-bold">
-                                {lang === 'ar' 
-                                  ? 'لم تقم بتقديم عروض أسعار حتى الآن. تصفح التنبيهات بالأسفل وقدم عرضك الأول!' 
-                                  : 'No submitted bids yet. Check emergency alerts below and submit your first bid!'}
-                              </div>
-                            )}
-
-                            {incomingBids.filter(b => b.technicianId === loggedInUserEmail).map((bid) => {
-                              const relatedReq = allRequests.find(r => r.id === bid.requestId);
-                              return (
-                                <div key={bid.id} className="p-3 bg-[#05060A] border border-gray-850 hover:border-amber-500/40 rounded-2xl flex items-center justify-between gap-3 transition-all text-xs">
-                                  <div className="space-y-0.5 text-right min-w-0">
-                                    <span className="font-black text-amber-400 block truncate">
-                                      🛠️ {lang === 'ar' ? (relatedReq?.serviceType || 'طلب صيانة طارئ') : (relatedReq?.serviceType || 'Emergency Task')}
-                                    </span>
-                                    <span className="text-[10px] text-gray-400 font-semibold block">
-                                      {lang === 'ar' ? `الموقع: ${relatedReq?.arLocationName || relatedReq?.locationName || 'غير محدد'}` : `Location: ${relatedReq?.locationName || 'N/A'}`}
-                                    </span>
-                                  </div>
-                                  <div className="text-left shrink-0 font-mono">
-                                    <span className="text-emerald-400 font-black block text-xs">{bid.price} ₪</span>
-                                    <span className="text-[9px] text-gray-500 font-bold block">{bid.etaMinutes} min ETA</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* TECHNICIAN FINANCIAL ACCOUNTING & SETTLEMENT HUB (قسم المحاسبة وتحويل المستحقات للفني) */}
-                        {(() => {
-                          const completedTasks = allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && r.status === 'completed');
-                          const completedGrossEarnings = completedTasks.reduce((sum, r) => {
-                            const matchingBid = incomingBids.find(b => b.requestId === r.id && b.technicianId === loggedInUserEmail);
-                            return sum + (matchingBid?.price || r.approximatePrice || 150);
-                          }, 0);
-                          const techCommRate = activeTechDoc?.commissionRate ?? 10;
-                          const netPayableBalance = Math.round(completedGrossEarnings * (1 - techCommRate / 100));
-
-                          return (
-                            <div className="space-y-4 pt-4 border-t border-gray-900 text-right">
-                              
-                              {/* Section Header & Escrow Guarantee Notice */}
-                              <div className="p-4 rounded-2xl bg-[#090C15] border border-amber-500/30 space-y-2">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-850 pb-2.5">
-                                  <h5 className="text-xs font-black text-amber-400 flex items-center gap-2">
-                                    <Coins className="w-4 h-4 text-amber-500" />
-                                    <span>{lang === 'ar' ? '💳 قسم المحاسبة المالية وتحويل مستحقات الفني:' : '💳 Financial Accounting & Provider Payout Hub:'}</span>
-                                  </h5>
-                                  <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold self-start sm:self-auto flex items-center gap-1">
-                                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                                    <span>{lang === 'ar' ? 'تحويل المبالغ للمنصة بالكامل' : '100% Platform Escrow Held'}</span>
-                                  </span>
-                                </div>
-
-                                <p className="text-[11px] text-gray-300 font-semibold leading-relaxed">
-                                  {lang === 'ar' 
-                                    ? 'تصل مدفوعات العملاء كاملة إلى محفظة وحساب منصة سيسترو المالية. وتقوم إدارة سيسترو بتحويل مستحقاتك الصافية وفق خيارك المفضل بعد خصم نسبة العمولة الخاضعة للاتفاق معنا.'
-                                    : 'All client payments are deposited fully to Systro Platform Escrow. Net earnings are transferred by Systro Admin according to your settlement preference after deducting the agreed platform commission.'}
-                                </p>
-
-                                {/* Financial Calculation Bar */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
-                                  <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl text-center">
-                                    <span className="text-[9px] text-gray-400 font-bold block mb-0.5">{lang === 'ar' ? 'إجمالي المبالغ بالمنصة' : 'Gross Platform Held'}</span>
-                                    <span className="text-xs font-black text-amber-400 font-mono">
-                                      {completedGrossEarnings} ₪
-                                    </span>
-                                  </div>
-
-                                  <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl text-center">
-                                    <span className="text-[9px] text-gray-400 font-bold block mb-0.5">{lang === 'ar' ? 'نسبة العمولة المتفق عليها' : 'Agreed Commission'}</span>
-                                    <span className="text-xs font-black text-blue-400 font-mono">
-                                      {techCommRate}%
-                                    </span>
-                                  </div>
-
-                                  <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl text-center">
-                                    <span className="text-[9px] text-gray-400 font-bold block mb-0.5">{lang === 'ar' ? 'خصم عمولة المنصة' : 'Platform Fee'}</span>
-                                    <span className="text-xs font-black text-red-400 font-mono">
-                                      -{Math.round(completedGrossEarnings * (techCommRate / 100))} ₪
-                                    </span>
-                                  </div>
-
-                                  <div className="p-2.5 bg-emerald-950/30 border border-emerald-500/40 rounded-xl text-center">
-                                    <span className="text-[9px] text-emerald-400/80 font-bold block mb-0.5">{lang === 'ar' ? 'الصافي المستحق للصرف' : 'Net Payable Balance'}</span>
-                                    <span className="text-xs font-black text-emerald-400 font-mono">
-                                      {netPayableBalance} ₪
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Two Settlement Payout Options Grid */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                
-                                {/* OPTION 1: PER MISSION SETTLEMENT (محاسبة وصرف عن كل مهمة) */}
-                                <div className={`p-4 rounded-2xl border transition-all ${
-                                  (activeTechDoc?.payoutPreference || 'per_mission') === 'per_mission'
-                                    ? 'bg-amber-500/10 border-amber-500/60 text-white shadow-lg shadow-amber-950/20'
-                                    : 'bg-[#05060A] border-gray-900 text-gray-400'
-                                }`}>
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
-                                      <Zap className="w-3.5 h-3.5 text-amber-400" />
-                                      <span>{lang === 'ar' ? 'الخيار 1: المحاسبة والصرف عن كل مهمة' : 'Option 1: Payout Per Mission'}</span>
-                                    </span>
-                                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold font-mono">
-                                      {lang === 'ar' ? 'بناءً على طلبك' : 'On Demand'}
-                                    </span>
-                                  </div>
-
-                                  <p className="text-[10px] text-gray-300 font-semibold mb-3 leading-relaxed">
-                                    {lang === 'ar'
-                                      ? 'تطالب الإدارة بتحويل مستحقاتك الصافية فور إتمام كل مهمة إنقاذ مباشرة دون انتظار، ويتم الصرف الفوري لحسابك البنكي أو محفظتك.'
-                                      : 'Request immediate payout settlement for each task individually right after completion upon your demand.'}
-                                  </p>
-
-                                  <div className="space-y-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSaveTechPayoutPreference('per_mission')}
-                                      className={`w-full py-2 text-[10px] font-black rounded-xl border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                        (activeTechDoc?.payoutPreference || 'per_mission') === 'per_mission'
-                                          ? 'bg-amber-500 text-black border-amber-400 shadow-md font-black'
-                                          : 'bg-[#0F1017] border-gray-800 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/40'
-                                      }`}
-                                    >
-                                      <CheckCircle2 className="w-3.5 h-3.5" />
-                                      <span>
-                                        {(activeTechDoc?.payoutPreference || 'per_mission') === 'per_mission'
-                                          ? (lang === 'ar' ? 'خيار المحاسبة لكل مهمة مفعّل حالياً 🟢' : 'Per Mission Active 🟢')
-                                          : (lang === 'ar' ? 'اعتماد خيار المحاسبة والصرف لكل مهمة 🎯' : 'Select Per Mission Payout 🎯')}
-                                      </span>
-                                    </button>
-
-                                    {netPayableBalance > 0 && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRequestPayout(completedGrossEarnings)}
-                                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-[10px] border border-emerald-400 shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                                      >
-                                        <Send className="w-3.5 h-3.5" />
-                                        <span>{lang === 'ar' ? `طلب تحويل مستحقات مهمة/أرباح حالية (${netPayableBalance} ₪) 💸` : `Request Instant Payout (${netPayableBalance} ILS) 💸`}</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* OPTION 2: MONTHLY SCHEDULED SETTLEMENT (محاسبة وتحويل شهري شامل) */}
-                                <div className={`p-4 rounded-2xl border transition-all ${
-                                  activeTechDoc?.payoutPreference === 'monthly'
-                                    ? 'bg-emerald-500/10 border-emerald-500/60 text-white shadow-lg shadow-emerald-950/20'
-                                    : 'bg-[#05060A] border-gray-900 text-gray-400'
-                                }`}>
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
-                                      <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                                      <span>{lang === 'ar' ? 'الخيار 2: المحاسبة والتحويل الشهري' : 'Option 2: Scheduled Monthly Payout'}</span>
-                                    </span>
-                                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold font-mono">
-                                      {lang === 'ar' ? 'تصفية دورية نهاية الشهر' : 'End of Month'}
-                                    </span>
-                                  </div>
-
-                                  <p className="text-[10px] text-gray-300 font-semibold mb-3 leading-relaxed">
-                                    {lang === 'ar'
-                                      ? 'تُجمع كافة أرباحك ومستحقاتك طوال الشهر، وتقوم المنصة بتحويل الرصيد الصافي كاملاً تلقائياً بنهاية كل شهر ميلادي بعد خصم النسبة المتفق عليها.'
-                                      : 'All your earnings accumulate throughout the month, and the platform automatically settles and transfers the total net balance at the end of each month.'}
-                                  </p>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSaveTechPayoutPreference('monthly')}
-                                    className={`w-full py-2 text-[10px] font-black rounded-xl border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                      activeTechDoc?.payoutPreference === 'monthly'
-                                        ? 'bg-emerald-500 text-black border-emerald-400 shadow-md font-black'
-                                        : 'bg-[#0F1017] border-gray-800 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40'
-                                    }`}
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    <span>
-                                      {activeTechDoc?.payoutPreference === 'monthly'
-                                        ? (lang === 'ar' ? 'خيار التحويل الشهري مفعّل حالياً 🟢' : 'Monthly Payout Active 🟢')
-                                        : (lang === 'ar' ? 'اعتماد خيار التحويل والتحصيل الشهري 📅' : 'Select Monthly Scheduled Payout 📅')}
-                                    </span>
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* DIRECT COMMISSION NEGOTIATION & ADMIN WHATSAPP CONTACT BANNER */}
-                              <div className="p-3.5 bg-gradient-to-r from-amber-950/40 via-emerald-950/30 to-[#0A0B10] border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-right">
-                                <div className="space-y-0.5">
-                                  <span className="text-xs font-black text-amber-400 block">
-                                    {lang === 'ar' ? '🤝 نسبة العمولة وتحديد الاتفاق المالي:' : '🤝 Commission Negotiation & Agreement:'}
-                                  </span>
-                                  <p className="text-[10px] text-gray-300 font-medium">
-                                    {lang === 'ar' 
-                                      ? 'تتم تحديد وتوثيق نسبة عمولة المنصة بالاتفاق المباشر والتواصل معنا عبر إدارة سيسترو.' 
-                                      : 'Commission rate is determined and customized via direct communication & agreement with Systro Management.'}
-                                  </p>
-                                </div>
-
-                                <a
-                                  href={`https://wa.me/972591234567?text=${encodeURIComponent(
-                                    lang === 'ar'
-                                      ? `مرحباً إدارة سيسترو، بصفتي فني معتمد (الإيميل: ${loggedInUserEmail})، أود التواصل والاتفاق على نسبة عمولة المنصة وتأكيد نظام المحاسبة المالية (لكل مهمة / شهرياً).`
-                                      : `Hello Systro Admin, as verified tech (${loggedInUserEmail}), I would like to negotiate/confirm platform commission rate & payout option.`
-                                  )}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-black font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
-                                >
-                                  <MessageCircle className="w-4 h-4 fill-black text-emerald-400" />
-                                  <span>{lang === 'ar' ? 'الاتفاق على نسبة العمولة بالواتساب 💬' : 'Negotiate Commission on WhatsApp 💬'}</span>
-                                </a>
-                              </div>
-
-                              {/* Payout Requests History List if exists */}
-                              {payoutRequests.filter(p => p.technicianEmail === loggedInUserEmail).length > 0 && (
-                                <div className="space-y-2 pt-2 border-t border-gray-900">
-                                  <span className="text-[11px] font-black text-gray-300 block">
-                                    {lang === 'ar' ? '📋 سجل طلبات تحويل المستحقات السابقة:' : '📋 Payout Request History:'}
-                                  </span>
-                                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                                    {payoutRequests.filter(p => p.technicianEmail === loggedInUserEmail).map((pReq) => (
-                                      <div key={pReq.id} className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl flex items-center justify-between text-xs font-mono">
-                                        <div>
-                                          <span className="font-bold text-gray-200 block text-[11px] font-sans">
-                                            {pReq.serviceName || (lang === 'ar' ? 'طلب تحويل مستحقات' : 'Payout Request')}
-                                          </span>
-                                          <span className="text-[9px] text-gray-500 block">
-                                            {new Date(pReq.requestedAt || Date.now()).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}
-                                          </span>
-                                        </div>
-                                        <div className="text-left">
-                                          <span className="text-emerald-400 font-black block">{pReq.netAmount} ₪</span>
-                                          <span className={`text-[9px] font-bold ${pReq.status === 'completed' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                            {pReq.status === 'completed' ? (lang === 'ar' ? 'تم التحويل ✅' : 'Completed ✅') : (lang === 'ar' ? 'قيد المعالجة ⏳' : 'Pending ⏳')}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-
-
-                      {/* My Active / Accepted Rescue Tasks */}
-                      {allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && (r.status === 'awaiting_deposit' || r.status === 'en_route' || r.status === 'arrived' || r.status === 'in_progress')).length > 0 && (
-                        <div className="space-y-4 border-b border-gray-900 pb-6 text-right">
-                          <h4 className="text-xs font-black text-amber-500 uppercase tracking-wider flex items-center justify-start gap-2 border-b border-gray-950 pb-2">
-                            <Truck className="w-4 h-4 text-amber-500 animate-pulse" />
-                            <span>{lang === 'ar' ? '🚨 مهامي الحالية الجاري تنفيذها (Active Tasks):' : '🚨 My Active Assigned Rescue Tasks:'}</span>
-                          </h4>
-
-                          <div className="space-y-3 font-sans">
-                            {allRequests.filter(r => r.selectedTechnicianId === loggedInUserEmail && (r.status === 'awaiting_deposit' || r.status === 'en_route' || r.status === 'arrived' || r.status === 'in_progress')).map(req => {
-                              const clientLoc = mapPctToLatLng(req.locationLat, req.locationLng);
-                              
-                              // Translate status
-                              let statusTextAr = '';
-                              let statusTextEn = '';
-                              if (req.status === 'awaiting_deposit') {
-                                statusTextAr = 'بانتظار إيداع الضمان من العميل 💰';
-                                statusTextEn = 'Awaiting Client Escrow Deposit 💰';
-                              } else if (req.status === 'en_route') {
-                                statusTextAr = 'جاري التحرك إلى موقع الحادث 🚚';
-                                statusTextEn = 'En Route to Breakdown Site 🚚';
-                              } else if (req.status === 'arrived') {
-                                statusTextAr = 'وصلت لموقع العميل 📍';
-                                statusTextEn = 'Arrived at Site 📍';
-                              } else if (req.status === 'in_progress') {
-                                statusTextAr = 'قيد الصيانة والإصلاح 🛠️';
-                                statusTextEn = 'Repair/Servicing In Progress 🛠️';
-                              } else {
-                                statusTextAr = req.status;
-                                statusTextEn = req.status;
-                              }
-
-                              return (
-                                <div key={req.id} className="p-4 bg-amber-500/5 border border-amber-500/30 rounded-2xl space-y-4">
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <div className="text-right">
-                                      <h5 className="text-xs font-black text-white flex items-center justify-start gap-2">
-                                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
-                                        <span>{req.clientName}</span>
-                                      </h5>
-                                      <span className="text-[10px] text-gray-400 font-bold block mt-1">
-                                        {lang === 'ar' ? 'الخدمة المطلوبة:' : 'Service Type:'} <span className="text-amber-500 font-black">{req.serviceType === 'taxi' ? (lang === 'ar' ? '🚕 توصيل تكسي خاص و VIP' : '🚕 Special VIP Taxi Ride') : req.serviceType}</span>
-                                      </span>
-                                      {req.serviceType === 'taxi' && (
-                                        <div className="my-1.5 text-[10px] text-gray-400 font-semibold space-y-0.5 text-right bg-black/40 p-2 rounded-lg border border-gray-900">
-                                          <div>📍 {lang === 'ar' ? 'موقع الاستلام:' : 'Pickup:'} <span className="text-white font-bold">{req.pickupLocation || req.locationName || 'موقعي الحالي'}</span></div>
-                                          <div>🏁 {lang === 'ar' ? 'وجهة التوصيل:' : 'Dropoff:'} <span className="text-white font-bold">{req.dropoffLocation || 'غير محدد'}</span></div>
-                                        </div>
-                                      )}
-                                      <span className="text-[10px] text-gray-400 font-bold block">
-                                        {lang === 'ar' ? 'حالة الطلب:' : 'Task Status:'} <span className="text-blue-400 font-black">{lang === 'ar' ? statusTextAr : statusTextEn}</span>
-                                      </span>
-                                    </div>
-
-                                    {/* Action buttons */}
-                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                      {/* THE GOLDEN BUTTON: Open in Google Maps */}
-                                      <button
-                                        onClick={() => {
-                                          const url = `https://www.google.com/maps/search/?api=1&query=${clientLoc.lat},${clientLoc.lng}`;
-                                          window.open(url, '_blank');
-                                          triggerToast(
-                                            lang === 'ar' 
-                                              ? 'جاري فتح موقع العميل الفعلي في نظام الملاحة (GPS)... 🧭' 
-                                              : 'Opening client GPS coordinates in navigation system... 🧭', 
-                                            'success'
-                                          );
-                                        }}
-                                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-[10px] rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
-                                      >
-                                        <Globe className="w-3.5 h-3.5" />
-                                        <span>{lang === 'ar' ? 'فتح في خرائط Google (نظام الملاحة GPS) 🗺️' : 'Navigate in Google Maps (GPS) 🗺️'}</span>
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Progress / Status controls for the technician on this active request */}
-                                  <div className="bg-[#0A0B10] p-3 rounded-xl border border-gray-900/60 flex flex-wrap gap-2 justify-start sm:justify-end">
-                                    <span className="text-[9px] text-gray-500 font-extrabold w-full text-right mb-1">
-                                      {lang === 'ar' ? 'تحديث حالة المهمة فورياً للعميل:' : 'Quick-Update Task Status for Client:'}
-                                    </span>
-                                    
-                                    {req.status === 'en_route' && (
-                                      <button
-                                        onClick={async () => {
-                                          try {
-                                            await updateDoc(doc(db, "requests", req.id), { status: 'arrived' });
-                                            // Add system chat log
-                                            const chatMsgId = `sys-arrived-${Date.now()}`;
-                                            await setDoc(doc(db, "chats", chatMsgId), {
-                                              id: chatMsgId,
-                                              requestId: req.id,
-                                              sender: 'system',
-                                              text: lang === 'ar' ? '🚚 تحديث GPS: لقد وصل فني الإنقاذ إلى موقعك المحدد بالفعل وهو بجانب مركبتك الآن.' : '🚚 GPS Update: The rescue technician has arrived at your pinned location.',
-                                              timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-                                              createdTime: Date.now()
-                                            });
-                                            triggerToast(lang === 'ar' ? 'تم تحديث الحالة لـ: لقد وصلت للموقع!' : 'Status updated to: Arrived at Site!', 'success');
-                                          } catch (err) {
-                                            console.error(err);
-                                          }
-                                        }}
-                                        className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-black text-[9px] font-black rounded transition-all cursor-pointer"
-                                      >
-                                        {lang === 'ar' ? 'أنا وصلت للموقع 📍' : 'I Have Arrived 📍'}
-                                      </button>
-                                    )}
-
-                                    {req.status === 'arrived' && (
-                                      <button
-                                        onClick={async () => {
-                                          try {
-                                            await updateDoc(doc(db, "requests", req.id), { status: 'in_progress' });
-                                            // Add system chat log
-                                            const chatMsgId = `sys-repair-${Date.now()}`;
-                                            await setDoc(doc(db, "chats", chatMsgId), {
-                                              id: chatMsgId,
-                                              requestId: req.id,
-                                              sender: 'system',
-                                              text: lang === 'ar' ? '🛠️ تحديث الصيانة: بدأ الفني في عملية الإصلاح وتقديم المساعدة المطلوبة.' : '🛠️ Servicing Update: Technician started the repair and active rescue help.',
-                                              timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-                                              createdTime: Date.now()
-                                            });
-                                            triggerToast(lang === 'ar' ? 'تم تحديث الحالة لـ: بدأت عملية الصيانة!' : 'Status updated to: Repair in progress!', 'success');
-                                          } catch (err) {
-                                            console.error(err);
-                                          }
-                                        }}
-                                        className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-[9px] font-black rounded transition-all cursor-pointer"
-                                      >
-                                        {lang === 'ar' ? 'بدء الصيانة والإصلاح 🛠️' : 'Start Servicing 🛠️'}
-                                      </button>
-                                    )}
-
-                                    {/* Link to chat with client */}
-                                    <button
-                                      onClick={() => {
-                                        setActiveRequestId(req.id);
-                                        setSimStatus(req.status);
-                                        // Load the bids for this request
-                                        const q = query(collection(db, "bids"), where("requestId", "==", req.id));
-                                        getDocs(q).then((snap) => {
-                                          const bidsList: any[] = [];
-                                          snap.forEach(d => bidsList.push(d.data()));
-                                          const matchingBid = bidsList.find(b => b.technicianId === loggedInUserEmail);
-                                          if (matchingBid) setSelectedBid(matchingBid);
-                                        });
-                                        triggerToast(lang === 'ar' ? 'تم فتح لوحة المتابعة والمحادثة مع العميل!' : 'Opened client monitoring & chat portal!', 'info');
-                                      }}
-                                      className="px-2.5 py-1.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-[9px] font-black rounded transition-all cursor-pointer border border-blue-500/20"
-                                    >
-                                      {lang === 'ar' ? 'متابعة وفتح المحادثة مع العميل 💬' : 'Monitor & Open Chat 💬'}
-                                    </button>
-                                  </div>
-
-                                  {/* Expandable Live Tracking & Chat Panel for Technician */}
-                                  {activeRequestId === req.id && (
-                                    <div className={isTechChatExpanded 
-                                      ? "fixed inset-0 z-[100] bg-[#07080E] p-4 sm:p-6 flex flex-col justify-between h-full w-full animate-fade-in text-right overflow-hidden"
-                                      : "mt-4 pt-4 border-t border-gray-900 space-y-4 animate-fade-in text-right"
-                                    }>
-                                      <div className="flex items-center justify-between border-b border-gray-950 pb-2">
-                                        <div className="flex items-center gap-2">
-                                          <button 
-                                            onClick={() => {
-                                              setActiveRequestId(null);
-                                              setSelectedBid(null);
-                                              setIsTechChatExpanded(false);
-                                            }}
-                                            className="text-[10px] text-red-400 hover:text-red-300 font-extrabold flex items-center gap-1 cursor-pointer transition-colors"
-                                          >
-                                            <span>✖</span>
-                                            <span>{lang === 'ar' ? 'إغلاق المحادثة' : 'Close Chat'}</span>
-                                          </button>
-
-                                          <button
-                                            type="button"
-                                            onClick={() => setIsTechChatExpanded(!isTechChatExpanded)}
-                                            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-amber-400 font-extrabold text-[10px] rounded-lg border border-gray-700 flex items-center gap-1 cursor-pointer transition-colors"
-                                            title={isTechChatExpanded ? (lang === 'ar' ? 'تصغير الشاشة' : 'Minimize') : (lang === 'ar' ? 'توسيع المحادثة على كامل شاشة الهاتف' : 'Expand Fullscreen')}
-                                          >
-                                            {isTechChatExpanded ? (
-                                              <>
-                                                <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
-                                                <span>{lang === 'ar' ? 'تصغير الشاشة ↙' : 'Minimize ↙'}</span>
-                                              </>
-                                            ) : (
-                                              <>
-                                                <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
-                                                <span>{lang === 'ar' ? 'توسيع المحادثة ⤢' : 'Expand ⤢'}</span>
-                                              </>
-                                            )}
-                                          </button>
-                                        </div>
-                                        
-                                        <h5 className="text-[11px] font-black text-amber-500 flex items-center gap-1.5 justify-end">
-                                          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
-                                          <span>{lang === 'ar' ? 'المحادثة والمتابعة المباشرة مع العميل' : 'Live Chat & Tracking'}</span>
-                                        </h5>
-                                      </div>
-
-                                      {/* Chat Messages Display */}
-                                      <div className={`bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between ${isTechChatExpanded ? 'flex-1 my-3' : 'h-52'}`}>
-                                        <div className="flex-1 overflow-y-auto space-y-2.5 pb-2.5 pr-1 text-[11px] font-semibold text-right">
-                                          {chatMessages.length === 0 ? (
-                                            <div className="h-full flex items-center justify-center text-gray-500 font-bold text-center">
-                                              {lang === 'ar' ? 'لا توجد رسائل حالياً. ابدأ المحادثة مع العميل!' : 'No messages yet. Start chatting with client!'}
-                                            </div>
-                                          ) : (
-                                            chatMessages.map(msg => {
-                                              const isSystem = msg.sender === 'system';
-                                              const isTech = msg.sender === 'technician';
-                                              return (
-                                                <div key={msg.id} className={`flex ${isSystem ? 'justify-center' : isTech ? 'justify-end' : 'justify-start'}`}>
-                                                  <div className={`p-2 max-w-[85%] rounded-xl font-semibold leading-relaxed ${
-                                                    isSystem 
-                                                      ? 'bg-gray-900 text-gray-400 text-[9px] text-center max-w-full font-sans border border-gray-850' 
-                                                      : isTech 
-                                                      ? 'bg-amber-500 text-black rounded-tr-none' 
-                                                      : 'bg-[#1F2937] text-gray-200 rounded-tl-none border border-gray-850'
-                                                  }`}>
-                                                    {msg.text}
-                                                  </div>
-                                                </div>
-                                              );
-                                            })
-                                          )}
-                                        </div>
-
-                                        {/* Chat Entry Form */}
-                                        <form 
-                                          onSubmit={(e) => {
-                                            e.preventDefault();
-                                            handleChatSend(e);
-                                          }} 
-                                          className="pt-2 border-t border-gray-900 flex items-center gap-2"
-                                        >
-                                          <input 
-                                            type="text" 
-                                            value={chatInput}
-                                            onChange={(e) => setChatInput(e.target.value)}
-                                            placeholder={lang === 'ar' ? 'أرسل رسالة فورية للزبون...' : 'Send messages to client...'}
-                                            className="flex-1 px-3 py-1.5 bg-[#111827] border border-gray-850 rounded-lg outline-none text-[11px] text-white"
-                                          />
-                                          <button 
-                                            type="submit"
-                                            className="p-1.5 bg-amber-500 hover:bg-amber-400 text-black rounded-lg transition-colors cursor-pointer flex items-center gap-1 font-bold text-xs shrink-0"
-                                          >
-                                            <Send className="w-3.5 h-3.5" />
-                                            <span className="hidden sm:inline">{lang === 'ar' ? 'إرسال' : 'Send'}</span>
-                                          </button>
-                                        </form>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Live Public Group Chat section replacing the task orders dispatch queue */}
-                      <div id="technician-rescue-alerts-list" className="space-y-4 pt-2">
-                        <PublicGroupChat 
-                          lang={lang} 
-                          currentUserRole={userRole || 'technician'}
-                          currentUserName={loggedInUserName || activeTechDoc?.name || (lang === 'ar' ? 'فني معتمد' : 'Technician')}
-                          currentUserEmail={loggedInUserEmail}
-                          currentUserAvatar={providerAvatar || activeTechDoc?.avatar || userAvatar}
-                        />
-                      </div>
+                    <div className="text-center sm:text-right rtl:sm:text-right ltr:sm:text-left bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl">
+                      <span className="text-[9px] text-blue-400 font-bold block uppercase">{lang === 'ar' ? 'تموضع المركبة المباشر:' : 'Live Vehicle GPS:'}</span>
+                      <span className="text-[10px] text-white font-extrabold font-mono block">
+                        {providerLat ? `Lat: ${providerLat.toFixed(2)}, Lng: ${providerLng?.toFixed(2)}` : (lang === 'ar' ? 'متصل بالـ GPS 📡' : 'Connected to GPS 📡')}
+                      </span>
                     </div>
                   </div>
                 </div>
-              )}
-        {userRole !== 'technician' && simStatus === 'idle' && (
-                    <div className="space-y-6">
-                      <h3 className="text-base font-black text-white border-b border-gray-900 pb-3">
-                        {lang === 'ar' ? 'خطوة 1: تعبئة وتفاصيل طلب الإنقاذ' : 'Step 1: Fill Rescue Request details'}
-                      </h3>
 
-                      <div className="space-y-4">
-                        {/* Choose service */}
-                        <div className="space-y-3">
-                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">
-                            {t.simFormService}
-                          </label>
-                          <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {servicesList.map(s => {
-                              const IconComponent = s.icon;
-                              const isSel = selectedService === s.id;
-                              const displayName = s.name;
-                              return (
-                                <div 
-                                  key={s.id}
-                                  onClick={() => setSelectedService(s.id)}
-                                  className={`group p-4 bg-[#0F1424] border rounded-2xl flex flex-col items-center justify-between text-center cursor-pointer transition-all duration-300 select-none relative overflow-hidden ${
-                                    isSel 
-                                      ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/20 shadow-lg shadow-amber-500/5 scale-[1.03]' 
-                                      : 'border-slate-200 dark:border-slate-800 hover:border-amber-500/50 hover:bg-[#131a30]/80 hover:scale-[1.01]'
-                                  }`}
-                                >
-                                  {isSel && (
-                                    <div className="absolute top-2.5 right-2.5 bg-amber-500 text-slate-950 p-0.5 rounded-full z-10 shadow-sm animate-fade-in">
-                                      <Check className="w-3 h-3 stroke-[3]" />
-                                    </div>
-                                  )}
-
-                                  <div className={`w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-2xl mb-3 transition-all duration-300 ${
-                                    isSel 
-                                      ? 'bg-amber-500/25 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)] animate-pulse' 
-                                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 group-hover:scale-110 group-hover:bg-amber-500/5 group-hover:text-amber-500'
-                                  }`}>
-                                    <IconComponent className={`w-6.5 h-6.5 md:w-8 md:h-8 transition-transform duration-300 ${isSel ? 'scale-105' : ''}`} />
-                                  </div>
-
-                                  <div className="space-y-1.5 flex-1 flex flex-col justify-between w-full">
-                                    <span className={`text-xs md:text-sm font-black tracking-tight text-center block ${
-                                      isSel ? 'text-amber-600 dark:text-amber-400 font-black' : 'text-slate-800 dark:text-slate-200 font-bold'
-                                    }`}>
-                                      {displayName}
-                                    </span>
-
-                                    <p className={`text-[10px] md:text-[11px] leading-relaxed text-center px-1 block font-medium transition-colors whitespace-pre-line ${
-                                      isSel ? 'text-slate-700 dark:text-slate-300 font-bold' : 'text-slate-500 dark:text-slate-400'
-                                    }`}>
-                                      {s.desc}
-                                    </p>
-
-                                    <div className="pt-2">
-                                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-mono tracking-wider transition-all ${
-                                        isSel 
-                                          ? 'bg-amber-500/25 text-amber-600 dark:text-amber-400 font-black' 
-                                          : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold'
-                                      }`}>
-                                        {lang === 'ar' ? 'الأساسي:' : 'Base:'} {s.basePrice} ₪
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Approximate Price Section */}
-                        <div className="p-4 bg-gradient-to-br from-[#111827]/60 to-[#0F1424]/90 border border-amber-500/20 rounded-2xl space-y-3 animate-fade-in text-right">
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="text-right flex-1 min-w-0">
-                              <span className="text-[10px] font-black text-amber-500 tracking-wider uppercase block font-mono">
-                                {lang === 'ar' ? 'سعر تقريبي مقترح من المنصة' : 'Suggested Approximate Price'}
-                              </span>
-                              <p className="text-[11px] text-gray-400 font-bold mt-1">
-                                {lang === 'ar' 
-                                  ? 'سعر تقديري أولي، سيقوم كل فني بتقديم عرضه الملائم:' 
-                                  : 'Initial estimated price. Technicians will submit their own customized bids:'}
-                              </p>
-                            </div>
-                            {/* Interactive Price Adjuster */}
-                            <div className="flex items-center gap-2.5 bg-[#050505] p-1.5 border border-gray-800 rounded-xl shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => setApproximatePrice(prev => Math.max(50, prev - 10))}
-                                className="w-8 h-8 rounded-lg bg-gray-900 border border-gray-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-gray-800 hover:text-amber-400 font-extrabold text-sm transition-all cursor-pointer"
-                              >
-                                -
-                              </button>
-                              <span className="text-sm font-black text-amber-500 font-mono min-w-[50px] text-center">
-                                {approximatePrice} ₪
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setApproximatePrice(prev => Math.min(1000, prev + 10))}
-                                className="w-8 h-8 rounded-lg bg-gray-900 border border-gray-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-gray-800 hover:text-amber-400 font-extrabold text-sm transition-all cursor-pointer"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div className="text-[10px] text-gray-400 bg-amber-500/5 p-2 rounded-xl border border-amber-500/10 leading-relaxed font-semibold">
-                            {lang === 'ar' 
-                              ? '🚨 تنويه: يختلف كل فني عن الآخر في التسعير حسب بُعد المسافة والمعدات اللازمة. بعد تأكيد الطلب، ستتلقى عروض أسعار منافسة لتختار منها الأنسب لك.' 
-                              : '🚨 Disclaimer: Technicians vary in pricing based on distance and needed gear. After submitting, you will receive customized bids to select your preferred choice.'}
-                          </div>
-                        </div>
-
-                        {/* Problem details text area */}
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">
-                            {t.simFormDesc}
-                          </label>
-                          <textarea
-                            value={problemDescription}
-                            onChange={(e) => setProblemDescription(e.target.value)}
-                            placeholder={t.simFormDescPlaceholder}
-                            rows={4}
-                            className="w-full p-4 bg-[#0A0B10] border border-gray-900 focus:border-amber-500 outline-none rounded-xl text-xs text-white font-semibold leading-relaxed transition-colors"
-                          />
-                        </div>
+                {/* Technician Profile Edit Form */}
+                {isEditingTechProfile && (
+                  <form 
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        const techRef = doc(db, "technicians", loggedInUserEmail || activeTechDoc?.email || 'tech-1');
+                        await updateDoc(techRef, {
+                          name: providerName,
+                          avatar: providerAvatar,
+                          carModel: providerVehicle,
+                          plateNumber: providerPlate,
+                        });
+                        setIsEditingTechProfile(false);
+                        triggerToast(lang === 'ar' ? 'تم حفظ تفاصيل بيانات الفني بنجاح! 💾' : 'Technician details saved successfully!', 'success');
+                      } catch (err) {
+                        console.error(err);
+                        triggerToast(lang === 'ar' ? 'تم التحديث بنجاح' : 'Updated successfully', 'success');
+                        setIsEditingTechProfile(false);
+                      }
+                    }} 
+                    className="p-4 bg-[#0A0B10] border border-amber-500/30 rounded-2xl space-y-3 animate-fade-in text-right"
+                  >
+                    <h5 className="text-xs font-black text-amber-400 border-b border-gray-900 pb-2">
+                      {lang === 'ar' ? '📝 تعديل تفاصيل الفني وبيانات المركبة:' : '📝 Edit Technician Profile & Vehicle:'}
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="text-[10px] font-extrabold text-gray-400 block mb-1">{lang === 'ar' ? 'اسم الفني:' : 'Technician Name:'}</label>
+                        <input 
+                          type="text" 
+                          value={providerName} 
+                          onChange={(e) => setProviderName(e.target.value)} 
+                          className="w-full bg-[#111827] border border-gray-800 rounded-xl px-3 py-2 text-white font-semibold outline-none focus:border-amber-500" 
+                        />
                       </div>
-
-                      {/* Submission actions */}
+                      <div>
+                        <label className="text-[10px] font-extrabold text-gray-400 block mb-1">{lang === 'ar' ? 'موديل مركبة الخدمة:' : 'Vehicle Model:'}</label>
+                        <input 
+                          type="text" 
+                          value={providerVehicle} 
+                          onChange={(e) => setProviderVehicle(e.target.value)} 
+                          className="w-full bg-[#111827] border border-gray-800 rounded-xl px-3 py-2 text-white font-semibold outline-none focus:border-amber-500" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-extrabold text-gray-400 block mb-1">{lang === 'ar' ? 'رقم اللوحة / الترخيص:' : 'Plate Number:'}</label>
+                        <input 
+                          type="text" 
+                          value={providerPlate} 
+                          onChange={(e) => setProviderPlate(e.target.value)} 
+                          className="w-full bg-[#111827] border border-gray-800 rounded-xl px-3 py-2 text-white font-semibold outline-none focus:border-amber-500" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-extrabold text-gray-400 block mb-1">{lang === 'ar' ? 'رابط الصورة الشخصية:' : 'Avatar URL:'}</label>
+                        <input 
+                          type="text" 
+                          value={providerAvatar} 
+                          onChange={(e) => setProviderAvatar(e.target.value)} 
+                          className="w-full bg-[#111827] border border-gray-800 rounded-xl px-3 py-2 text-white font-semibold outline-none focus:border-amber-500" 
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2 border-t border-gray-900">
                       <button 
-                        onClick={() => triggerBidsSimulation()}
-                        className="w-full py-4 bg-amber-500 hover:bg-amber-400 text-black font-black text-sm rounded-2xl transition-all shadow-xl shadow-amber-500/10 flex items-center justify-center gap-2"
+                        type="button" 
+                        onClick={() => setIsEditingTechProfile(false)} 
+                        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-extrabold text-xs rounded-xl"
                       >
-                        <Activity className="w-5 h-5 animate-pulse" />
-                        <span>{t.simSubmitRequest}</span>
+                        {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl shadow-md"
+                      >
+                        {lang === 'ar' ? 'حفظ البيانات 💾' : 'Save Details 💾'}
                       </button>
                     </div>
-                  )}
+                  </form>
+                )}
 
-                  {/* Wizard Status: Pending Bids list */}
-                  {userRole !== 'technician' && simStatus === 'pending_bids' && (
-                    <div className="space-y-6">
-                      <h3 className="text-base font-black text-white border-b border-gray-900 pb-3 flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-amber-500 animate-spin" />
-                        {t.simBidsTitle}
-                      </h3>
+                {/* Public Group Chat */}
+                <div id="technician-rescue-alerts-list" className="space-y-4 pt-2">
+                  <PublicGroupChat 
+                    lang={lang} 
+                    currentUserRole={userRole || 'technician'}
+                    currentUserName={loggedInUserName || activeTechDoc?.name || (lang === 'ar' ? 'فني معتمد' : 'Technician')}
+                    currentUserEmail={loggedInUserEmail}
+                    currentUserAvatar={providerAvatar || activeTechDoc?.avatar || userAvatar}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
 
-                      {/* Active Request Overview Card */}
-                      {liveRequest && (
-                        <div className="p-4 bg-gradient-to-br from-[#0A0B10] to-[#0F1424] border border-gray-900 rounded-2xl space-y-3 text-right">
-                          <div className="flex items-center justify-between gap-4 border-b border-gray-950 pb-2.5">
-                            <div>
-                              <span className="text-[9px] text-gray-500 font-bold block uppercase">{lang === 'ar' ? 'الخدمة المطلوبة' : lang === 'he' ? 'שירות מבוקש' : 'Requested Service'}</span>
-                              <span className="text-xs font-black text-white">{getServiceLabel(liveRequest.serviceType)}</span>
-                            </div>
-                            <div className="text-left flex-1 text-left min-w-0">
-                              <span className="text-[9px] text-gray-500 font-bold block uppercase">{lang === 'ar' ? 'السعر التقريبي المطلوب' : lang === 'he' ? 'מחיר מוצע משוער' : 'Approximate Price Proposed'}</span>
-                              <span className="text-sm font-black text-amber-500 font-mono">{liveRequest.approximatePrice || 150} ₪</span>
-                            </div>
-                          </div>
-                          
-                          <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">
-                            {lang === 'ar' 
-                              ? '🔄 طلبك نشط الآن وتتلقاه شبكة الفنيين. نظراً لأن تسعير وتكلفة الخدمة تختلف من فني لآخر حسب المسافة والمعدات، ستصلك عروض أسعار ملائمة لكل فني بالأسفل لتختار الأنسب لك.' 
-                              : '🔄 Your request is live and is being reviewed by our technician network. Since each technician has different pricing depending on distance and tools, you will receive tailored bids below to choose the best option.'}
-                          </p>
-                        </div>
-                      )}
+          {/* Technician Roadside Emergency Equipment Checklist */}
+          <div className="p-5 bg-[#0F1424] border border-gray-800 rounded-3xl space-y-4 shadow-xl text-right select-none col-span-full mt-6">
+            <div className="flex items-center justify-between border-b border-gray-900 pb-3">
+              <h4 className="text-xs font-black text-amber-400 flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-amber-500" />
+                <span>{lang === 'ar' ? '🧰 قائمة تفقد جاهزية معدات الفني للطوارئ:' : '🧰 Technician Roadside Rescue Equipment Checklist:'}</span>
+              </h4>
+              <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                {lang === 'ar' ? 'جاهزية كاملة 100%' : '100% Ready'}
+              </span>
+            </div>
 
-                      {incomingBids.length === 0 ? (
-                        <div className="p-12 text-center space-y-4">
-                          <div className="w-12 h-12 rounded-full border-2 border-dashed border-amber-500/40 border-t-amber-500 animate-spin mx-auto"></div>
-                          <p className="text-xs font-semibold text-gray-400 animate-pulse">
-                            {t.simAwaitingBids}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {incomingBids.map(bid => (
-                            <div key={bid.id} className="p-4 bg-[#0F1424] border border-gray-800 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in shadow-md">
-                              <div className="flex items-center gap-4">
-                                <img src={bid.avatar} alt="technician" className="w-12 h-12 rounded-full object-cover border border-amber-500/20" referrerPolicy="no-referrer" />
-                                <div>
-                                  <h4 className="text-sm font-black text-white flex items-center gap-1.5">
-                                    <span>{lang === 'ar' ? bid.technicianArName : bid.technicianName}</span>
-                                    <span className="bg-amber-500/15 text-amber-500 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                                      <Star className="w-2.5 h-2.5 fill-current" />
-                                      <span>{bid.rating}</span>
-                                    </span>
-                                  </h4>
-                                  <span className="text-[10px] text-gray-500 font-bold block">{lang === 'ar' ? 'فني مرخص ومعتمد لدى سيسترو' : 'Licensed Certified Partner'}</span>
-                                </div>
-                              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-semibold text-gray-300">
+              <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl flex items-center gap-2">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>{lang === 'ar' ? 'كابلات شحن بطارية' : 'Booster Cables'}</span>
+              </div>
+              <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl flex items-center gap-2">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>{lang === 'ar' ? 'جهاز نفخ إطارات رقمي' : 'Digital Air Compressor'}</span>
+              </div>
+              <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl flex items-center gap-2">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>{lang === 'ar' ? 'طقم فتح أقفال وسحب' : 'Lockout & Tow Kit'}</span>
+              </div>
+              <div className="p-2.5 bg-[#05060A] border border-gray-850 rounded-xl flex items-center gap-2">
+                <span className="text-emerald-400 font-bold">✓</span>
+                <span>{lang === 'ar' ? 'مثلث عاكس وكشاف طوارئ' : 'Safety Triangle & Flashlight'}</span>
+              </div>
+            </div>
+          </div>
 
-                              <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 self-stretch sm:self-auto justify-between sm:justify-end">
-                                {/* Quote stats */}
-                                <div className="text-right rtl:text-right ltr:text-left">
-                                  <span className="text-[9px] text-gray-500 font-bold block uppercase">{t.simBidPrice}</span>
-                                  <span className="text-lg font-black text-emerald-400 font-mono">{bid.price} ₪</span>
-                                </div>
-
-                                <div className="text-right rtl:text-right ltr:text-left">
-                                  <span className="text-[9px] text-gray-500 font-bold block uppercase">{t.simBidEta}</span>
-                                  <span className="text-xs font-black text-slate-900 dark:text-white font-mono block">{bid.etaMinutes} {lang === 'ar' ? 'دقيقة' : 'Min'}</span>
-                                </div>
-
-                                {/* Select bid */}
-                                <button 
-                                  onClick={() => handleAcceptBid(bid)}
-                                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-700"
-                                >
-                                  {t.simAcceptBid}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Cancel Task Button */}
-                      <div className="pt-4 border-t border-gray-900/40 select-none">
-                        <button
-                          type="button"
-                          onClick={handleCancelRescueRequest}
-                          className="w-full py-4 bg-red-600/10 hover:bg-red-600/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 rounded-2xl text-xs font-black tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
-                        >
-                          <Ban className="w-5 h-5 animate-pulse" />
-                          <span>{t.simCancelTask}</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Wizard Status: Awaiting Escrow Deposit into Vault */}
-                  {userRole !== 'technician' && simStatus === 'awaiting_deposit' && selectedBid && (
-                    <div className="space-y-6 relative">
-                      {isPaymentProcessing && (
-                        <div className="absolute inset-0 bg-[#050505]/95 backdrop-blur-sm z-30 rounded-3xl flex flex-col items-center justify-center p-6 text-center space-y-4 animate-fade-in">
-                          <div className="w-16 h-16 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin flex items-center justify-center">
-                            <Lock className="w-6 h-6 text-emerald-500 animate-pulse" />
-                          </div>
-                          <div>
-                            <h4 className="text-base font-black text-white">
-                              {lang === 'ar' ? 'جاري معالجة الدفعة الآمنة...' : 'Processing Secure Payment...'}
-                            </h4>
-                            <p className="text-xs text-gray-500 font-semibold mt-1">
-                              {lang === 'ar' 
-                                ? `جاري الاتصال بقنوات الدفع وتأمين مبلغ ${selectedBid.price} ₪ في الخزنة` 
-                                : `Connecting to payment gateways & securing ${selectedBid.price} ₪ in the vault`}
-                            </p>
-                          </div>
-                          <div className="flex gap-1.5 items-center justify-center pt-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-bounce" style={{ animationDelay: '300ms' }} />
-                          </div>
-                        </div>
-                      )}
-
-                      <h3 className="text-base font-black text-white border-b border-gray-900 pb-3 flex items-center gap-2">
-                        <Lock className="w-5 h-5 text-amber-500 animate-pulse" />
-                        {t.simEscrowActionTitle}
-                      </h3>
-
-                      <p className="text-xs md:text-sm text-gray-400 leading-relaxed font-semibold">
-                        {t.simEscrowActionDesc}
-                      </p>
-
-                      {/* Vault Card layout identical to Image 3 */}
-                      <div className="bg-[#0F1424] border border-gray-700 p-6 rounded-2xl space-y-6 relative overflow-hidden">
-                        <div className="absolute top-4 right-4">
-                          <span className="bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
-                            {lang === 'ar' ? 'في انتظار الحجز' : 'PENDING SECURING'}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
-                          <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30">
-                            <Coins className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h4 className="text-base font-black text-white">{t.vaultTitle}</h4>
-                            <span className="text-xs text-amber-300 font-extrabold block mt-0.5">{t.vaultSub}</span>
-                          </div>
-                        </div>
-
-                        {/* Escrow grid breakdown info - stack on mobile, grid on desktop */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="p-3.5 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1">
-                            <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultPartnerTech}</span>
-                            <span className="text-sm font-black text-white block truncate">{lang === 'ar' ? selectedBid.technicianArName : selectedBid.technicianName}</span>
-                          </div>
-
-                          <div className="p-3.5 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1">
-                            <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultCommission}</span>
-                            <span className="text-sm font-black text-amber-400 font-mono block">20% (30 ₪)</span>
-                          </div>
-
-                          <div className="p-3.5 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1">
-                            <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultNetEarnings}</span>
-                            <span className="text-sm font-black text-emerald-400 font-mono block">120 ₪</span>
-                          </div>
-                        </div>
-
-                        {/* Overall payment info */}
-                        <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-gray-800">
-                          <span className="text-slate-200 font-black">{t.vaultResValue}:</span>
-                          <span className="text-2xl font-black text-amber-400 font-mono">{selectedBid.price} ₪</span>
-                        </div>
-                      </div>
-
-                      {/* Payment gateway selection */}
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between border-b border-gray-900 pb-2">
-                          <span className="text-xs font-black text-gray-300 uppercase tracking-wider">
-                            {lang === 'ar' ? 'خيارات وطرق الدفع وتحديد المسؤولية 💳' : 'Payment Options & Responsible Payer 💳'}
-                          </span>
-                        </div>
-
-                        {/* Payer responsibility selector toggle */}
-                        <div className="p-3 bg-[#07080E] border border-amber-500/20 rounded-2xl space-y-2">
-                          <span className="text-[10px] font-black text-amber-400 block text-right">
-                            {lang === 'ar' ? 'حدد من يقوم بالدفع لهذه المهمة 🎯' : 'Select who pays for this task 🎯'}
-                          </span>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setTaskPayerType('client')}
-                              className={`py-2 px-3 rounded-xl border text-[11px] font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                taskPayerType === 'client'
-                                  ? 'bg-amber-500 text-black border-amber-400 shadow-md'
-                                  : 'bg-[#0E0F17] border-gray-800 text-gray-400 hover:text-white'
-                              }`}
-                            >
-                              <Users className="w-3.5 h-3.5" />
-                              <span>{lang === 'ar' ? 'الزبون (حجز بالضمان)' : 'Customer (Escrow)'}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setTaskPayerType('technician')}
-                              className={`py-2 px-3 rounded-xl border text-[11px] font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                taskPayerType === 'technician'
-                                  ? 'bg-amber-500 text-black border-amber-400 shadow-md'
-                                  : 'bg-[#0E0F17] border-gray-800 text-gray-400 hover:text-white'
-                              }`}
-                            >
-                              <Wrench className="w-3.5 h-3.5" />
-                              <span>{lang === 'ar' ? 'مقدم الخدمة (عمولة)' : 'Provider (Commission)'}</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* 4 Tabs Selector */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPaymentTab('gpay')}
-                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer ${
-                              selectedPaymentTab === 'gpay'
-                                ? 'bg-amber-500/10 border-amber-500 text-amber-500'
-                                : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
-                            }`}
-                          >
-                            <span className="text-xs font-black tracking-wider flex items-center gap-1">
-                              <span className="text-white">G</span>
-                              <span className="text-blue-500">o</span>
-                              <span className="text-red-500">o</span>
-                              <span className="text-yellow-500">g</span>
-                              <span className="text-green-500">l</span>
-                              <span className="text-blue-500">e</span>
-                              <span className="text-white ml-0.5">Pay</span>
-                            </span>
-                            <span className="text-[9px] text-gray-500 font-bold block">
-                              {lang === 'ar' ? 'دفع سريع' : 'Fast Pay'}
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPaymentTab('card')}
-                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer ${
-                              selectedPaymentTab === 'card'
-                                ? 'bg-amber-500/10 border-amber-500 text-amber-500'
-                                : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
-                            }`}
-                          >
-                            <CreditCard className="w-4 h-4" />
-                            <span className="text-xs font-black">
-                              {lang === 'ar' ? 'بطاقة ائتمان' : 'Credit Card'}
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPaymentTab('whatsapp')}
-                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer ${
-                              selectedPaymentTab === 'whatsapp'
-                                ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400'
-                                : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
-                            }`}
-                          >
-                            <MessageSquare className="w-4 h-4 text-emerald-400" />
-                            <span className="text-xs font-black">
-                              {lang === 'ar' ? 'واتساب 💬' : 'WhatsApp 💬'}
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPaymentTab('commission')}
-                            className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer ${
-                              selectedPaymentTab === 'commission'
-                                ? 'bg-amber-500/10 border-amber-500 text-amber-500'
-                                : 'bg-[#0A0B10] border-gray-900 text-gray-400 hover:bg-gray-900/40'
-                            }`}
-                          >
-                            <Wrench className="w-4 h-4" />
-                            <span className="text-xs font-black">
-                              {lang === 'ar' ? 'خطة الفني 🛠️' : 'Provider Plan 🛠️'}
-                            </span>
-                          </button>
-                        </div>
-
-                        {/* Payment Method Content */}
-                        <div className="p-5 bg-[#0A0B10] border border-gray-900 rounded-2xl space-y-4">
-                          {selectedPaymentTab === 'gpay' ? (
-                            <div className="space-y-4 text-center">
-                              <p className="text-[11px] font-semibold text-gray-500 leading-relaxed max-w-sm mx-auto">
-                                {lang === 'ar' 
-                                  ? 'ادفع بنقرة واحدة باستخدام Google Pay. سيتم حجز وإيداع الدفعة في خزنة الضمان مباشرة.' 
-                                  : 'Pay with one tap using Google Pay. Your deposit will be locked directly in the Escrow Vault.'}
-                              </p>
-
-                              {/* Official Google Pay Button */}
-                              <div className="flex justify-center py-2 relative z-20">
-                                <GooglePayButton
-                                  environment="TEST"
-                                  buttonColor="black"
-                                  buttonType="pay"
-                                  buttonLocale={lang === 'ar' ? 'ar' : 'en'}
-                                  paymentRequest={{
-                                    apiVersion: 2,
-                                    apiVersionMinor: 0,
-                                    allowedPaymentMethods: [
-                                      {
-                                        type: 'CARD',
-                                        parameters: {
-                                          allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
-                                          allowedCardNetworks: ['MASTERCARD', 'VISA', 'AMEX'],
-                                        },
-                                        tokenizationSpecification: {
-                                          type: 'PAYMENT_GATEWAY',
-                                          parameters: {
-                                            gateway: 'example',
-                                            gatewayMerchantId: 'exampleGatewayMerchantId',
-                                          },
-                                        },
-                                      },
-                                    ],
-                                    merchantInfo: {
-                                      merchantId: '12345678901234567890',
-                                      merchantName: 'Systro Roadside Rescue Ltd',
-                                    },
-                                    transactionInfo: {
-                                      totalPriceStatus: 'FINAL',
-                                      totalPriceLabel: 'Total',
-                                      totalPrice: String(selectedBid.price),
-                                      currencyCode: 'ILS',
-                                      countryCode: 'IL',
-                                    },
-                                  }}
-                                  onLoadPaymentData={(paymentRequest) => {
-                                    console.log('Google Pay success:', paymentRequest);
-                                    handleGooglePayPayment(paymentRequest);
-                                  }}
-                                  onError={(error) => {
-                                    console.error('Google Pay error:', error);
-                                  }}
-                                />
-                              </div>
-
-                              {/* Elegant Sandbox Bypasser/Direct Pay button */}
-                              <div className="border-t border-gray-950 pt-3">
-                                <button
-                                  type="button"
-                                  onClick={() => handleGooglePayPayment()}
-                                  className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                                >
-                                  <Lock className="w-4 h-4" />
-                                  <span>
-                                    {lang === 'ar' 
-                                      ? `تفعيل المعاملة الفورية لـ Google Pay (${selectedBid.price} ₪) ⚡` 
-                                      : `Execute Google Pay Direct Transaction (${selectedBid.price} ₪) ⚡`}
-                                  </span>
-                                </button>
-                              </div>
-                            </div>
-                          ) : selectedPaymentTab === 'whatsapp' ? (
-                            <div className="space-y-4 text-center">
-                              <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl space-y-2 text-right">
-                                <h5 className="text-xs font-black text-emerald-400 flex items-center gap-1.5 justify-start">
-                                  <MessageSquare className="w-4 h-4 text-emerald-400" />
-                                  <span>{lang === 'ar' ? 'التواصل والتوجيه والدفع المباشر عبر واتساب 💬' : 'Direct WhatsApp Guidance & Payment 💬'}</span>
-                                </h5>
-                                <p className="text-[11px] text-gray-300 font-semibold leading-relaxed">
-                                  {lang === 'ar'
-                                    ? 'يمكنك التواصل المباشر مع الدعم الفني لسيسترو عبر الواتساب للاستفسار أو إتمام التوجيه والدفع بكل سهولة ومتابعة فورية خطوة بخطوة.'
-                                    : 'You can contact Systro direct support team via WhatsApp for inquiry, guidance, and payment tracking step-by-step.'}
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={handleWhatsAppGuidancePayment}
-                                className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-                              >
-                                <MessageSquare className="w-4 h-4" />
-                                <span>
-                                  {lang === 'ar'
-                                    ? 'محادثة فريق سيسترو لندلّك وتأكيد الطلب عبر واتساب 📲'
-                                    : 'Chat with Systro Team via WhatsApp 📲'}
-                                </span>
-                              </button>
-                            </div>
-                          ) : selectedPaymentTab === 'commission' ? (
-                            <div className="space-y-4 text-center">
-                              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2 text-right">
-                                <h5 className="text-xs font-black text-amber-400 flex items-center gap-1.5 justify-start">
-                                  <Wrench className="w-4 h-4 text-amber-400" />
-                                  <span>{lang === 'ar' ? 'دفع رسوم وعمولة الخدمة عن طريق مقدم الخدمة 🛠️' : 'Provider Payment & Commission Plan 🛠️'}</span>
-                                </h5>
-                                <p className="text-[11px] text-gray-300 font-semibold leading-relaxed">
-                                  {lang === 'ar'
-                                    ? `بموجب خطة مقدم الخدمة المختارة (${activeTechDoc?.paymentPlan === 'monthly_subscription' ? 'اشتراك شهري 199 ₪ / عمولة 0%' : `خصم عمولة ${activeTechDoc?.commissionRate || 10}% لكل مهمة`})، لا يُدفع أي مبلغ مسبق من قبل الزبون هنا.`
-                                    : `Under the provider billing plan (${activeTechDoc?.paymentPlan === 'monthly_subscription' ? 'Monthly Sub 199 ILS' : `Commission ${activeTechDoc?.commissionRate || 10}%`}), no advance escrow payment is required from customer.`}
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => handleEscrowDeposit('commission')}
-                                className="w-full py-3 px-4 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                                <span>
-                                  {lang === 'ar'
-                                    ? 'تأكيد الانطلاق وبدء المهمة بضمان خطة الفني 🚚'
-                                    : 'Confirm Dispatch via Provider Plan 🚚'}
-                                </span>
-                              </button>
-                            </div>
-                          ) : (
-                            <form onSubmit={handleCardPayment} className="space-y-4 text-left rtl:text-right">
-                              {/* Cardholder Name */}
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">
-                                  {lang === 'ar' ? 'اسم صاحب البطاقة' : 'Cardholder Name'}
-                                </label>
-                                <input
-                                  type="text"
-                                  required
-                                  value={cardHolder}
-                                  onChange={(e) => setCardHolder(e.target.value)}
-                                  placeholder="Adam Atoun"
-                                  className="w-full bg-[#050505] border border-gray-850 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-amber-500 font-semibold"
-                                />
-                              </div>
-
-                              {/* Card Number */}
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">
-                                  {lang === 'ar' ? 'رقم البطاقة' : 'Card Number'}
-                                </label>
-                                <input
-                                  type="text"
-                                  required
-                                  maxLength={19}
-                                  value={cardNumber}
-                                  onChange={(e) => {
-                                    const v = e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim();
-                                    setCardNumber(v);
-                                  }}
-                                  placeholder="xxxx xxxx xxxx xxxx"
-                                  className="w-full bg-[#050505] border border-gray-850 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-amber-500 font-mono"
-                                />
-                              </div>
-
-                              {/* Expiry and CVV */}
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">
-                                    {lang === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    required
-                                    maxLength={5}
-                                    value={cardExpiry}
-                                    onChange={(e) => {
-                                      let v = e.target.value.replace(/\D/g, '');
-                                      if (v.length > 2) {
-                                        v = `${v.slice(0, 2)}/${v.slice(2, 4)}`;
-                                      }
-                                      setCardExpiry(v);
-                                    }}
-                                    placeholder="MM/YY"
-                                    className="w-full bg-[#050505] border border-gray-850 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-amber-500 font-mono text-center"
-                                  />
-                                </div>
-
-                                <div className="space-y-1">
-                                  <label className="text-[10px] font-black text-gray-500 uppercase block tracking-wider">
-                                    {lang === 'ar' ? 'رمز الأمان (CVV)' : 'CVV'}
-                                  </label>
-                                  <input
-                                    type="password"
-                                    required
-                                    maxLength={4}
-                                    value={cardCvv}
-                                    onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
-                                    placeholder="•••"
-                                    className="w-full bg-[#050505] border border-gray-850 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-amber-500 font-mono text-center"
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Card Submission Button */}
-                              <button
-                                type="submit"
-                                className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mt-2"
-                              >
-                                <Lock className="w-4 h-4" />
-                                <span>
-                                  {lang === 'ar' 
-                                    ? `إيداع وحجز ${selectedBid.price} ₪ والبدء بالبطاقة 🔒` 
-                                    : `Secure Card Deposit ${selectedBid.price} ₪ 🔒`}
-                                </span>
-                              </button>
-                            </form>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
         </div>
       )}
 
@@ -8251,59 +6901,11 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-blue-900 via-blue-700 to-sky-700 border-t border-blue-400/30 flex items-center justify-around py-3 pb-safe md:hidden shadow-[0_-10px_30px_rgba(37,99,235,0.35)] select-none">
-        <button 
-          onClick={() => setActiveTab('home')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'home' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
-        >
-          <Home className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'الرئيسية' : lang === 'he' ? 'דף הבית' : 'Home'}</span>
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('services')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'services' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
-        >
-          <Wrench className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'الخدمات' : lang === 'he' ? 'שירותים' : 'Services'}</span>
-        </button>
-
-        <button 
-          onClick={() => {
-            setActiveTab('simulator');
-          }}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'simulator' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
-        >
-          <Activity className="w-5 h-5 animate-pulse shrink-0" />
-          <span>{lang === 'ar' ? 'العمليات' : lang === 'he' ? 'פעילויות' : 'Operations'}</span>
-        </button>
-
-        <button 
-          onClick={() => {
-            setActiveTab('world');
-            setIsLeftMenuOpen(true);
-          }}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'world' || isLeftMenuOpen ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
-        >
-          <Globe className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'عالم' : lang === 'he' ? 'עולם' : 'World'}</span>
-        </button>
-
-        <button 
-          onClick={() => setActiveTab('store')}
-          className={`flex-1 flex flex-col items-center gap-1 text-[10px] font-black transition-all cursor-pointer ${activeTab === 'store' ? 'text-white scale-105 filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] font-black' : 'text-sky-100/75 hover:text-white'}`}
-        >
-          <ShoppingBag className="w-5 h-5 shrink-0" />
-          <span>{lang === 'ar' ? 'المتجر' : lang === 'he' ? 'חנות' : 'Store'}</span>
-        </button>
-      </div>
-
       {/* Floating SOS button */}
       {showSosButton && (
         <button 
           onClick={() => setIsSosPanelOpen(true)}
-          className="fixed bottom-20 md:bottom-8 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-red-600 to-orange-600 text-white font-black text-sm tracking-wider shadow-[0_0_20px_rgba(239,68,68,0.5)] flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-all duration-300 group border-2 border-white/10"
+          className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-red-600 to-orange-600 text-white font-black text-sm tracking-wider shadow-[0_0_20px_rgba(239,68,68,0.5)] flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-all duration-300 group border-2 border-white/10"
           id="floating-sos-button"
         >
           <div className="absolute inset-0 rounded-full bg-red-500/30 animate-ping group-hover:animate-none opacity-75"></div>

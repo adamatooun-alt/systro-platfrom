@@ -124,9 +124,9 @@ export interface Dictionary {
 
 export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
   ar: {
-    logoTitle: "نظام سيسترو",
-    logoRescue: "| Systro",
-    logoSub: "SYSTRO SYSTEM",
+    logoTitle: "system systro",
+    logoRescue: "نظام سيسترو",
+    logoSub: "منصة للأعمال والخدمات",
     home: "الرئيسية",
     services: "خدماتنا",
     simulator: "العمليات",
@@ -136,7 +136,7 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     live: "مباشر",
 
     // Hero
-    heroPre: "المنصة الأولى والذكية لإنقاذ الطرق وربط الفنيين بالعملاء",
+    heroPre: "system systro نظام سيسترو - المنصة المتكاملة للأعمال والخدمات المباشرة والإنقاذ",
     heroTitle1: "تعطلت سيارتك؟",
     heroTitleHighlighted: "دقيقة واحدة",
     heroTitle2: "تفصلك عن الإنقاذ الآمن",
