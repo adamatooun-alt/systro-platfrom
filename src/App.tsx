@@ -561,6 +561,8 @@ export default function App() {
   const [showMyOwnRequestsInTechList, setShowMyOwnRequestsInTechList] = useState<boolean>(true);
   const [techTaskCategoryTab, setTechTaskCategoryTab] = useState<'all' | 'rescue' | 'tasks'>('all');
   const [isTechChatExpanded, setIsTechChatExpanded] = useState(false);
+  const [expandedChatId, setExpandedChatId] = useState<string | null>(null);
+  const isSendingChatRef = useRef<boolean>(false);
 
   // Modals / Form inputs for Service Provider Registries
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
@@ -3634,11 +3636,15 @@ export default function App() {
   // Chat: Send interactive real-time message
   const handleChatSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!chatInput.trim() || !activeRequestId) return;
-
     const userText = chatInput.trim();
+    if (!userText || !activeRequestId) return;
+    if (isSendingChatRef.current) return;
+
+    isSendingChatRef.current = true;
+    setChatInput(''); // INSTANTLY clear text so double click/enter won't re-send
+
     const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    const userMsgId = `chat-msg-${Date.now()}`;
+    const userMsgId = `chat-msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
     try {
       await setDoc(doc(db, "chats", userMsgId), {
@@ -3649,8 +3655,6 @@ export default function App() {
         timestamp: timestamp,
         createdTime: Date.now()
       });
-
-      setChatInput('');
 
       // Auto reply from tech ONLY if user is client and wants realistic feedback
       if (userRole !== 'technician') {
@@ -3672,7 +3676,7 @@ export default function App() {
               : `Understood! I am focused on the highway right now and tracking your coordinates. We'll fix it cleanly.`;
           }
 
-          const replyMsgId = `chat-reply-${Date.now()}`;
+          const replyMsgId = `chat-reply-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
           await setDoc(doc(db, "chats", replyMsgId), {
             id: replyMsgId,
             requestId: activeRequestId,
@@ -3686,6 +3690,8 @@ export default function App() {
 
     } catch (err) {
       console.error(err);
+    } finally {
+      isSendingChatRef.current = false;
     }
   };
 
@@ -6703,19 +6709,45 @@ export default function App() {
 
                                       {/* Live Chat Section right inside the request card once bid is submitted or request is active */}
                                       {activeRequestId === req.id && (
-                                        <div id={`chat-container-${req.id}`} className="mt-4 pt-4 border-t border-amber-500/30 space-y-3 animate-fade-in text-right rtl:text-right ltr:text-left">
+                                        <div 
+                                          id={`chat-container-${req.id}`} 
+                                          className={expandedChatId === req.id
+                                            ? "fixed inset-0 z-[100] bg-[#07080E] p-4 sm:p-6 flex flex-col justify-between h-full w-full animate-fade-in text-right rtl:text-right ltr:text-left"
+                                            : "mt-4 pt-4 border-t border-amber-500/30 space-y-3 animate-fade-in text-right rtl:text-right ltr:text-left"
+                                          }
+                                        >
                                           <div className="flex items-center justify-between border-b border-gray-900 pb-2">
-                                            <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 shadow-sm">
-                                              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
-                                              <span>{lang === 'ar' ? 'المحادثة الحية والمتابعة الفورية مع العميل' : 'Live Client Conversation'}</span>
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => setExpandedChatId(expandedChatId === req.id ? null : req.id)}
+                                                className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[11px] rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+                                                title={expandedChatId === req.id ? (lang === 'ar' ? 'تصغير الشاشة' : 'Minimize') : (lang === 'ar' ? 'توسيع المحادثة على كامل شاشة الهاتف' : 'Expand Fullscreen')}
+                                              >
+                                                {expandedChatId === req.id ? (
+                                                  <>
+                                                    <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
+                                                    <span>{lang === 'ar' ? 'تصغير الشاشة ↙' : 'Minimize ↙'}</span>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                                                    <span>{lang === 'ar' ? 'توسيع المحادثة ⤢' : 'Expand ⤢'}</span>
+                                                  </>
+                                                )}
+                                              </button>
+                                              <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 shadow-sm">
+                                                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                                                <span>{lang === 'ar' ? 'المحادثة الحية والمتابعة الفورية' : 'Live Conversation'}</span>
+                                              </span>
+                                            </div>
                                             <h5 className="text-[11px] font-black text-amber-500">
                                               {req.clientName}
                                             </h5>
                                           </div>
 
                                           {/* Chat Messages Box */}
-                                          <div className="bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between h-64 shadow-inner">
+                                          <div className={expandedChatId === req.id ? "flex-1 my-3 bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between shadow-inner overflow-hidden" : "bg-[#0A0B10] border border-gray-900 rounded-xl p-3 flex flex-col justify-between h-64 shadow-inner"}>
                                             <div className="flex-1 overflow-y-auto space-y-2.5 pb-2.5 pr-1 text-[11px] font-semibold text-right">
                                               {chatMessages.length === 0 ? (
                                                 <div className="h-full flex flex-col items-center justify-center text-gray-500 font-bold text-center gap-2">
@@ -6787,7 +6819,7 @@ export default function App() {
             </div>
           </div>
         )}
-        {simStatus === 'idle' && (
+        {userRole !== 'technician' && simStatus === 'idle' && (
                     <div className="space-y-6">
                       <h3 className="text-base font-black text-white border-b border-gray-900 pb-3">
                         {lang === 'ar' ? 'خطوة 1: تعبئة وتفاصيل طلب الإنقاذ' : 'Step 1: Fill Rescue Request details'}
@@ -6926,7 +6958,7 @@ export default function App() {
                   )}
 
                   {/* Wizard Status: Pending Bids list */}
-                  {simStatus === 'pending_bids' && (
+                  {userRole !== 'technician' && simStatus === 'pending_bids' && (
                     <div className="space-y-6">
                       <h3 className="text-base font-black text-white border-b border-gray-900 pb-3 flex items-center gap-2">
                         <Clock className="w-5 h-5 text-amber-500 animate-spin" />
@@ -7020,7 +7052,7 @@ export default function App() {
                   )}
 
                   {/* Wizard Status: Awaiting Escrow Deposit into Vault */}
-                  {simStatus === 'awaiting_deposit' && selectedBid && (
+                  {userRole !== 'technician' && simStatus === 'awaiting_deposit' && selectedBid && (
                     <div className="space-y-6 relative">
                       {isPaymentProcessing && (
                         <div className="absolute inset-0 bg-[#050505]/95 backdrop-blur-sm z-30 rounded-3xl flex flex-col items-center justify-center p-6 text-center space-y-4 animate-fade-in">
