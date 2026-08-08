@@ -124,9 +124,9 @@ export interface Dictionary {
 
 export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
   ar: {
-    logoTitle: "system systro",
-    logoRescue: "نظام سيسترو",
-    logoSub: "منصة للأعمال والخدمات",
+    logoTitle: "systro",
+    logoRescue: "",
+    logoSub: "systro",
     home: "الرئيسية",
     services: "خدماتنا",
     simulator: "العمليات",
@@ -136,7 +136,7 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     live: "مباشر",
 
     // Hero
-    heroPre: "system systro نظام سيسترو - المنصة المتكاملة للأعمال والخدمات المباشرة والإنقاذ",
+    heroPre: "systro - المنصة المتكاملة للأعمال والخدمات المباشرة والإنقاذ",
     heroTitle1: "تعطلت سيارتك؟",
     heroTitleHighlighted: "دقيقة واحدة",
     heroTitle2: "تفصلك عن الإنقاذ الآمن",
@@ -246,9 +246,9 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     adminNoEscrows: "لا توجد ودائع معلقة حالياً في النظام."
   },
   en: {
-    logoTitle: "Systro System",
-    logoRescue: "| نظام سيسترو",
-    logoSub: "SYSTRO SYSTEM",
+    logoTitle: "systro",
+    logoRescue: "",
+    logoSub: "systro",
     home: "Home",
     services: "Our Services",
     simulator: "Emergency Rescue Portal",
@@ -368,9 +368,9 @@ export const translations: Record<'ar' | 'en' | 'he', Dictionary> = {
     adminNoEscrows: "There are currently no active escrow holdings in the system."
   },
   he: {
-    logoTitle: "מערכת סיסטרו",
-    logoRescue: "| Systro",
-    logoSub: "SYSTRO SYSTEM",
+    logoTitle: "systro",
+    logoRescue: "",
+    logoSub: "systro",
     home: "ראשי",
     services: "השירותים שלנו",
     simulator: "פורטל קריאות חירום",

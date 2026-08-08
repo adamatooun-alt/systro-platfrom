@@ -4785,9 +4785,11 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
           
           {/* Logo Brand matching Images */}
-          <div className="flex items-center gap-2.5 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
+          <div className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
             <img src="/icon.svg" alt="Systro Logo" className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl shadow-md shadow-sky-500/20 object-contain shrink-0 border border-sky-400/30" />
             
+            <span className="text-xs sm:text-sm font-black tracking-wider text-sky-400 font-mono lower">systro</span>
+
             {/* Compact User Name Badge Box */}
             <div 
               onClick={(e) => {
