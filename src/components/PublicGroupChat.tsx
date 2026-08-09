@@ -411,12 +411,27 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
     };
   }, [lang, currentUserEmail, currentUserName]);
 
-  // Auto scroll logic
+  const isAtBottomRef = useRef<boolean>(true);
+  const shouldForceScrollRef = useRef<boolean>(true);
+
+  const handleContainerScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    isAtBottomRef.current = distanceToBottom < 100;
+  };
+
+  // Auto scroll logic (only scrolls if user is near bottom or sent a new message)
   useEffect(() => {
     if (chatTabMode === 'public' && messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      if (isAtBottomRef.current || shouldForceScrollRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        shouldForceScrollRef.current = false;
+      }
     } else if (chatTabMode === 'private' && privateContainerRef.current) {
-      privateContainerRef.current.scrollTop = privateContainerRef.current.scrollHeight;
+      if (isAtBottomRef.current || shouldForceScrollRef.current) {
+        privateContainerRef.current.scrollTop = privateContainerRef.current.scrollHeight;
+        shouldForceScrollRef.current = false;
+      }
     }
   }, [messages, privateMessages, chatTabMode]);
 
@@ -479,6 +494,7 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
     };
 
     setInputText('');
+    shouldForceScrollRef.current = true;
 
     setMessages(prev => {
       const updated = mergeAndSortMessages(prev, [newMsgObj]);
@@ -550,6 +566,7 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
     };
 
     setPrivateInputText('');
+    shouldForceScrollRef.current = true;
 
     setPrivateMessages(prev => {
       const updated = [...prev, newPMsg];
@@ -590,6 +607,7 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
   };
 
   const startPrivateChatWith = (partner: { name: string; email?: string; role: 'client' | 'technician' | 'admin'; avatar?: string }) => {
+    shouldForceScrollRef.current = true;
     setPrivatePartner(partner);
     setChatTabMode('private');
   };
@@ -766,10 +784,13 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
       <div className="flex items-center gap-2 my-3 relative z-10 flex-wrap">
         <button
           type="button"
-          onClick={() => setChatTabMode('public')}
+          onClick={() => {
+            shouldForceScrollRef.current = true;
+            setChatTabMode('public');
+          }}
           className={`px-4 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 border ${
             chatTabMode === 'public'
-              ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-md scale-105'
+              ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-md'
               : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
           }`}
         >
@@ -779,10 +800,13 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
 
         <button
           type="button"
-          onClick={() => setChatTabMode('private')}
+          onClick={() => {
+            shouldForceScrollRef.current = true;
+            setChatTabMode('private');
+          }}
           className={`px-4 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 relative border ${
             chatTabMode === 'private'
-              ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-md scale-105'
+              ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-md'
               : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
           }`}
         >
@@ -830,7 +854,8 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
           {/* Messages Display Stream */}
           <div 
             ref={messagesContainerRef}
-            className={`bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 overflow-y-auto space-y-3.5 shadow-inner relative z-10 ${
+            onScroll={handleContainerScroll}
+            className={`bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y space-y-3.5 shadow-inner relative z-10 ${
               isExpanded ? 'flex-1 my-3 max-h-none' : 'h-72 md:h-80'
             }`}
           >
@@ -1184,7 +1209,8 @@ export const PublicGroupChat: React.FC<PublicGroupChatProps> = ({
               {/* Private Messages Stream Display */}
               <div
                 ref={privateContainerRef}
-                className={`bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 overflow-y-auto space-y-3.5 shadow-inner relative z-10 ${
+                onScroll={handleContainerScroll}
+                className={`bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 overflow-y-auto overflow-x-hidden overscroll-y-contain touch-pan-y space-y-3.5 shadow-inner relative z-10 ${
                   isExpanded ? 'flex-1 my-3 max-h-none' : 'h-72 md:h-80'
                 }`}
               >
