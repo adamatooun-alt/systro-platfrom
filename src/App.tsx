@@ -102,6 +102,7 @@ import SmsConfigPanel from './components/SmsConfigPanel';
 import LoginPortal from './components/LoginPortal';
 import HomeTab from './components/HomeTab';
 import ServicesTab from './components/ServicesTab';
+import ClientTab from './components/ClientTab';
 import { AdminPanel } from './components/AdminPanel';
 import TaxiTab from './components/TaxiTab';
 import { StoreTab } from './components/StoreTab';
@@ -252,8 +253,8 @@ export default function App() {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world'
-  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world'>(() => {
+  // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world' | 'client'
+  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world' | 'client'>(() => {
     try {
       if (typeof window !== 'undefined') {
         const savedReqId = localStorage.getItem('systro_active_request_id') || sessionStorage.getItem('systro_active_request_id');
@@ -4836,11 +4837,21 @@ export default function App() {
               onClick={() => {
                 setUserRole('client');
                 sessionStorage.setItem('systro_user_role', 'client');
+                setActiveTab('client');
+              }}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'client' ? 'bg-amber-500 text-slate-950 font-black shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
+            >
+              {lang === 'ar' ? 'صفحة عميل 👤' : lang === 'he' ? 'דף לקוח 👤' : 'Client Page 👤'}
+            </button>
+            <button 
+              onClick={() => {
+                setUserRole('client');
+                sessionStorage.setItem('systro_user_role', 'client');
                 setActiveTab('services');
               }}
               className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'services' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
-              {lang === 'ar' ? 'الخدمات (الزبون) 👤' : t.services}
+              {lang === 'ar' ? 'الخدمات 🛠️' : t.services}
             </button>
             <button 
               onClick={() => {
@@ -5160,6 +5171,31 @@ export default function App() {
         />
       )}
 
+      {/* CLIENT DEDICATED PAGE (صفحة عميل) */}
+      {activeTab === 'client' && (
+        <ClientTab
+          lang={lang}
+          pinnedLocation={pinnedLocation}
+          setPinnedLocation={setPinnedLocation}
+          detectCurrentLocation={detectCurrentLocation}
+          hasValidKey={hasValidKey}
+          isMapAuthFailed={isMapAuthFailed}
+          mapsKey={mapsKey}
+          mapPctToLatLng={mapPctToLatLng}
+          latLngToMapPct={latLngToMapPct}
+          simStatus={simStatus}
+          selectedBid={selectedBid}
+          technicians={technicians}
+          techCoordinates={techCoordinates}
+          triggerToast={triggerToast}
+          userRole={userRole as any}
+          loggedInUserEmail={loggedInUserEmail}
+          loggedInUserName={loggedInUserName}
+          userAvatar={userAvatar}
+          t={t}
+        />
+      )}
+
       {/* TAXI & VIP RIDE PORTAL */}
       {activeTab === 'taxi' && (
         <TaxiTab
@@ -5203,10 +5239,10 @@ export default function App() {
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-amber-500/15 border border-amber-500/30 rounded-full text-amber-400 text-xs font-black">
                   <Globe className="w-4 h-4 text-amber-400 animate-spin-slow" />
-                  <span>{lang === 'ar' ? 'عالم سيسترو الموحد والخدمات المباشرة 🌐' : 'Systro Global World Hub 🌐'}</span>
+                  <span>{lang === 'ar' ? 'قسم عامة الموحد والخدمات المباشرة 🌐' : 'Systro Global Hub 🌐'}</span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-black text-white">
-                  {lang === 'ar' ? 'أهلاً بك في عالم سيسترو' : 'Welcome to Systro World'}
+                  {lang === 'ar' ? 'أهلاً بك في القسم العام' : 'Welcome to Systro Hub'}
                 </h2>
                 <p className="text-xs md:text-sm text-gray-300 font-semibold max-w-2xl leading-relaxed">
                   {lang === 'ar' 
@@ -5221,7 +5257,7 @@ export default function App() {
                 className="px-5 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs rounded-2xl shadow-xl transition-all cursor-pointer flex items-center gap-2 shrink-0 active:scale-95"
               >
                 <Globe className="w-5 h-5 text-black" />
-                <span>{lang === 'ar' ? 'فتح قائمة عالم الجانبية (من اليسار) ⬅️' : 'Open World Menu (Left) ⬅️'}</span>
+                <span>{lang === 'ar' ? 'فتح قائمة عامة الجانبية (من اليسار) ⬅️' : 'Open General Menu (Left) ⬅️'}</span>
               </button>
             </div>
           </div>
@@ -7322,7 +7358,7 @@ export default function App() {
                 <div className="flex items-center gap-2 bg-blue-500/15 px-3 py-1.5 rounded-full border border-blue-500/30">
                   <img src="/icon.svg" alt="Systro Logo" className="w-6 h-6 rounded-lg object-contain shadow-sm" />
                   <h3 className="text-base font-black text-sky-300 flex items-center gap-1.5">
-                    <span>{lang === 'ar' ? 'عالم سيسترو' : lang === 'he' ? 'עולם סיסטרו' : 'Systro World'}</span>
+                    <span>{lang === 'ar' ? 'عامة سيسترو' : lang === 'he' ? 'עולם سيستרו' : 'Systro General'}</span>
                   </h3>
                 </div>
               </div>
@@ -7332,6 +7368,24 @@ export default function App() {
                 <p className="text-[11px] font-black text-amber-400 uppercase tracking-wider bg-amber-950/60 px-3 py-1.5 rounded-lg border border-amber-500/30">
                   {lang === 'ar' ? '🌐 أقسام القائمة الرئيسية:' : '🌐 World Navigation Hub:'}
                 </p>
+
+                <button
+                  onClick={() => {
+                    setUserRole('client');
+                    sessionStorage.setItem('systro_user_role', 'client');
+                    setActiveTab('client');
+                    setIsLeftMenuOpen(false);
+                  }}
+                  className="w-full p-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 border-2 border-blue-400 rounded-2xl flex items-center justify-between text-xs font-black text-white transition-all cursor-pointer shadow-lg hover:scale-[1.01]"
+                >
+                  <span className="text-[10px] bg-amber-400 text-slate-950 px-2.5 py-1 rounded-full font-black">خارطة وحادثة 📍</span>
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-xs sm:text-sm font-black text-white">صفحة عميل (الخارطة والمحادثة)</span>
+                    <div className="p-1.5 bg-white/20 rounded-xl text-white">
+                      <User className="w-4 h-4" />
+                    </div>
+                  </span>
+                </button>
 
                 <button
                   onClick={() => {
@@ -7534,12 +7588,24 @@ export default function App() {
           onClick={() => {
             setUserRole('client');
             sessionStorage.setItem('systro_user_role', 'client');
+            setActiveTab('client');
+          }}
+          className={`flex flex-col items-center gap-0.5 transition-all ${activeTab === 'client' ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
+        >
+          <User className="w-5 h-5" />
+          <span className="text-[10px]">{lang === 'ar' ? 'صفحة عميل 👤' : 'Client Page'}</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setUserRole('client');
+            sessionStorage.setItem('systro_user_role', 'client');
             setActiveTab('services');
           }}
           className={`flex flex-col items-center gap-0.5 transition-all ${activeTab === 'services' ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
         >
           <Wrench className="w-5 h-5" />
-          <span className="text-[10px]">{lang === 'ar' ? 'الزبون 👤' : 'Client 👤'}</span>
+          <span className="text-[10px]">{lang === 'ar' ? 'الخدمات 🛠️' : 'Services'}</span>
         </button>
 
         <button
