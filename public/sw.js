@@ -1,5 +1,5 @@
-// Service Worker for Systro PWA App - Auto Update & Cache Purge
-const CACHE_NAME = 'systro-pwa-v3.0-' + Date.now();
+// Service Worker for Systro PWA App - Direct Instant Live Update & Cache Purge
+const CACHE_NAME = 'systro-pwa-v' + Date.now();
 
 // Install Event - skip waiting immediately
 self.addEventListener('install', (event) => {
@@ -24,7 +24,7 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Fetch Event - Always Network-First with no-cache headers to ensure the latest site is always loaded
+// Fetch Event - ALWAYS Network-First with cache-busting for HTML & JS
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -39,17 +39,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network First for all requests
   event.respondWith(
-    fetch(event.request, { cache: 'no-store' })
-      .then((response) => {
-        if (response && response.status === 200 && response.type === 'basic') {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return response;
-      })
+    fetch(event.request, { cache: 'no-cache' })
       .catch(() => {
         return caches.match(event.request).then((cached) => {
           if (cached) return cached;
@@ -60,3 +52,4 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+

@@ -1,6 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { APIProvider, Map as GoogleMap, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
-import { MapPin, AlertTriangle, User, Compass, ShieldCheck, Radio } from 'lucide-react';
+import { 
+  MapPin, 
+  AlertTriangle, 
+  User, 
+  Compass, 
+  ShieldCheck, 
+  Radio, 
+  PlusCircle, 
+  Send, 
+  Wrench, 
+  Sparkles, 
+  Share2, 
+  Layers 
+} from 'lucide-react';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
+import { PublicGroupMessage } from '../types';
 import PublicGroupChat from './PublicGroupChat';
 
 interface ClientTabProps {
@@ -46,6 +62,194 @@ export default function ClientTab({
   userAvatar,
   t
 }: ClientTabProps) {
+  // Form State for Adding Custom Service to the site
+  const [isAddingCustomService, setIsAddingCustomService] = useState(false);
+  const [customServiceName, setCustomServiceName] = useState('');
+  const [customServiceDetails, setCustomServiceDetails] = useState('');
+  const [customServicePrice, setCustomServicePrice] = useState('');
+
+  // Local state for dynamically added custom services
+  const [customServicesList, setCustomServicesList] = useState<Array<{
+    id: string;
+    title: string;
+    icon: string;
+    details: string;
+    price: string;
+    category: string;
+  }>>([]);
+
+  const PRESET_ROAD_SERVICES = [
+    {
+      id: 'srv_towing',
+      title: lang === 'ar' ? 'سحب ونش وقطر السيارات 🚚' : 'Vehicle Towing & Recovery 🚚',
+      icon: '🚚',
+      details: lang === 'ar' ? 'سحب ونقل المركبة المتعطلة إلى أقرب كراج أو وجهة محددة مع تتبع GPS.' : 'Towing broken-down vehicle to nearest garage with live GPS location.',
+      price: '180 ₪',
+      category: 'towing'
+    },
+    {
+      id: 'srv_tire',
+      title: lang === 'ar' ? 'تغيير وإصلاح الإطارات 🛞' : 'Tire Service & Repair 🛞',
+      icon: '🛞',
+      details: lang === 'ar' ? 'فك وتغيير الإطار المثقوب أو إصلاحه وتركييب الإسبير بالموقع الفعلي.' : 'Changing flat tire or repairing it on-site.',
+      price: '90 ₪',
+      category: 'tire'
+    },
+    {
+      id: 'srv_battery',
+      title: lang === 'ar' ? 'شحن وإنعاش البطارية 🔋' : 'Battery Jumpstart & Service 🔋',
+      icon: '🔋',
+      details: lang === 'ar' ? 'إمداد بطارية السيارة بكهرباء فورية أو استبدالها ببطارية جديدة.' : 'Instant battery jumpstart or on-site replacement.',
+      price: '70 ₪',
+      category: 'battery'
+    },
+    {
+      id: 'srv_fuel',
+      title: lang === 'ar' ? 'توصيل وتزود بالوقود ⛽' : 'Emergency Fuel Delivery ⛽',
+      icon: '⛽',
+      details: lang === 'ar' ? 'إحضار وقود طارئ (بنزين/ديزل) وتشغيل المحرك بموقعك الفعلي.' : 'Emergency fuel delivery to your exact location.',
+      price: '60 ₪',
+      category: 'fuel'
+    },
+    {
+      id: 'srv_locksmith',
+      title: lang === 'ar' ? 'فتح أقفال السيارات المغلقة 🔑' : 'Auto Locksmith Service 🔑',
+      icon: '🔑',
+      details: lang === 'ar' ? 'فتح باب السيارة المغلقة طارئاً بدون أي خدوش أو أضرار.' : 'Emergency car door unlocking without damage.',
+      price: '120 ₪',
+      category: 'locksmith'
+    },
+    {
+      id: 'srv_mechanic',
+      title: lang === 'ar' ? 'فحص وصيانة ميكانيكية سريعة 🛠️' : 'Mobile Emergency Mechanic 🛠️',
+      icon: '🛠️',
+      details: lang === 'ar' ? 'تشخيص سريع وتصليح الأعطال الميكانيكية والكهربائية الشائعة على الطريق.' : 'Fast diagnosis and mobile mechanic assistance on site.',
+      price: '150 ₪',
+      category: 'mechanic'
+    }
+  ];
+
+  const allDisplayServices = [...customServicesList, ...PRESET_ROAD_SERVICES];
+
+  const publishTaskToGroupChat = async (serviceName: string, serviceDetails: string, priceStr: string) => {
+    const now = Date.now();
+    const formattedTime = new Date(now).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+    
+    let coordsStr = lang === 'ar' ? 'الموقع: خريطة GPS المباشرة' : 'Location: Live GPS map';
+    if (pinnedLocation) {
+      const latLng = mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng);
+      coordsStr = `Lat: ${latLng.lat.toFixed(5)}°N, Lng: ${latLng.lng.toFixed(5)}°E (${lang === 'ar' ? 'موقع دقيق' : 'Exact Coordinates'})`;
+    }
+
+    const clientDisplayName = loggedInUserName?.trim() || (lang === 'ar' ? 'زبون (صاحب البلاغ)' : 'Client Requester');
+    const numericPrice = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 100;
+
+    const taskMsgObj: PublicGroupMessage = {
+      id: `task_${now}_${Math.random().toString(36).substring(2, 9)}`,
+      senderName: clientDisplayName,
+      senderEmail: loggedInUserEmail || '',
+      senderRole: 'client',
+      senderAvatar: userAvatar || '',
+      text: `🚨 [بلاغ خدمة جديد للموقع]
+📌 نوع الخدمة: ${serviceName}
+📍 موقع العميل الجغرافي: ${coordsStr}
+📝 تفاصيل المهمة: ${serviceDetails}
+💰 التكلفة المقدرة: ${priceStr}
+⏰ الوقت: ${formattedTime}`,
+      timestamp: formattedTime,
+      createdTime: now,
+      isTaskAlert: true,
+      taskId: `task_${now}`,
+      serviceName: serviceName,
+      locationName: coordsStr,
+      price: numericPrice,
+      taskStatus: 'pending'
+    };
+
+    // 1. LocalStorage update
+    try {
+      const saved = localStorage.getItem('systro_public_group_chat_v2');
+      let msgs: PublicGroupMessage[] = saved ? JSON.parse(saved) : [];
+      msgs.push(taskMsgObj);
+      localStorage.setItem('systro_public_group_chat_v2', JSON.stringify(msgs.slice(-150)));
+    } catch (e) {}
+
+    // 2. Custom Window Event Dispatch
+    try {
+      window.dispatchEvent(new CustomEvent('systro_chat_update', { detail: taskMsgObj }));
+    } catch (e) {}
+
+    // 3. BroadcastChannel Dispatch
+    try {
+      const bc = new BroadcastChannel('systro_chat_channel_v2');
+      bc.postMessage({ type: 'NEW_MESSAGE', message: taskMsgObj });
+      setTimeout(() => bc.close(), 1000);
+    } catch (e) {}
+
+    // 4. API Backend Proxy
+    try {
+      fetch('/api/public-group-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: taskMsgObj })
+      }).catch(() => {});
+    } catch (e) {}
+
+    // 5. Firestore Write
+    try {
+      setDoc(doc(db, 'public_group_chat', taskMsgObj.id), {
+        ...taskMsgObj,
+        createdAtServer: serverTimestamp()
+      }).catch(() => {});
+    } catch (e) {}
+
+    triggerToast(
+      lang === 'ar' 
+        ? '🚀 تم نشر البلاغ والمهمة بنجاح في المحادثة الجماعية العامة!' 
+        : '🚀 Task published successfully to public group chat!', 
+      'success'
+    );
+
+    // Scroll smoothly to public group chat
+    setTimeout(() => {
+      const chatElem = document.getElementById('live-public-group-chat-container');
+      if (chatElem) {
+        chatElem.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  const handleCreateAndPublishCustomService = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customServiceName.trim()) {
+      triggerToast(lang === 'ar' ? 'يرجى إدخال اسم الخدمة الجديدة!' : 'Please enter service name!', 'warning');
+      return;
+    }
+
+    const formattedPrice = customServicePrice.trim() 
+      ? (customServicePrice.trim().includes('₪') ? customServicePrice.trim() : `${customServicePrice.trim()} ₪`) 
+      : '150 ₪';
+
+    const newSrv = {
+      id: `custom_srv_${Date.now()}`,
+      title: customServiceName.trim(),
+      icon: '✨',
+      details: customServiceDetails.trim() || (lang === 'ar' ? 'طلب خدمة مخصصة للموقع من العميل' : 'Custom service requested by client'),
+      price: formattedPrice,
+      category: 'custom'
+    };
+
+    setCustomServicesList(prev => [newSrv, ...prev]);
+
+    // Automatically publish to public group chat
+    publishTaskToGroupChat(newSrv.title, newSrv.details, newSrv.price);
+
+    // Reset inputs
+    setCustomServiceName('');
+    setCustomServiceDetails('');
+    setCustomServicePrice('');
+    setIsAddingCustomService(false);
+  };
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 animate-fade-in space-y-8">
       
@@ -218,6 +422,162 @@ export default function ClientTab({
           currentUserEmail={loggedInUserEmail}
           currentUserAvatar={userAvatar}
         />
+      </div>
+
+      {/* ADD NEW SERVICE & PUBLISH ROAD TASK TO GROUP CHAT SECTION */}
+      <div className="bg-[#0F1424] border-2 border-amber-500/40 p-6 rounded-3xl space-y-6 shadow-2xl relative overflow-hidden">
+        {/* Glow Header Accent */}
+        <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-500"></div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800/80 pb-5">
+          <div className="space-y-1 text-right rtl:text-right ltr:text-left">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping"></span>
+              <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-3 py-0.5 rounded-full text-[11px] font-black">
+                {lang === 'ar' ? '🛠️ إدارة خدمات الموقع والبلاغات' : '🛠️ Site Services & Dispatch'}
+              </span>
+            </div>
+            <h3 className="text-xl md:text-2xl font-black text-white flex items-center gap-2">
+              <Wrench className="w-6 h-6 text-amber-500" />
+              <span>{lang === 'ar' ? 'إضافة خدمة جديدة ونشر بلاغات للمحادثة الجماعية 🚀' : 'Add New Service & Publish Tasks 🚀'}</span>
+            </h3>
+            <p className="text-xs md:text-sm text-gray-300 font-semibold leading-relaxed">
+              {lang === 'ar'
+                ? 'يمكنك إضافة خدمة جديدة مخصصة للموقع أو اختيار إحدى خدمات الطريق التالية ونشر البلاغ مباشرة كبطاقة مهمة في المحادثة الجماعية مع تحديد موقعك الجغرافي 📍'
+                : 'Add a new custom service or publish a road service task directly to the public group chat with your GPS location.'}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsAddingCustomService(!isAddingCustomService)}
+            className="px-5 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs md:text-sm rounded-2xl shadow-xl shadow-amber-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 active:scale-95 border border-amber-300"
+          >
+            <PlusCircle className="w-5 h-5 text-slate-950" />
+            <span>
+              {isAddingCustomService 
+                ? (lang === 'ar' ? 'إغلاق نموذج الإضافة ✖️' : 'Close Form ✖️')
+                : (lang === 'ar' ? '➕ إضافة خدمة جديدة مخصصة للموقع' : '➕ Add Custom Service')}
+            </span>
+          </button>
+        </div>
+
+        {/* CUSTOM SERVICE ADDITION FORM */}
+        {isAddingCustomService && (
+          <form 
+            onSubmit={handleCreateAndPublishCustomService}
+            className="bg-[#050814] border-2 border-amber-400/50 p-5 rounded-2xl space-y-4 shadow-inner animate-fade-in"
+          >
+            <div className="flex items-center gap-2 border-b border-gray-800 pb-3">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              <h4 className="text-sm font-black text-amber-300">
+                {lang === 'ar' ? 'نموذج إضافة خدمة جديدة ونشرها فوراً للمحادثة الجماعية' : 'Add Custom Service & Publish Form'}
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5 text-right rtl:text-right ltr:text-left">
+                <label className="text-xs font-bold text-gray-300 block">
+                  {lang === 'ar' ? 'اسم / نوع الخدمة الجديدة *' : 'Service Name *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={lang === 'ar' ? 'مثال: تبديل زيت وفلتر متنقل، غسيل سيارة بالموقع...' : 'e.g. Mobile Oil Change, Car Wash...'}
+                  value={customServiceName}
+                  onChange={(e) => setCustomServiceName(e.target.value)}
+                  className="w-full bg-[#0F1424] border border-gray-700 focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs text-white font-bold outline-none transition-all placeholder:text-gray-500"
+                />
+              </div>
+
+              <div className="space-y-1.5 text-right rtl:text-right ltr:text-left">
+                <label className="text-xs font-bold text-gray-300 block">
+                  {lang === 'ar' ? 'التكلفة المقدرة (بالشيقل ₪)' : 'Estimated Price (₪)'}
+                </label>
+                <input
+                  type="text"
+                  placeholder={lang === 'ar' ? 'مثال: 150 ₪' : 'e.g. 150 ₪'}
+                  value={customServicePrice}
+                  onChange={(e) => setCustomServicePrice(e.target.value)}
+                  className="w-full bg-[#0F1424] border border-gray-700 focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs text-white font-bold outline-none transition-all placeholder:text-gray-500"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-right rtl:text-right ltr:text-left">
+              <label className="text-xs font-bold text-gray-300 block">
+                {lang === 'ar' ? 'تفاصيل البلاغ والخدمة المطلوبة' : 'Task & Service Details'}
+              </label>
+              <textarea
+                rows={2}
+                placeholder={lang === 'ar' ? 'اكتب أي تفاصيل إضافية عن حالة المركبة أو الموقع ليتم تضمينها في البطاقة...' : 'Write any additional details for the task card...'}
+                value={customServiceDetails}
+                onChange={(e) => setCustomServiceDetails(e.target.value)}
+                className="w-full bg-[#0F1424] border border-gray-700 focus:border-amber-400 rounded-xl p-3 text-xs text-white font-bold outline-none transition-all placeholder:text-gray-500 resize-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs md:text-sm rounded-xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-emerald-400"
+            >
+              <Send className="w-4 h-4 text-white animate-pulse" />
+              <span>{lang === 'ar' ? 'إضافة ونشر هذه الخدمة الجديدة في المحادثة العامة ➕🚀' : 'Add & Publish Service to Group Chat ➕🚀'}</span>
+            </button>
+          </form>
+        )}
+
+        {/* SERVICES GRID WITH DIRECT PUBLISH BUTTON NEXT TO EACH SERVICE */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-black text-gray-300 uppercase tracking-wider flex items-center gap-2">
+              <Layers className="w-4 h-4 text-amber-400" />
+              <span>{lang === 'ar' ? 'خدمات الموقع المتاحة للنشر بنقرة واحدة:' : 'Available Site Services:'}</span>
+            </h4>
+            <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+              {allDisplayServices.length} {lang === 'ar' ? 'خدمة جاهزة' : 'Services Ready'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {allDisplayServices.map((srv) => (
+              <div 
+                key={srv.id}
+                className="bg-[#050814] border-2 border-gray-800 hover:border-amber-500/60 p-4 rounded-2xl flex flex-col justify-between gap-3 shadow-lg transition-all group"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform">
+                      {srv.icon}
+                    </div>
+                    <div className="text-right rtl:text-right ltr:text-left space-y-1">
+                      <h5 className="text-sm font-black text-white group-hover:text-amber-400 transition-colors">
+                        {srv.title}
+                      </h5>
+                      <p className="text-[11px] text-gray-400 font-semibold leading-snug">
+                        {srv.details}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl shrink-0">
+                    {srv.price}
+                  </span>
+                </div>
+
+                {/* PUBLISH ACTION BUTTON FOR THIS INDIVIDUAL SERVICE */}
+                <button
+                  type="button"
+                  onClick={() => publishTaskToGroupChat(srv.title, srv.details, srv.price)}
+                  className="w-full py-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 border border-amber-300"
+                >
+                  <Share2 className="w-4 h-4 text-slate-950" />
+                  <span>{lang === 'ar' ? 'نشر هذا البلاغ في المحادثة الجماعية 🚀' : 'Publish Task to Group Chat 🚀'}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
     </div>

@@ -445,7 +445,7 @@ export const DirectoryTab: React.FC<DirectoryTabProps> = ({
 
                       <button
                         onClick={() => {
-                          setActiveTab('services');
+                          setActiveTab('client');
                           triggerToast(lang === 'ar' ? `تم اختيار الفني [${tech.name}]! اطلب خدمة الآن.` : `Selected technician [${tech.name}]!`, 'info');
                         }}
                         className="py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-black text-xs rounded-xl flex items-center justify-center transition-all cursor-pointer"

@@ -101,7 +101,6 @@ import WhatsAppConfigPanel from './components/WhatsAppConfigPanel';
 import SmsConfigPanel from './components/SmsConfigPanel';
 import LoginPortal from './components/LoginPortal';
 import HomeTab from './components/HomeTab';
-import ServicesTab from './components/ServicesTab';
 import ClientTab from './components/ClientTab';
 import { AdminPanel } from './components/AdminPanel';
 import TaxiTab from './components/TaxiTab';
@@ -253,8 +252,8 @@ export default function App() {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  // Navigation Tab State: 'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world' | 'client'
-  const [activeTab, setActiveTab] = useState<'home' | 'services' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world' | 'client'>(() => {
+  // Navigation Tab State: 'home' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world' | 'client'
+  const [activeTab, setActiveTab] = useState<'home' | 'simulator' | 'admin' | 'taxi' | 'store' | 'directory' | 'world' | 'client'>(() => {
     try {
       if (typeof window !== 'undefined') {
         const savedReqId = localStorage.getItem('systro_active_request_id') || sessionStorage.getItem('systro_active_request_id');
@@ -2865,7 +2864,7 @@ export default function App() {
       if (userRole === 'technician') {
         setActiveTab('simulator');
       } else {
-        setActiveTab('services');
+        setActiveTab('client');
       }
       try {
         localStorage.setItem('systro_active_request_id', reqId);
@@ -4894,16 +4893,6 @@ export default function App() {
             </button>
             <button 
               onClick={() => {
-                setUserRole('client');
-                sessionStorage.setItem('systro_user_role', 'client');
-                setActiveTab('services');
-              }}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'services' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
-            >
-              {lang === 'ar' ? 'الخدمات 🛠️' : t.services}
-            </button>
-            <button 
-              onClick={() => {
                 setUserRole('technician');
                 sessionStorage.setItem('systro_user_role', 'technician');
                 setActiveTab('simulator');
@@ -5017,7 +5006,7 @@ export default function App() {
                         sessionStorage.setItem('systro_tech_is_online', 'false');
                       }
                       setActiveTechDoc((prev: any) => ({ ...(prev || {}), isOnline: false, isAvailable: false }));
-                      setActiveTab('services');
+                      setActiveTab('client');
                     }
                     
                     if (loggedInUserEmail) {
@@ -5180,57 +5169,6 @@ export default function App() {
         />
       )}
 
-      {/* DETAILED ROAD SERVICES TAB */}
-      {activeTab === 'services' && (
-        <ServicesTab
-          lang={lang}
-          isLoggedIn={isLoggedIn}
-          userRole={userRole}
-          servicesList={servicesList}
-          dbTechnicians={dbTechnicians}
-          triggerToast={triggerToast}
-          setIsLoggedIn={setIsLoggedIn}
-          setUserRole={setUserRole as any}
-          setActiveTab={setActiveTab as any}
-          setSelectedService={setSelectedService}
-          setSelectedServiceIdForRecord={setSelectedServiceIdForRecord}
-          setShowAddRecordModal={setShowAddRecordModal}
-          setShowCustomServiceModal={setShowCustomServiceModal}
-          t={t}
-          pinnedLocation={pinnedLocation}
-          setPinnedLocation={setPinnedLocation}
-          detectCurrentLocation={detectCurrentLocation}
-          hasValidKey={hasValidKey}
-          isMapAuthFailed={isMapAuthFailed}
-          mapsKey={mapsKey}
-          triggerBidsSimulation={triggerBidsSimulation}
-          simStatus={simStatus}
-          setSimStatus={setSimStatus}
-          allRequests={allRequests}
-          activeRequestId={activeRequestId}
-          setActiveRequestId={setActiveRequestId}
-          incomingBids={incomingBids}
-          selectedBid={selectedBid}
-          setSelectedBid={setSelectedBid}
-          chatMessages={chatMessages}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          handleSendMessage={() => handleChatSend()}
-          handleCancelRequest={handleCancelRescueRequest}
-          selectedService={selectedService}
-          mapPctToLatLng={mapPctToLatLng}
-          latLngToMapPct={latLngToMapPct}
-          technicians={technicians}
-          activeTechDoc={activeTechDoc}
-          userAvatar={userAvatar}
-          providerAvatar={providerAvatar}
-          techCoordinates={techCoordinates}
-          currentSessionId={currentSessionId}
-          loggedInUserEmail={loggedInUserEmail}
-          loggedInUserName={loggedInUserName}
-        />
-      )}
-
       {/* CLIENT DEDICATED PAGE (صفحة عميل) */}
       {activeTab === 'client' && (
         <ClientTab
@@ -5369,7 +5307,7 @@ export default function App() {
                 onClick={() => {
                   setUserRole('client');
                   sessionStorage.setItem('systro_user_role', 'client');
-                  setActiveTab('services');
+                  setActiveTab('client');
                 }}
                 className="w-full py-2.5 bg-[#1A233A] hover:bg-[#222E4D] text-white font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-gray-700 font-bold"
               >
@@ -7483,16 +7421,16 @@ export default function App() {
                   onClick={() => {
                     setUserRole('client');
                     sessionStorage.setItem('systro_user_role', 'client');
-                    setActiveTab('services');
+                    setActiveTab('client');
                     setIsLeftMenuOpen(false);
                   }}
                   className="w-full p-3.5 bg-white hover:bg-amber-50 border-2 border-slate-200 hover:border-amber-400 rounded-2xl flex items-center justify-between text-xs font-black text-slate-950 transition-all cursor-pointer shadow-md"
                 >
                   <ChevronRight className="w-4 h-4 text-slate-400 rotate-180" />
                   <span className="flex items-center gap-2.5">
-                    <span className="text-xs sm:text-sm font-black text-slate-900">لوحة الزبون والخدمات</span>
+                    <span className="text-xs sm:text-sm font-black text-slate-900">صفحة العميل والبلاغات</span>
                     <div className="p-1.5 bg-amber-100 rounded-xl text-amber-700">
-                      <Wrench className="w-4 h-4" />
+                      <User className="w-4 h-4" />
                     </div>
                   </span>
                 </button>
@@ -7670,18 +7608,6 @@ export default function App() {
         >
           <User className="w-5 h-5" />
           <span className="text-[10px]">{lang === 'ar' ? 'صفحة عميل 👤' : 'Client Page'}</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setUserRole('client');
-            sessionStorage.setItem('systro_user_role', 'client');
-            setActiveTab('services');
-          }}
-          className={`flex flex-col items-center gap-0.5 transition-all ${activeTab === 'services' ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
-        >
-          <Wrench className="w-5 h-5" />
-          <span className="text-[10px]">{lang === 'ar' ? 'الخدمات 🛠️' : 'Services'}</span>
         </button>
 
         <button

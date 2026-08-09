@@ -235,13 +235,13 @@ export default function HomeTab({
               onClick={() => {
                 setUserRole('client');
                 sessionStorage.setItem('systro_user_role', 'client');
-                setActiveTab('services');
+                setActiveTab('client');
                 triggerToast(
                   lang === 'ar' 
-                    ? 'أهلاً بك في لوحة الزبون والخدمات - تفضل باختيار الخدمة وتحديد موقعك لطلب الفنيين فوراً.' 
+                    ? 'أهلاً بك في صفحة العميل والبلاغات - تفضل باختيار الخدمة وتحديد موقعك لطلب الفنيين فوراً.' 
                     : lang === 'he'
-                    ? 'ברוך הבא לדף השירותים - אנא בחר שירות ומיקום להזמנת סיוע מיידי.'
-                    : 'Welcome to Customer Hub - select service and pin your location to request assistance.', 
+                    ? 'ברוך הבא לדף הלקוח - אנא בחר שירות ומיקום להזמנת סיוע מיידי.'
+                    : 'Welcome to Client Portal - select service and pin your location to request assistance.', 
                   'success'
                 );
                 if (loggedInUserEmail) {
@@ -713,7 +713,7 @@ export default function HomeTab({
             {/* Navigation lists */}
             <div className="flex flex-wrap items-center justify-center gap-6 text-xs md:text-sm font-bold text-gray-200">
               <button onClick={() => setActiveTab('home')} className="hover:text-amber-400 transition-colors cursor-pointer">{t.home}</button>
-              <button onClick={() => setActiveTab('services')} className="hover:text-amber-400 transition-colors cursor-pointer">{t.services}</button>
+              <button onClick={() => setActiveTab('client')} className="hover:text-amber-400 transition-colors cursor-pointer">{lang === 'ar' ? 'صفحة العميل 👤' : 'Client Page'}</button>
               <button 
                 onClick={() => {
                   setActiveTab('simulator');
