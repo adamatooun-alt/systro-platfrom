@@ -132,14 +132,29 @@ export default function ClientTab({
   const allDisplayServices = [...customServicesList, ...PRESET_ROAD_SERVICES];
 
   const publishTaskToGroupChat = async (serviceName: string, serviceDetails: string, priceStr: string) => {
+    // MANDATORY CONDITION: Exact location MUST be determined before publishing task
+    if (!pinnedLocation) {
+      triggerToast(
+        lang === 'ar' 
+          ? '🛑 عذراً! يجب تحديد موقعك الجغرافي بدقة على الخريطة أولاً قبل نشر المهمة.' 
+          : '🛑 Please pin your exact location on the map first before publishing the task!', 
+        'warning'
+      );
+      // Auto trigger GPS detection
+      detectCurrentLocation(false);
+      // Scroll smoothly to map container
+      const mapContainer = document.getElementById('client-map-container');
+      if (mapContainer) {
+        mapContainer.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+
     const now = Date.now();
     const formattedTime = new Date(now).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' });
     
-    let coordsStr = lang === 'ar' ? 'الموقع: خريطة GPS المباشرة' : 'Location: Live GPS map';
-    if (pinnedLocation) {
-      const latLng = mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng);
-      coordsStr = `Lat: ${latLng.lat.toFixed(5)}°N, Lng: ${latLng.lng.toFixed(5)}°E (${lang === 'ar' ? 'موقع دقيق' : 'Exact Coordinates'})`;
-    }
+    const latLng = mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng);
+    const coordsStr = `Lat: ${latLng.lat.toFixed(5)}°N, Lng: ${latLng.lng.toFixed(5)}°E (${lang === 'ar' ? 'موقع دقيق' : 'Exact Coordinates'})`;
 
     const clientDisplayName = loggedInUserName?.trim() || (lang === 'ar' ? 'زبون (صاحب البلاغ)' : 'Client Requester');
     const numericPrice = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 100;
@@ -264,7 +279,7 @@ export default function ClientTab({
           </div>
           <h2 className="text-xl md:text-2xl font-black text-white flex items-center gap-2">
             <User className="w-6 h-6 text-amber-500" />
-            <span>{lang === 'ar' ? 'صفحة عميل ورادار الخريطة 📍' : 'Client Page & Location Radar'}</span>
+            <span>{lang === 'ar' ? 'صفحة عميل وخريطة الموقع 📍' : 'Client Page & Location Map'}</span>
           </h2>
           <p className="text-xs md:text-sm text-gray-300 font-semibold">
             {lang === 'ar'
@@ -282,7 +297,7 @@ export default function ClientTab({
       </div>
 
       {/* CUSTOMER INTERACTIVE MAP */}
-      <div className="bg-[#0F1424] border border-gray-800 p-6 rounded-3xl space-y-4 shadow-2xl">
+      <div id="client-map-container" className="bg-[#0F1424] border border-gray-800 p-6 rounded-3xl space-y-4 shadow-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-4">
           <h3 className="text-sm md:text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
             <MapPin className="w-5 h-5 text-amber-500" />
@@ -303,6 +318,40 @@ export default function ClientTab({
             {lang === 'ar' ? 'تحديد موقعي الحالي بدقة تلقائياً (GPS) 📍' : 'Auto-Detect My Location (GPS) 📍'}
           </span>
         </button>
+
+        {/* DYNAMIC LOCATION STATUS BANNER */}
+        {pinnedLocation ? (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-bold text-emerald-400 shadow-inner">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-emerald-400 animate-bounce shrink-0" />
+              <span>
+                {lang === 'ar' 
+                  ? `📍 تم تحديد موقعك الجغرافي بنجاح (احداثيات: ${mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lat.toFixed(5)}°, ${mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lng.toFixed(5)}°)`
+                  : `📍 Exact location pinned (${mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lat.toFixed(5)}°, ${mapPctToLatLng(pinnedLocation.lat, pinnedLocation.lng).lng.toFixed(5)}°)`}
+              </span>
+            </div>
+            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-xl text-[11px] font-black shrink-0">
+              {lang === 'ar' ? 'جاهز لنشر المهمات ✅' : 'Ready to Publish Tasks ✅'}
+            </span>
+          </div>
+        ) : (
+          <div className="bg-amber-500/15 border-2 border-amber-500/40 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold text-amber-300 shadow-xl animate-pulse">
+            <div className="flex items-center gap-2 text-right rtl:text-right ltr:text-left">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+              <span>
+                {lang === 'ar' 
+                  ? '🛑 شرط أساسي قبل النشر: لم يتم تحديد موقعك الجغرافي بعد! انقر على الخريطة أدناه أو زر GPS لتحديد موقعك قبل نشر أي مهمة.'
+                  : '🛑 Mandatory condition: Location not pinned yet! Click on the map below or the GPS button to set your location.'}
+              </span>
+            </div>
+            <button
+              onClick={() => detectCurrentLocation(false)}
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs shrink-0 cursor-pointer transition-all border border-amber-300 shadow-md"
+            >
+              {lang === 'ar' ? 'تحديد الموقع الآن 🎯' : 'Pin Location Now 🎯'}
+            </button>
+          </div>
+        )}
 
         {/* Map Container */}
         <div className="relative aspect-[16/9] md:aspect-[21/9] min-h-[380px] w-full bg-[#050814] border border-gray-900 rounded-2xl overflow-hidden shadow-inner">

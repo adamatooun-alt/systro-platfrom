@@ -2751,8 +2751,14 @@ export default function App() {
   const triggerBidsSimulation = async (overrideService?: ServiceType, customPrice?: number, customDesc?: string) => {
     let locToUse = pinnedLocation;
     if (!locToUse) {
-      locToUse = { lat: 31.9038, lng: 35.2034 };
-      setPinnedLocation(locToUse);
+      triggerToast(
+        lang === 'ar' 
+          ? '🛑 عذراً! يجب تحديد موقعك الجغرافي بدقة على الخريطة أولاً قبل طلب الخدمة.' 
+          : '🛑 Please pin your exact location on the map first before requesting service!', 
+        'warning'
+      );
+      detectCurrentLocation(false);
+      return;
     }
 
     try {
@@ -2881,8 +2887,8 @@ export default function App() {
 
       triggerToast(
         lang === 'ar' 
-          ? '🚀 تم إرسال الطلب بنجاح! جاري عرض الطلب والرادار المباشر.' 
-          : '🚀 Request sent successfully! Displaying live radar view.',
+          ? '🚀 تم إرسال الطلب بنجاح! جاري عرض الطلب والموقع المباشر.' 
+          : '🚀 Request sent successfully! Displaying live location view.',
         'success'
       );
 
@@ -5129,11 +5135,7 @@ export default function App() {
               setUserRole('technician');
               sessionStorage.setItem('systro_user_role', 'technician');
               setActiveTab('simulator');
-              triggerToast(lang === 'ar' ? 'تم الانتقال إلى لوحة الفني لاستلام وتلبية المهمة!' : 'Switched to Technician Control Hub!', 'info');
-              const alertsEl = document.getElementById('technician-rescue-alerts-list');
-              if (alertsEl) {
-                alertsEl.scrollIntoView({ behavior: 'smooth' });
-              }
+              triggerToast(lang === 'ar' ? 'تم الانتقال إلى لوحة الفني!' : 'Switched to Technician Control Hub!', 'info');
             }}
             className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-400/60 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:scale-95"
           >
@@ -5370,8 +5372,8 @@ export default function App() {
               </div>
               <div className="space-y-1">
                 <h3 className="text-base font-black text-white flex items-center gap-2">
-                  <span>📡</span>
-                  <span>{lang === 'ar' ? 'رادار ومهمات الفنيين' : 'Operations Radar'}</span>
+                  <span>🛠️</span>
+                  <span>{lang === 'ar' ? 'لوحة ومهمات الفنيين' : 'Technician Panel'}</span>
                 </h3>
                 <p className="text-xs text-gray-400 font-medium leading-relaxed">
                   {lang === 'ar' 
@@ -5387,7 +5389,7 @@ export default function App() {
                 }}
                 className="w-full py-2.5 bg-[#1A233A] hover:bg-[#222E4D] text-white font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-gray-700 font-bold"
               >
-                <span>{lang === 'ar' ? 'دخول رادار الفنيين 🛠️' : 'Open Provider Radar 🛠️'}</span>
+                <span>{lang === 'ar' ? 'دخول لوحة الفنيين 🛠️' : 'Open Provider Panel 🛠️'}</span>
               </button>
             </div>
 
@@ -5511,7 +5513,7 @@ export default function App() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-900 pb-3">
                 <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
                   <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
-                  <span>{lang === 'ar' ? 'خريطة رادار الفني المباشرة 📡' : 'Live Technician Radar Map 📡'}</span>
+                  <span>{lang === 'ar' ? 'خريطة موقع الفني المباشرة 🗺️' : 'Live Technician Location Map 🗺️'}</span>
                 </h3>
               </div>
 
@@ -5561,7 +5563,7 @@ export default function App() {
               {/* Status details bottom pin details */}
               <div className="bg-[#0A0B10] p-4 rounded-xl border border-gray-900/60 flex items-center justify-between text-xs font-semibold select-none">
                 <span className="text-gray-400">
-                  {lang === 'ar' ? 'تغطية رادار العمليات:' : 'Radar Coverage:'}
+                  {lang === 'ar' ? 'تغطية الموقع المباشر:' : 'Location Coverage:'}
                 </span>
                 <span className="text-amber-400 font-bold font-mono">
                   {lang === 'ar' ? 'نشط عبر جميع المحافظات 📡' : 'Active Regionwide 📡'}
@@ -5724,91 +5726,6 @@ export default function App() {
                   </form>
                 )}
 
-                {/* Active Emergency Rescue Dispatch Radar & Requests Queue */}
-                <div id="technician-rescue-alerts-list" className="space-y-4 pt-2">
-                  <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-                    <h4 className="text-xs md:text-sm font-black text-amber-400 flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping"></span>
-                      <span>{lang === 'ar' ? '📋 رادار وبلاغات الطوارئ النشطة للفنيين:' : '📋 Active Rescue Dispatch Radar:'}</span>
-                    </h4>
-                    <span className="text-[10px] text-gray-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
-                      {lang === 'ar' ? `المهمات المعلقة (${allRequests.filter(isPendingForTechnician).length})` : `Pending Tasks (${allRequests.filter(isPendingForTechnician).length})`}
-                    </span>
-                  </div>
-
-                  {allRequests.filter(isPendingForTechnician).length > 0 ? (
-                    <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                      {allRequests.filter(isPendingForTechnician).map((req) => (
-                        <div key={req.id} className="p-4 bg-[#0A0B10] border-2 border-amber-500/40 rounded-2xl space-y-3 hover:border-amber-400 transition-all shadow-lg text-right rtl:text-right ltr:text-left">
-                          <div className="flex items-center justify-between border-b border-gray-900 pb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2.5 py-1 bg-amber-500 text-slate-950 font-black text-[10px] rounded-lg shadow">
-                                ⚡ {getServiceArName(req.serviceType)}
-                              </span>
-                              <span className="text-xs font-black text-white">
-                                {req.clientName || (lang === 'ar' ? 'زبون طوارئ' : 'Client')}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-mono text-emerald-400 font-black bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                              {req.approximatePrice || 150} ₪
-                            </span>
-                          </div>
-
-                          <div className="text-xs text-gray-300 space-y-1 font-semibold">
-                            {req.description && (
-                              <p className="text-amber-200/90 text-[11px] bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
-                                💬 {req.description}
-                              </p>
-                            )}
-                            <div className="flex items-center justify-between text-[10px] text-gray-400 pt-1">
-                              <span>📍 {lang === 'ar' ? 'الموقع المباشر: محدد على الخريطة' : 'Live Pin Location'}</span>
-                              <span>🕒 {req.timestamp ? new Date(req.timestamp).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : (lang === 'ar' ? 'الآن' : 'Just now')}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-gray-900">
-                            {req.clientPhone && (
-                              <a
-                                href={`https://wa.me/${req.clientPhone.replace(/[^0-9]/g, '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1"
-                              >
-                                📱 WhatsApp
-                              </a>
-                            )}
-
-                            <button
-                              onClick={() => {
-                                setActiveRequestId(req.id);
-                                setTechBidPrice(Number(req.approximatePrice || 150));
-                                setTechBidEta(15);
-                                triggerToast(lang === 'ar' ? 'تم اختيار المهمة وسحب التفاصيل!' : 'Selected task details!', 'info');
-                              }}
-                              className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1"
-                            >
-                              ⚡ {lang === 'ar' ? 'الاستجابة وتقديم عرض 🏷️' : 'Respond & Submit Bid 🏷️'}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-5 bg-[#0A0B10] border border-gray-850 rounded-2xl text-center space-y-2">
-                      <div className="w-10 h-10 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-black">
-                        ✓
-                      </div>
-                      <h5 className="text-xs font-black text-white">
-                        {lang === 'ar' ? '🟢 رادار العمليات متصل وجاهز' : '🟢 Dispatch Radar Connected & Ready'}
-                      </h5>
-                      <p className="text-[11px] text-gray-400 font-semibold max-w-md mx-auto leading-relaxed">
-                        {lang === 'ar' 
-                          ? 'لا توجد بلاغات طوارئ جديدة بانتظار الاستجابة حالياً. سيتم إطلاق تنبيه صوتي فور نشر أي زبون لبلاغ خدمات جديد!'
-                          : 'No pending emergency requests awaiting dispatch right now. Alarm audio will sound when a client posts a new request!'}
-                      </p>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </div>
@@ -7494,7 +7411,7 @@ export default function App() {
                 >
                   <ChevronRight className="w-4 h-4 text-slate-400 rotate-180" />
                   <span className="flex items-center gap-2.5">
-                    <span className="text-xs sm:text-sm font-black text-slate-900">رادار ومهمات الفنيين</span>
+                    <span className="text-xs sm:text-sm font-black text-slate-900">لوحة ومهمات الفنيين</span>
                     <div className="p-1.5 bg-amber-100 rounded-xl text-amber-700">
                       <Activity className="w-4 h-4" />
                     </div>
