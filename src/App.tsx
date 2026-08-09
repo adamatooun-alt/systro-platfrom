@@ -558,6 +558,35 @@ export default function App() {
     }
   };
 
+  // Instant Force Refresh & Cache Wipe Handler
+  const handleInstantForceUpdate = async () => {
+    try {
+      triggerToast(
+        lang === 'ar' ? '⚡ جاري تفريغ ذاكرة التخزين المؤقت وتطبيق التحديث الفوري...' : '⚡ Clearing cache & applying instant update...',
+        'info'
+      );
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+    } catch (err) {
+      console.warn("Cache clearing error:", err);
+    }
+
+    sessionStorage.clear();
+
+    const timestamp = Date.now();
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('reload', timestamp.toString());
+    window.location.href = currentUrl.toString();
+  };
+
   // Dynamic Collections state synced in real-time from Firestore
   const [dbServices, setDbServices] = useState<any[]>([]);
   const [dbTechnicians, setDbTechnicians] = useState<Technician[]>([]);
@@ -4781,6 +4810,26 @@ export default function App() {
       {/* FLOATING PWA INSTALLATION BANNER */}
       <PwaInstallBanner lang={lang === 'he' ? 'en' : (lang as any)} triggerToast={triggerToast} />
 
+      {/* TOP PERSISTENT INSTANT REFRESH & CACHE WIPE BAR */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-slate-950 px-3 py-1.5 text-center text-xs font-black flex items-center justify-between gap-2 shadow-md relative z-50 border-b border-emerald-400 select-none">
+        <div className="flex items-center justify-center gap-2 mx-auto flex-wrap text-white">
+          <span className="w-2.5 h-2.5 bg-amber-300 rounded-full animate-ping shrink-0"></span>
+          <span className="text-[11px] sm:text-xs">
+            {lang === 'ar'
+              ? '💡 خاصية التحديث الفوري المباشر: اضغط لتفريغ الذاكرة ورؤية التغييرات فوراً:'
+              : '💡 Instant Refresh Feature: Tap to clear cache & load changes immediately:'}
+          </span>
+          <button
+            type="button"
+            onClick={handleInstantForceUpdate}
+            className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-3 py-1 rounded-xl font-black text-xs transition-all cursor-pointer shadow-lg flex items-center gap-1.5 active:scale-95 border border-amber-200"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-slate-950 animate-spin-slow shrink-0" />
+            <span>{lang === 'ar' ? 'تحديث فوري للموقع 🔄' : 'Instant Refresh 🔄'}</span>
+          </button>
+        </div>
+      </div>
+
       {/* TOP NAVBAR HEADER */}
       <header className="sticky top-0 z-40 bg-[#0A0B10]/95 backdrop-blur-md border-b border-[#1E293B]/70 select-none">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
@@ -4906,6 +4955,17 @@ export default function App() {
                   </span>
                 </span>
               )}
+            </button>
+
+            {/* Instant Force Refresh Button in Header */}
+            <button
+              onClick={handleInstantForceUpdate}
+              className="px-2.5 py-2 sm:px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-[10px] sm:text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border border-amber-300 active:scale-95"
+              title={lang === 'ar' ? 'تحديث فوري للموقع وتفريغ الكاش' : 'Instant Force Refresh & Clear Cache'}
+            >
+              <RefreshCw className="w-3.5 h-3.5 shrink-0 text-slate-950 animate-spin-slow" />
+              <span className="hidden xs:inline">{lang === 'ar' ? 'تحديث فوري 🔄' : 'Instant Refresh 🔄'}</span>
+              <span className="xs:hidden">🔄</span>
             </button>
 
             {/* Language Switcher */}
@@ -7369,6 +7429,22 @@ export default function App() {
                   {lang === 'ar' ? '🌐 أقسام القائمة الرئيسية:' : '🌐 World Navigation Hub:'}
                 </p>
 
+                {/* Instant Force Refresh Button in Drawer */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleInstantForceUpdate();
+                    setIsLeftMenuOpen(false);
+                  }}
+                  className="w-full p-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 border-2 border-emerald-400 rounded-2xl flex items-center justify-between text-xs font-black text-slate-950 transition-all cursor-pointer shadow-xl hover:scale-[1.01] active:scale-95"
+                >
+                  <span className="text-[10px] bg-slate-950 text-emerald-400 px-2.5 py-1 rounded-full font-black">تفرغ الكاش ⚡</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-black text-slate-950">تحديث فوري للموقع 🔄</span>
+                    <RefreshCw className="w-4.5 h-4.5 text-slate-950 animate-spin-slow" />
+                  </span>
+                </button>
+
                 <button
                   onClick={() => {
                     setUserRole('client');
@@ -7634,6 +7710,15 @@ export default function App() {
         >
           <Globe className="w-5 h-5" />
           <span className="text-[10px]">{lang === 'ar' ? 'عامة 🌐' : 'World 🌐'}</span>
+        </button>
+
+        <button
+          onClick={handleInstantForceUpdate}
+          className="flex flex-col items-center gap-0.5 transition-all text-emerald-400 font-bold hover:scale-110 active:scale-95"
+          title={lang === 'ar' ? 'تحديث فوري وتفريغ الكاش' : 'Instant Refresh'}
+        >
+          <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin-slow" />
+          <span className="text-[10px] text-emerald-400 font-black">{lang === 'ar' ? 'تحديث 🔄' : 'Refresh 🔄'}</span>
         </button>
 
         <button
