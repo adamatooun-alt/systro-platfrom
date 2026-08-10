@@ -1,55 +1,69 @@
-// Service Worker for Systro PWA App - Direct Instant Live Update & Cache Purge
-const CACHE_NAME = 'systro-pwa-v' + Date.now();
+const CACHE_NAME = 'systro-pwa-cache-v3';
+const ASSETS_TO_CACHE = [
+  '/',
+  '/index.html'
+];
 
-// Install Event - skip waiting immediately
 self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE).catch(() => {});
+    })
+  );
   self.skipWaiting();
 });
 
-// Activate Event - PURGE ALL OLD CACHES unconditionally
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((cache) => caches.delete(cache))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Listen for skipWaiting message from client
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
-// Fetch Event - ALWAYS Network-First with cache-busting for HTML & JS
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass non-GET, API routes, firestore, and socket connections
+  // Bypass cache completely for Firestore / Firebase or local Express API routes to ensure pure real-time sync
   if (
-    event.request.method !== 'GET' ||
-    url.pathname.startsWith('/api/') ||
-    url.hostname.includes('firestore') ||
+    url.pathname.startsWith('/api') || 
+    url.hostname.includes('firestore') || 
     url.hostname.includes('firebase') ||
-    url.protocol.startsWith('ws')
+    event.request.method !== 'GET'
   ) {
-    return;
+    return; // Let the browser handle standard real-time network request
   }
 
-  // Network First for all requests
+  // Network-First Strategy: try network first, fallback to cache if offline
   event.respondWith(
-    fetch(event.request, { cache: 'no-cache' })
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Cache the freshly fetched asset for future offline fallback
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
+      })
       .catch(() => {
-        return caches.match(event.request).then((cached) => {
-          if (cached) return cached;
-          if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/index.html');
+        // Offline: Fallback to cache if available
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          // If navigating, try the cached root index.html
+          if (event.request.mode === 'navigate') {
+            return caches.match('/');
           }
         });
       })
   );
 });
-

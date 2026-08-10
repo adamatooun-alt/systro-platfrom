@@ -101,42 +101,36 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      if ('serviceWorker' in navigator && window.self === window.top) {
+      // Register the smart Network-First service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then((reg) => {
+            console.log('Systro PWA ServiceWorker registered with Network-First strategy:', reg.scope);
+            
+            // Check for updates to service worker and skip waiting
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('New ServiceWorker version available, claiming clients...');
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                });
+              }
+            });
+          }).catch((err) => {
+            console.log('ServiceWorker registration failed:', err);
+          });
+        });
+
+        // Listen for controller changes to reload and instantly reflect updates
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!refreshing) {
             refreshing = true;
             window.location.reload();
           }
-        });
-
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(
-            (reg) => {
-              console.log('Systro PWA ServiceWorker registered successfully: ', reg.scope);
-              reg.update().catch((e) => {
-                console.log('ServiceWorker update check safely ignored in this context:', e);
-              });
-              if (reg.waiting) {
-                reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-              }
-              reg.onupdatefound = () => {
-                const installingWorker = reg.installing;
-                if (installingWorker) {
-                  installingWorker.onstatechange = () => {
-                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                      installingWorker.postMessage({ type: 'SKIP_WAITING' });
-                    }
-                  };
-                }
-              };
-            },
-            (err) => {
-              console.log('ServiceWorker registration failed: ', err);
-            }
-          ).catch((err) => {
-            console.log('ServiceWorker registration promise failed: ', err);
-          });
         });
       }
     </script>
