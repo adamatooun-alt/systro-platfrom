@@ -990,12 +990,14 @@ export default function App() {
       let apiList: RescueRequest[] = [];
       try {
         const res = await fetch('/api/requests');
-        const data = await res.json();
-        if (data && data.success && Array.isArray(data.requests)) {
-          apiList = data.requests;
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.requests)) {
+            apiList = data.requests;
+          }
         }
       } catch (e) {
-        console.warn("API requests notice:", e);
+        // Silent fallback for background sync
       }
 
       const map = new Map<string, RescueRequest>();

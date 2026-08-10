@@ -20,14 +20,27 @@ if ('caches' in window) {
   });
 }
 
-// Suppress benign Vite dev server WebSocket disconnect warnings in preview environment
+// Suppress benign Vite dev server WebSocket disconnect and background network warnings in preview environment
 window.addEventListener('unhandledrejection', (event) => {
+  const reasonStr = String(event.reason?.message || event.reason || '');
   if (
-    event.reason &&
-    (event.reason.message?.includes('WebSocket') ||
-     event.reason?.toString()?.includes('WebSocket'))
+    reasonStr.includes('WebSocket') ||
+    reasonStr.includes('closed without opened') ||
+    reasonStr.includes('Failed to fetch')
   ) {
     event.preventDefault();
+  }
+});
+
+window.addEventListener('error', (event) => {
+  const msg = String(event.message || '');
+  if (
+    msg.includes('WebSocket') ||
+    msg.includes('closed without opened') ||
+    msg.includes('Failed to fetch')
+  ) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
   }
 });
 
