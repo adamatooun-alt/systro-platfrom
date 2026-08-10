@@ -101,7 +101,7 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      if ('serviceWorker' in navigator) {
+      if ('serviceWorker' in navigator && window.self === window.top) {
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!refreshing) {
@@ -114,7 +114,9 @@
           navigator.serviceWorker.register('/sw.js').then(
             (reg) => {
               console.log('Systro PWA ServiceWorker registered successfully: ', reg.scope);
-              reg.update();
+              reg.update().catch((e) => {
+                console.log('ServiceWorker update check safely ignored in this context:', e);
+              });
               if (reg.waiting) {
                 reg.waiting.postMessage({ type: 'SKIP_WAITING' });
               }
@@ -132,7 +134,9 @@
             (err) => {
               console.log('ServiceWorker registration failed: ', err);
             }
-          );
+          ).catch((err) => {
+            console.log('ServiceWorker registration promise failed: ', err);
+          });
         });
       }
     </script>

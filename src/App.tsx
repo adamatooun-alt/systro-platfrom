@@ -151,7 +151,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     operationType,
     path
   };
-  console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
+  console.log('Firestore Operation Notice: ', JSON.stringify(errInfo));
 
   try {
     const errMsg = errInfo.error.toLowerCase();
@@ -4198,7 +4198,7 @@ export default function App() {
     // Asynchronous background sync with Firestore (race with timeout so it never blocks login)
     (async () => {
       try {
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 1000));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 8000));
         const userDocRef = doc(db, "users", resolvedEmail);
         const snapshot = await Promise.race([getDoc(userDocRef), timeoutPromise]) as any;
 
@@ -4242,7 +4242,7 @@ export default function App() {
           }, { merge: true }).catch(() => {});
         }
       } catch (err) {
-        console.warn("Firestore background sync bypassed or timed out safely:", err);
+        console.log("Firestore background sync bypassed or timed out safely:", err);
       }
     })();
   };
