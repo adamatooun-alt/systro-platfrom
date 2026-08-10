@@ -108,7 +108,7 @@ export const SecuritySentinel: React.FC<SecuritySentinelProps> = ({
         setScanLogs(data.scanLogs || []);
       }
     } catch (err) {
-      console.warn("Sentinel status check offline:", err);
+      console.log("Sentinel status check offline:", err);
     } finally {
       setLoading(false);
     }
