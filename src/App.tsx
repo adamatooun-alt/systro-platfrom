@@ -7494,7 +7494,7 @@ export default function App() {
             {/* Footer inside drawer */}
             <div className="pt-4 border-t border-gray-800 text-center space-y-1">
               <span className="text-[10px] text-gray-400 font-extrabold block">
-                عالم سيسترو © 2026 - جميع الحقوق محفوظة
+                سيسترو © 2026 - جميع الحقوق محفوظة
               </span>
             </div>
 

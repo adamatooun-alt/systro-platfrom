@@ -3,6 +3,23 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+// Purge any registered service worker caches on load to ensure live updates reflect instantly
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister();
+    }
+  });
+}
+
+if ('caches' in window) {
+  caches.keys().then((names) => {
+    for (const name of names) {
+      caches.delete(name);
+    }
+  });
+}
+
 // Suppress benign Vite dev server WebSocket disconnect warnings in preview environment
 window.addEventListener('unhandledrejection', (event) => {
   if (
