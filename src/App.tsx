@@ -152,6 +152,24 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   };
   console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
+
+  try {
+    const errMsg = errInfo.error.toLowerCase();
+    if (
+      errMsg.includes('quota') ||
+      errMsg.includes('exhausted') ||
+      errMsg.includes('billing') ||
+      errMsg.includes('permission-denied') ||
+      errMsg.includes('offline') ||
+      errMsg.includes('failed-precondition') ||
+      errMsg.includes('unreachable')
+    ) {
+      const event = new CustomEvent('firestore-error', { detail: errInfo });
+      window.dispatchEvent(event);
+    }
+  } catch (e) {
+    // Avoid breaking if CustomEvent or window is not ready
+  }
 }
 
 const mapPctToLatLng = (latPct: number, lngPct: number) => {
@@ -201,6 +219,21 @@ const getOrCreateSessionId = (): string => {
 export default function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string>(() => getOrCreateSessionId());
   const lastLoginTimeRef = useRef<number>(Date.now());
+  const [dbError, setDbError] = useState<string | null>(null);
+
+  // Listen to Firestore quota/billing errors
+  useEffect(() => {
+    const handleEvent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.error) {
+        setDbError(customEvent.detail.error);
+      }
+    };
+    window.addEventListener('firestore-error', handleEvent);
+    return () => {
+      window.removeEventListener('firestore-error', handleEvent);
+    };
+  }, []);
 
   // Global Language State: 'ar' (Arabic is default as shown in screenshots) or 'en' or 'he'
   const [lang, setLang] = useState<'ar' | 'en' | 'he'>(() => {
@@ -4548,6 +4581,26 @@ export default function App() {
             : `Registered User Account: ${isLoggedIn && loggedInUserName ? loggedInUserName : (loggedInUserEmail || 'Verified User')} | Certified Rescue Platform 🛠️✨`}
         </span>
       </div>
+
+      {/* Smart Cloud Database (Firebase) Quota / Billing Warning Banner */}
+      {dbError && (
+        <div className="relative z-50 bg-red-950/90 border-b border-red-500/30 p-4 text-center animate-in slide-in-from-top duration-300">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3">
+            <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping shrink-0" />
+            <p className="text-xs sm:text-sm font-bold text-red-200">
+              {lang === 'ar' 
+                ? `⚠️ تنبيه النظام: تم تجاوز حد الاستخدام المجاني (الـ Quota) أو تم تعطيل الفوترة على حساب Firebase الخاص بك. يرجى ترقية الحساب في لوحة تحكم Firebase وتفعيل الدفع (Billing) للمزامنة الفورية.`
+                : `⚠️ Cloud Database Limit Exceeded / Billing Disabled on your Firebase project. Please upgrade to the Blaze plan or resolve billing in Firebase Console to restore instant live sync.`}
+            </p>
+            <button 
+              onClick={() => setDbError(null)}
+              className="text-[10px] bg-red-900/60 hover:bg-red-900 text-red-300 border border-red-500/30 px-2.5 py-1 rounded-lg transition-colors font-black cursor-pointer"
+            >
+              {lang === 'ar' ? 'إغلاق التنبيه' : 'Dismiss'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Dynamic Toast Alerts */}
       {toast && (
