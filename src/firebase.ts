@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, setLogLevel } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import firebaseAppletConfig from '../firebase-applet-config.json';
 
 const getMetaEnv = () => {
   const globalEnv = (typeof window !== 'undefined' && (window as any).ENV) || {};
@@ -8,7 +9,6 @@ const getMetaEnv = () => {
   
   const merged = { ...viteEnv };
   
-  // Merge valid values from window.ENV (runtime injected on published URL)
   for (const key of Object.keys(globalEnv)) {
     if (globalEnv[key] && typeof globalEnv[key] === 'string' && globalEnv[key].trim().length > 0) {
       merged[key] = globalEnv[key].trim();
@@ -19,21 +19,15 @@ const getMetaEnv = () => {
 
 const metaEnv = getMetaEnv();
 
-const rawApiKey = metaEnv.VITE_FIREBASE_API_KEY;
-const apiKey = (rawApiKey && typeof rawApiKey === 'string' && rawApiKey.trim().length > 0)
-  ? rawApiKey.trim()
-  : 'AIzaSyB_placeholder_key_for_app_init';
-
 const config = {
-  apiKey,
-  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || 'systro-app.firebaseapp.com',
-  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || 'systro-app',
-  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || 'systro-app.appspot.com',
-  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || '1234567890',
-  appId: metaEnv.VITE_FIREBASE_APP_ID || '1:1234567890:web:1234567890',
+  apiKey: metaEnv.VITE_FIREBASE_API_KEY || firebaseAppletConfig.apiKey,
+  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || firebaseAppletConfig.authDomain,
+  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId,
+  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || firebaseAppletConfig.storageBucket,
+  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig.messagingSenderId,
+  appId: metaEnv.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId,
 };
 
-// Suppress verbose internal Firestore logs on connection retry
 try {
   setLogLevel('silent');
 } catch (e) {
@@ -42,11 +36,13 @@ try {
 
 const app = initializeApp(config);
 
-// Use initializeFirestore with experimentalForceLongPolling: true to resolve connectivity issues in sandboxed environments and iframe proxies
+const dbId = metaEnv.VITE_FIREBASE_DATABASE_ID || firebaseAppletConfig.firestoreDatabaseId || '(default)';
+
 const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
-}, metaEnv.VITE_FIREBASE_DATABASE_ID || '(default)');
+}, dbId);
 
 const auth = getAuth(app);
 
 export { db, auth };
+
