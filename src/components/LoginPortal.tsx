@@ -246,18 +246,47 @@ export default function LoginPortal({
       <div className="w-full relative z-50 flex flex-col items-center bg-[#051E1A]/80 backdrop-blur-md border-b border-amber-500/20 shrink-0">
         
         {/* Top Banner */}
-        <div id="ali-premium-top-banner" className="w-full bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 py-2 px-4 text-center select-none flex items-center justify-center gap-2 border-b border-amber-500/10">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-          </span>
-          <span className="text-[11px] sm:text-xs font-black text-amber-300 tracking-wide leading-snug drop-shadow-sm">
-            {lang === 'ar' 
-              ? 'المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
-              : lang === 'he'
-              ? 'פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
-              : 'The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
-          </span>
+        <div id="ali-premium-top-banner" className="w-full bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 py-2 px-3 text-center select-none flex items-center justify-between gap-2 border-b border-amber-500/10">
+          <div className="flex items-center gap-2 mx-auto">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+            </span>
+            <span className="text-[11px] sm:text-xs font-black text-amber-300 tracking-wide leading-snug drop-shadow-sm">
+              {lang === 'ar' 
+                ? 'المنصة الرقمية المعتمدة للإنقاذ السريع والخدمات الصناعية 🛠️✨' 
+                : lang === 'he'
+                ? 'פלטפורמת החילוץ המוסמכת והשירותים התעשייתיים 🛠️✨'
+                : 'The Certified Digital Platform for Rapid Rescue & Road Services 🛠️✨'}
+            </span>
+          </div>
+
+          {/* Quick Force Refresh Button */}
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                if ('serviceWorker' in navigator) {
+                  const regs = await navigator.serviceWorker.getRegistrations();
+                  for (const r of regs) await r.unregister();
+                }
+                if ('caches' in window) {
+                  const keys = await caches.keys();
+                  for (const k of keys) await caches.delete(k);
+                }
+                sessionStorage.clear();
+                localStorage.removeItem('cache_purged');
+                window.location.reload();
+              } catch (e) {
+                window.location.reload();
+              }
+            }}
+            className="text-[10px] font-black bg-amber-500/30 hover:bg-amber-500/50 text-amber-200 border border-amber-400/40 px-2.5 py-1 rounded-xl transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+            title="تحديث الصفحة وتفريغ الكاش لرؤية التحديثات الجديدة"
+          >
+            <span>🔄</span>
+            <span className="hidden sm:inline">{lang === 'ar' ? 'تحديث الموقع' : 'Refresh App'}</span>
+          </button>
         </div>
 
         {/* Language Switcher Bar */}
@@ -308,29 +337,29 @@ export default function LoginPortal({
         {/* Central Logo & Brand Header Area */}
         <div className="flex flex-col items-center gap-3 text-center w-full">
           
-          {/* Enlarged Systro Logo */}
-          <div className="flex items-center justify-center gap-3.5 select-none animate-fade-in">
+          {/* Prominent & Enlarged Systro Logo */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 select-none animate-fade-in">
             <img 
               src="/icon.svg" 
               alt="Systro Logo" 
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl shadow-[0_12px_35px_rgba(0,182,212,0.45)] object-contain border-2 border-sky-400/50 bg-slate-900/60 p-2 transition-transform duration-300 hover:scale-105" 
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl shadow-[0_12px_40px_rgba(0,182,212,0.5)] object-contain border-2 border-sky-400/60 bg-slate-900/80 p-2.5 transition-transform duration-300 hover:scale-105" 
             />
-            <span className="text-3xl sm:text-4xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#38BDF8] via-[#0ea5e9] to-[#2563eb] select-none font-sans filter drop-shadow-[0_2px_12px_rgba(6,182,212,0.3)]">
+            <span className="text-3xl sm:text-5xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#38BDF8] via-[#0ea5e9] to-[#2563eb] select-none font-sans filter drop-shadow-[0_2px_14px_rgba(6,182,212,0.4)]">
               Systro
             </span>
           </div>
 
-          <div className="flex flex-col items-center gap-2 animate-fade-in w-full">
+          <div className="flex flex-col items-center gap-2.5 animate-fade-in w-full pt-1">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-[#FCAD62] shadow-[0_0_14px_rgba(252,173,98,0.9)] shrink-0 animate-pulse"></span>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-wide text-slate-950 dark:text-[#FDF6E2] select-none filter drop-shadow-sm">
+              <span className="w-3.5 h-3.5 rounded-full bg-[#FCAD62] shadow-[0_0_16px_rgba(252,173,98,1)] shrink-0 animate-pulse"></span>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-wide text-[#FDF6E2] select-none filter drop-shadow-md">
                 {lang === 'ar' ? 'لننطلق' : lang === 'he' ? 'בואו נתחיל' : "Let's Go"}
               </h1>
             </div>
 
-            {/* Clear, High-Contrast Description Banner */}
-            <div className="bg-white/95 dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 px-4 py-2.5 rounded-2xl border border-slate-300/80 dark:border-slate-700/80 shadow-md backdrop-blur-md max-w-md w-full">
-              <p className="text-xs sm:text-sm font-extrabold leading-relaxed select-none text-center">
+            {/* Ultra High-Contrast Description Banner */}
+            <div className="bg-[#062d27] border-2 border-emerald-400/50 text-emerald-100 px-5 py-3 rounded-2xl shadow-xl max-w-md w-full">
+              <p className="text-xs sm:text-sm font-black leading-relaxed select-none text-center text-emerald-100 tracking-wide drop-shadow-sm">
                 {lang === 'ar' 
                   ? 'مرحباً بك في شبكة سيسترو - اختر طريقة تسجيل الدخول المفضلّة للوصول الفوري' 
                   : lang === 'he'

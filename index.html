@@ -101,6 +101,24 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
+      // Build version check for instant cache busting on published URL
+      const CURRENT_BUILD_VER = 'systro_build_2026_08_11_v4';
+      const storedVer = localStorage.getItem('systro_app_build_version');
+      
+      if (storedVer !== CURRENT_BUILD_VER) {
+        localStorage.setItem('systro_app_build_version', CURRENT_BUILD_VER);
+        if ('caches' in window) {
+          caches.keys().then((keys) => {
+            keys.forEach((key) => caches.delete(key));
+          });
+        }
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then((regs) => {
+            regs.forEach((reg) => reg.unregister());
+          });
+        }
+      }
+
       // Force unregister all active service workers and clear caches on startup to completely solve PWA caching on the published URL
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
@@ -108,17 +126,14 @@
           for (const registration of registrations) {
             registration.unregister();
             unregisteredAny = true;
-            console.log('Unregistered active service worker to prevent caching mismatch');
           }
-          if (unregisteredAny && !sessionStorage.getItem('sw_purged')) {
-            sessionStorage.setItem('sw_purged', 'true');
+          if (unregisteredAny && !sessionStorage.getItem('sw_purged_v4')) {
+            sessionStorage.setItem('sw_purged_v4', 'true');
             setTimeout(() => {
               window.location.reload();
-            }, 400);
+            }, 300);
           }
-        }).catch((err) => {
-          console.log('Error unregistering service workers:', err);
-        });
+        }).catch((err) => {});
       }
 
       // Purge all cache storage to clear old index.html or JS/CSS chunks
@@ -128,23 +143,18 @@
           return Promise.all(
             keys.map((key) => {
               return caches.delete(key).then((success) => {
-                if (success) {
-                  deletedAny = true;
-                  console.log('Deleted cache key:', key);
-                }
+                if (success) deletedAny = true;
               });
             })
           ).then(() => {
-            if (deletedAny && !sessionStorage.getItem('cache_purged')) {
-              sessionStorage.setItem('cache_purged', 'true');
+            if (deletedAny && !sessionStorage.getItem('cache_purged_v4')) {
+              sessionStorage.setItem('cache_purged_v4', 'true');
               setTimeout(() => {
                 window.location.reload();
-              }, 400);
+              }, 300);
             }
           });
-        }).catch((err) => {
-          console.log('Error purging caches:', err);
-        });
+        }).catch((err) => {});
       }
     </script>
   </body>
