@@ -5184,10 +5184,10 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
           
           {/* Logo Brand matching Images */}
-          <div className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
-            <img src="/icon.svg" alt="Systro Logo" className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl shadow-md shadow-sky-500/20 object-contain shrink-0 border border-sky-400/30" />
+          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
+            <img src="/icon.svg" alt="Systro Logo" className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-md shadow-sky-500/30 object-contain shrink-0 border-2 border-sky-400/40 bg-slate-900/50 p-1" />
             
-            <span className="text-xs sm:text-sm font-black tracking-wider text-sky-400 font-mono lower">systro</span>
+            <span className="text-sm sm:text-base font-black tracking-wider text-sky-400 font-mono">systro</span>
 
             {/* Compact User Name Badge Box */}
             <div 
