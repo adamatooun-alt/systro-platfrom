@@ -184,6 +184,7 @@ interface TaxiTabProps {
   mapsKey?: string;
   pinnedLocation?: { lat: number; lng: number } | null;
   phoneNumber?: string;
+  playServiceAlertSound?: (serviceType?: string) => void;
 }
 
 export default function TaxiTab({
@@ -196,7 +197,8 @@ export default function TaxiTab({
   triggerToast,
   mapsKey,
   pinnedLocation,
-  phoneNumber
+  phoneNumber,
+  playServiceAlertSound
 }: TaxiTabProps) {
   const t = translations[lang] || translations.en;
 
@@ -586,6 +588,10 @@ export default function TaxiTab({
           console.warn("Broadcast channel taxi notice:", e);
         }
       }
+
+      try {
+        playServiceAlertSound?.('taxi');
+      } catch (e) {}
 
       triggerToast(
         lang === 'ar' 

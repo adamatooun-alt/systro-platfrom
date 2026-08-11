@@ -68,6 +68,8 @@ import {
   Phone,
   MessageCircle,
   Volume2,
+  VolumeX,
+  Play,
   Ban,
   User,
   Camera,
@@ -380,7 +382,8 @@ export default function App() {
     bodyEn: string,
     targetId: string = '',
     titleHe?: string,
-    bodyHe?: string
+    bodyHe?: string,
+    serviceType?: string
   ) => {
     const newNotification: InAppNotification = {
       id: `${type}_${Date.now()}`,
@@ -396,8 +399,8 @@ export default function App() {
       targetId
     };
 
-    // 1. Play professional sound
-    playRescueAlertSound();
+    // 1. Play professional sound customized for service type
+    playServiceAlertSound(serviceType);
 
     // 2. Add to list and localStorage
     setNotifications(prev => {
@@ -1110,7 +1113,7 @@ export default function App() {
       setSimStatus('pending_bids');
 
       try {
-        playRescueAlertSound();
+        playServiceAlertSound(testReqObj.serviceType);
       } catch (e) {}
 
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -1301,59 +1304,255 @@ export default function App() {
     };
   }, []);
 
-  // Synthesized high-visibility emergency radar siren sound & vibration for new pending rescue tasks
-  const playRescueAlertSound = () => {
+  // Audio Mute Toggle & Active Sound Playing State for visual equalizer
+  const [isAudioMuted, setIsAudioMuted] = useState<boolean>(() => {
+    return localStorage.getItem('systro_audio_muted') === 'true';
+  });
+  const [activePlayingSoundType, setActivePlayingSoundType] = useState<string | null>(null);
+
+  const toggleAudioMute = () => {
+    setIsAudioMuted(prev => {
+      const next = !prev;
+      localStorage.setItem('systro_audio_muted', next ? 'true' : 'false');
+      triggerToast(
+        next
+          ? (lang === 'ar' ? '🔇 تم كتم جميع الأصوات والتنبيهات' : '🔇 Audio alerts muted')
+          : (lang === 'ar' ? '🔊 تم تفعيل أصوات التنبيهات الذكية' : '🔊 Audio alerts activated'),
+        'info'
+      );
+      return next;
+    });
+  };
+
+  // Synthesized Web Audio API sound generator for each distinct service type
+  const playServiceAlertSound = (serviceType?: string) => {
     try {
+      if (isAudioMuted || localStorage.getItem('systro_audio_muted') === 'true') {
+        return;
+      }
+
       const ctx = getAudioContext();
       if (!ctx) return;
       const now = ctx.currentTime;
-      
-      // Siren Pulse 1
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sawtooth';
-      osc1.frequency.setValueAtTime(1050, now);
-      osc1.frequency.exponentialRampToValueAtTime(750, now + 0.25);
-      gain1.gain.setValueAtTime(0.4, now);
-      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(now);
-      osc1.stop(now + 0.25);
+      const st = (serviceType || '').toLowerCase();
 
-      // Siren Pulse 2
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sawtooth';
-      osc2.frequency.setValueAtTime(1200, now + 0.22);
-      osc2.frequency.exponentialRampToValueAtTime(850, now + 0.5);
-      gain2.gain.setValueAtTime(0.45, now + 0.22);
-      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(now + 0.22);
-      osc2.stop(now + 0.5);
+      // Set active playing sound state for visual equalizer feedback
+      setActivePlayingSoundType(st || 'general');
+      setTimeout(() => setActivePlayingSoundType(null), 800);
 
-      // Siren Pulse 3
-      const osc3 = ctx.createOscillator();
-      const gain3 = ctx.createGain();
-      osc3.type = 'sine';
-      osc3.frequency.setValueAtTime(1400, now + 0.45);
-      osc3.frequency.exponentialRampToValueAtTime(900, now + 0.8);
-      gain3.gain.setValueAtTime(0.4, now + 0.45);
-      gain3.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
-      osc3.connect(gain3);
-      gain3.connect(ctx.destination);
-      osc3.start(now + 0.45);
-      osc3.stop(now + 0.8);
+      if (st === 'fuel') {
+        // ⛽ Emergency Fuel Delivery: Liquid Pump Ascending Flow & Sweep Tone
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(350, now);
+        osc1.frequency.exponentialRampToValueAtTime(700, now + 0.18);
+        osc1.frequency.exponentialRampToValueAtTime(1050, now + 0.38);
+        gain1.gain.setValueAtTime(0.01, now);
+        gain1.gain.linearRampToValueAtTime(0.35, now + 0.08);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.45);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(523.25, now + 0.18); // C5
+        osc2.frequency.exponentialRampToValueAtTime(1046.5, now + 0.52); // C6
+        gain2.gain.setValueAtTime(0.3, now + 0.18);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.18);
+        osc2.stop(now + 0.55);
+
+      } else if (st === 'towing') {
+        // 🚚 Towing & Recovery: Heavy-Duty Diesel Horn & Low Siren Bass
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(180, now);
+        osc1.frequency.setValueAtTime(220, now + 0.15);
+        gain1.gain.setValueAtTime(0.4, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.6);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sawtooth';
+        osc2.frequency.setValueAtTime(270, now);
+        osc2.frequency.setValueAtTime(330, now + 0.15);
+        gain2.gain.setValueAtTime(0.35, now);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now);
+        osc2.stop(now + 0.6);
+
+      } else if (st === 'battery') {
+        // 🔋 Battery Jump Start: High Voltage Spark Electric Zap
+        const notes = [880, 1320, 1760, 2640];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+          gain.gain.setValueAtTime(0.22, now + idx * 0.07);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + (idx + 1) * 0.07);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.07);
+          osc.stop(now + (idx + 1) * 0.07);
+        });
+
+      } else if (st === 'locksmith') {
+        // 🔑 Car Locksmith: Metallic Key Click & Dual Precision Crystal Chime
+        const click = ctx.createOscillator();
+        const clickGain = ctx.createGain();
+        click.type = 'square';
+        click.frequency.setValueAtTime(2400, now);
+        clickGain.gain.setValueAtTime(0.3, now);
+        clickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+        click.connect(clickGain);
+        clickGain.connect(ctx.destination);
+        click.start(now);
+        click.stop(now + 0.04);
+
+        const chime1 = ctx.createOscillator();
+        const cGain1 = ctx.createGain();
+        chime1.type = 'sine';
+        chime1.frequency.setValueAtTime(1046.5, now + 0.05); // C6
+        cGain1.gain.setValueAtTime(0.35, now + 0.05);
+        cGain1.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        chime1.connect(cGain1);
+        cGain1.connect(ctx.destination);
+        chime1.start(now + 0.05);
+        chime1.stop(now + 0.35);
+
+        const chime2 = ctx.createOscillator();
+        const cGain2 = ctx.createGain();
+        chime2.type = 'sine';
+        chime2.frequency.setValueAtTime(1318.5, now + 0.16); // E6
+        cGain2.gain.setValueAtTime(0.35, now + 0.16);
+        cGain2.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        chime2.connect(cGain2);
+        cGain2.connect(ctx.destination);
+        chime2.start(now + 0.16);
+        chime2.stop(now + 0.5);
+
+      } else if (st === 'mechanic') {
+        // 🛠️ Roadside Mechanical Repair: Wrench Metallic Tap & Triad Chord
+        const freqs = [523.25, 659.25, 783.99]; // C5, E5, G5
+        freqs.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+          gain.gain.setValueAtTime(0.3, now + idx * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.09 + 0.28);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.09);
+          osc.stop(now + idx * 0.09 + 0.28);
+        });
+
+      } else if (st === 'tire') {
+        // 🚗 Flat Tire Replacement: Air Compressor Burst & Inflation Whistle
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.28); // A5
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.42);
+
+      } else if (st === 'taxi') {
+        // 🚕 VIP Taxi & Rides: Elegant 3-Note Airport Arrival Bell (E5 -> G#5 -> B5)
+        const notes = [659.25, 830.61, 987.77];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+          gain.gain.setValueAtTime(0.3, now + idx * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.45);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.12);
+          osc.stop(now + idx * 0.12 + 0.45);
+        });
+
+      } else if (st === 'store') {
+        // 🛒 Store & Aircraft Delivery: Cash Register Double Bell Ring
+        const bell1 = ctx.createOscillator();
+        const bg1 = ctx.createGain();
+        bell1.type = 'sine';
+        bell1.frequency.setValueAtTime(1567.98, now); // G6
+        bg1.gain.setValueAtTime(0.35, now);
+        bg1.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+        bell1.connect(bg1);
+        bg1.connect(ctx.destination);
+        bell1.start(now);
+        bell1.stop(now + 0.22);
+
+        const bell2 = ctx.createOscillator();
+        const bg2 = ctx.createGain();
+        bell2.type = 'sine';
+        bell2.frequency.setValueAtTime(2093.00, now + 0.1); // C7
+        bg2.gain.setValueAtTime(0.4, now + 0.1);
+        bg2.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        bell2.connect(bg2);
+        bg2.connect(ctx.destination);
+        bell2.start(now + 0.1);
+        bell2.stop(now + 0.4);
+
+      } else {
+        // 🚨 General Emergency Radar Siren (Fallback)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(1050, now);
+        osc1.frequency.exponentialRampToValueAtTime(750, now + 0.25);
+        gain1.gain.setValueAtTime(0.4, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.25);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sawtooth';
+        osc2.frequency.setValueAtTime(1200, now + 0.22);
+        osc2.frequency.exponentialRampToValueAtTime(850, now + 0.5);
+        gain2.gain.setValueAtTime(0.45, now + 0.22);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.22);
+        osc2.stop(now + 0.5);
+      }
 
       // Physical vibration alert for mobile devices
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([300, 100, 300, 100, 500]);
+        navigator.vibrate([200, 100, 200, 100, 300]);
       }
     } catch (err) {
       console.warn("Audio Context blocked or not supported:", err);
     }
+  };
+
+  const playRescueAlertSound = (serviceType?: string) => {
+    playServiceAlertSound(serviceType);
   };
 
   // Toast System
@@ -1982,11 +2181,14 @@ export default function App() {
         '🚨 Emergency Rescue Alert!',
         `مطلوب فني فوراً لـ [${serviceArName}] بقيمة [${req.approximatePrice || 150} ₪] بموقعك!`,
         `Urgent dispatch for [${serviceEnName}] at [${req.approximatePrice || 150} ₪] nearby!`,
-        req.id
+        req.id,
+        undefined,
+        undefined,
+        req.serviceType
       );
 
-      // Play Siren Sound
-      playRescueAlertSound();
+      // Play Siren Sound customized for service
+      playServiceAlertSound(req.serviceType);
 
       // Toast alert
       triggerToast(
@@ -2915,7 +3117,7 @@ export default function App() {
 
       // Play sound feedback for instant user awareness
       try {
-        playRescueAlertSound();
+        playServiceAlertSound(newReqObj.serviceType);
       } catch (e) {}
 
       // Force instant background refresh to sync all components
@@ -4773,6 +4975,92 @@ export default function App() {
                   </span>
                 )}
               </div>
+
+              {/* Web Audio API Custom Service Sound Tones Section */}
+              <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Volume2 className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="text-xs font-black text-slate-950">
+                      {lang === 'ar' ? 'نغمات التنبيه المخصصة لكل خدمة (Web Audio API)' : 'Custom Service Alert Tones'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={toggleAudioMute}
+                    className={`px-2 py-1 text-[10px] font-black rounded-lg border transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                      isAudioMuted
+                        ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {isAudioMuted ? (
+                      <>
+                        <VolumeX className="w-3.5 h-3.5" />
+                        <span>{lang === 'ar' ? 'مكتوم' : 'Muted'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5" />
+                        <span>{lang === 'ar' ? 'صوت مفعّل' : 'Active'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-[10px] text-slate-600 font-bold leading-relaxed">
+                  {lang === 'ar'
+                    ? 'صوت تنبيه فريد مخصص تلقائياً لكل نوع خدمة لتمييز بلاغات الاستغاثة فور وصولها.'
+                    : 'A unique synthesized Web Audio API alert tone is automatically played for each specific service type.'}
+                </p>
+
+                {/* Service Tone Testers Grid */}
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {[
+                    { id: 'fuel', icon: '⛽', labelAr: 'توصيل وقود', labelEn: 'Fuel Delivery', noteAr: 'ضخ وتدفق الوقود 🎵', color: 'bg-amber-500/10 border-amber-300/80 text-amber-950' },
+                    { id: 'towing', icon: '🚚', labelAr: 'ونش وسحب', labelEn: 'Towing Service', noteAr: 'هرن ونش وسحب 🚛', color: 'bg-indigo-500/10 border-indigo-300/80 text-indigo-950' },
+                    { id: 'battery', icon: '🔋', labelAr: 'اشتراك بطارية', labelEn: 'Battery Jump', noteAr: 'شرارة وجلفانيك ⚡', color: 'bg-emerald-500/10 border-emerald-300/80 text-emerald-950' },
+                    { id: 'locksmith', icon: '🔑', labelAr: 'فتح أقفال', labelEn: 'Car Locksmith', noteAr: 'نقر وجرس مفتاح 🔑', color: 'bg-sky-500/10 border-sky-300/80 text-sky-950' },
+                    { id: 'mechanic', icon: '🛠️', labelAr: 'صيانة وميكانيك', labelEn: 'Road Mechanic', noteAr: 'طرق مفتاح صيانة 🛠️', color: 'bg-slate-500/10 border-slate-300/80 text-slate-950' },
+                    { id: 'tire', icon: '🚗', labelAr: 'تبديل إطارات', labelEn: 'Tire Repair', noteAr: 'نفخ وضغط إطار 🚗', color: 'bg-orange-500/10 border-orange-300/80 text-orange-950' },
+                    { id: 'taxi', icon: '🚕', labelAr: 'تكسي VIP', labelEn: 'VIP Taxi', noteAr: 'جرس VIP فاخر 🚕', color: 'bg-purple-500/10 border-purple-300/80 text-purple-950' },
+                    { id: 'store', icon: '🛒', labelAr: 'متجر وقطع', labelEn: 'Auto Store', noteAr: 'جرس كاشير 🛒', color: 'bg-teal-500/10 border-teal-300/80 text-teal-950' },
+                  ].map((s) => {
+                    const isPlaying = activePlayingSoundType === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => playServiceAlertSound(s.id)}
+                        className={`p-2 rounded-xl border transition-all text-right flex items-center justify-between cursor-pointer active:scale-95 ${s.color} ${
+                          isPlaying ? 'ring-2 ring-amber-500 scale-95 shadow-md bg-amber-200/80' : 'hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs">{s.icon}</span>
+                            <span className="text-[10px] font-black truncate">
+                              {lang === 'ar' ? s.labelAr : s.labelEn}
+                            </span>
+                          </div>
+                          <span className="text-[9px] text-slate-600 font-bold block truncate">
+                            {lang === 'ar' ? s.noteAr : s.id}
+                          </span>
+                        </div>
+                        <div className="shrink-0 mr-1 flex items-center gap-0.5">
+                          {isPlaying ? (
+                            <span className="flex items-center gap-0.5 text-amber-700 animate-pulse font-mono text-[9px] font-black">
+                              <span>█</span>
+                              <span>▄</span>
+                              <span>█</span>
+                            </span>
+                          ) : (
+                            <Play className="w-3.5 h-3.5 text-slate-700 hover:text-amber-600" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* Notifications List */}
@@ -5265,6 +5553,7 @@ export default function App() {
           mapsKey={mapsKey}
           pinnedLocation={pinnedLocation}
           phoneNumber={phoneNumber}
+          playServiceAlertSound={playServiceAlertSound}
         />
       )}
 
@@ -5280,6 +5569,7 @@ export default function App() {
           phoneNumber={phoneNumber}
           clientName={loggedInUserName || enteredName}
           userEmail={loggedInUserEmail || enteredEmail}
+          playServiceAlertSound={playServiceAlertSound}
         />
       )}
 

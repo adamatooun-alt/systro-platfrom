@@ -43,6 +43,7 @@ interface StoreTabProps {
   phoneNumber?: string;
   clientName?: string;
   userEmail?: string;
+  playServiceAlertSound?: (serviceType?: string) => void;
 }
 
 const DEFAULT_PRODUCTS: Product[] = [
@@ -148,7 +149,8 @@ export const StoreTab: React.FC<StoreTabProps> = ({
   onNavigateToAdmin,
   phoneNumber,
   clientName,
-  userEmail
+  userEmail,
+  playServiceAlertSound
 }) => {
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
   const [loading, setLoading] = useState<boolean>(false);
@@ -400,6 +402,11 @@ export const StoreTab: React.FC<StoreTabProps> = ({
       setIsCartOpen(false);
       setIsCheckoutModalOpen(false);
       setOrderSuccessModal(true);
+
+      // Play custom Web Audio store Cash Register bell sound
+      try {
+        playServiceAlertSound?.('store');
+      } catch (e) {}
 
       triggerToast(
         lang === 'ar' ? 'تم تسجيل الطلب وحفظ البيانات بنجاح وهو قيد المراجعة الآن! 📦' : 'Order saved & sent for processing! 📦',

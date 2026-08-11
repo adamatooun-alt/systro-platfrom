@@ -306,30 +306,38 @@ export default function LoginPortal({
       <main className="w-full max-w-[460px] mx-auto px-4 pt-3 sm:pt-6 flex flex-col items-center gap-3 sm:gap-5 relative z-10 my-auto">
         
         {/* Central Logo & Brand Header Area */}
-        <div className="flex flex-col items-center gap-2 text-center w-full">
+        <div className="flex flex-col items-center gap-3 text-center w-full">
           
-          {/* Compact Systro Logo */}
-          <div className="flex items-center justify-center gap-3 select-none animate-fade-in">
-            <img src="/icon.svg" alt="Systro Logo" className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl shadow-[0_8px_25px_rgba(0,182,212,0.4)] object-contain border border-sky-400/30" />
-            <span className="text-2xl sm:text-3xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#38BDF8] via-[#0ea5e9] to-[#2563eb] select-none font-sans filter drop-shadow-[0_2px_10px_rgba(6,182,212,0.2)]">
+          {/* Enlarged Systro Logo */}
+          <div className="flex items-center justify-center gap-3.5 select-none animate-fade-in">
+            <img 
+              src="/icon.svg" 
+              alt="Systro Logo" 
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl shadow-[0_12px_35px_rgba(0,182,212,0.45)] object-contain border-2 border-sky-400/50 bg-slate-900/60 p-2 transition-transform duration-300 hover:scale-105" 
+            />
+            <span className="text-3xl sm:text-4xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-b from-[#38BDF8] via-[#0ea5e9] to-[#2563eb] select-none font-sans filter drop-shadow-[0_2px_12px_rgba(6,182,212,0.3)]">
               Systro
             </span>
           </div>
 
-          <div className="flex flex-col items-center gap-1 animate-fade-in">
+          <div className="flex flex-col items-center gap-2 animate-fade-in w-full">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FCAD62] shadow-[0_0_12px_rgba(252,173,98,0.7)] shrink-0 animate-pulse"></span>
-              <h1 className="text-xl sm:text-2xl font-extrabold tracking-wide text-[#FDF6E2] select-none">
+              <span className="w-3 h-3 rounded-full bg-[#FCAD62] shadow-[0_0_14px_rgba(252,173,98,0.9)] shrink-0 animate-pulse"></span>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-wide text-slate-950 dark:text-[#FDF6E2] select-none filter drop-shadow-sm">
                 {lang === 'ar' ? 'لننطلق' : lang === 'he' ? 'בואו נתחיל' : "Let's Go"}
               </h1>
             </div>
-            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-semibold max-w-sm leading-tight select-none filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
-              {lang === 'ar' 
-                ? 'مرحباً بك في شبكة سيسترو - اختر طريقة تسجيل الدخول المفضلّة للوصول الفوري' 
-                : lang === 'he'
-                ? 'ברוכים הבאים לרשת סיסטרו - בחר שיטת התחברות לגישה מיידית'
-                : 'Welcome to Systro Network - Choose your preferred sign-in method for instant access'}
-            </p>
+
+            {/* Clear, High-Contrast Description Banner */}
+            <div className="bg-white/95 dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 px-4 py-2.5 rounded-2xl border border-slate-300/80 dark:border-slate-700/80 shadow-md backdrop-blur-md max-w-md w-full">
+              <p className="text-xs sm:text-sm font-extrabold leading-relaxed select-none text-center">
+                {lang === 'ar' 
+                  ? 'مرحباً بك في شبكة سيسترو - اختر طريقة تسجيل الدخول المفضلّة للوصول الفوري' 
+                  : lang === 'he'
+                  ? 'ברוכים הבאים לרשת סיסטרו - בחר שיטת התחברות לגישה מיידית'
+                  : 'Welcome to Systro Network - Choose your preferred sign-in method for instant access'}
+              </p>
+            </div>
           </div>
         </div>
 
