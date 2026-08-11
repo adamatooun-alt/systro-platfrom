@@ -2,7 +2,22 @@ import { initializeApp } from 'firebase/app';
 import { initializeFirestore, setLogLevel } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-const metaEnv = (import.meta as any).env || {};
+const getMetaEnv = () => {
+  const globalEnv = (typeof window !== 'undefined' && (window as any).ENV) || {};
+  const viteEnv = (import.meta as any).env || {};
+  
+  const merged = { ...viteEnv };
+  
+  // Merge valid values from window.ENV (runtime injected on published URL)
+  for (const key of Object.keys(globalEnv)) {
+    if (globalEnv[key] && typeof globalEnv[key] === 'string' && globalEnv[key].trim().length > 0) {
+      merged[key] = globalEnv[key].trim();
+    }
+  }
+  return merged;
+};
+
+const metaEnv = getMetaEnv();
 
 const rawApiKey = metaEnv.VITE_FIREBASE_API_KEY;
 const apiKey = (rawApiKey && typeof rawApiKey === 'string' && rawApiKey.trim().length > 0)

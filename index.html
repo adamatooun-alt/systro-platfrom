@@ -101,36 +101,49 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Register the smart Network-First service worker
+      // Force unregister all active service workers and clear caches on startup to completely solve PWA caching on the published URL
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then((reg) => {
-            console.log('Systro PWA ServiceWorker registered with Network-First strategy:', reg.scope);
-            
-            // Check for updates to service worker and skip waiting
-            reg.addEventListener('updatefound', () => {
-              const newWorker = reg.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    console.log('New ServiceWorker version available, claiming clients...');
-                    newWorker.postMessage({ type: 'SKIP_WAITING' });
-                  }
-                });
-              }
-            });
-          }).catch((err) => {
-            console.log('ServiceWorker registration failed:', err);
-          });
-        });
-
-        // Listen for controller changes to reload and instantly reflect updates
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!refreshing) {
-            refreshing = true;
-            window.location.reload();
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          let unregisteredAny = false;
+          for (const registration of registrations) {
+            registration.unregister();
+            unregisteredAny = true;
+            console.log('Unregistered active service worker to prevent caching mismatch');
           }
+          if (unregisteredAny && !sessionStorage.getItem('sw_purged')) {
+            sessionStorage.setItem('sw_purged', 'true');
+            setTimeout(() => {
+              window.location.reload();
+            }, 400);
+          }
+        }).catch((err) => {
+          console.log('Error unregistering service workers:', err);
+        });
+      }
+
+      // Purge all cache storage to clear old index.html or JS/CSS chunks
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          let deletedAny = false;
+          return Promise.all(
+            keys.map((key) => {
+              return caches.delete(key).then((success) => {
+                if (success) {
+                  deletedAny = true;
+                  console.log('Deleted cache key:', key);
+                }
+              });
+            })
+          ).then(() => {
+            if (deletedAny && !sessionStorage.getItem('cache_purged')) {
+              sessionStorage.setItem('cache_purged', 'true');
+              setTimeout(() => {
+                window.location.reload();
+              }, 400);
+            }
+          });
+        }).catch((err) => {
+          console.log('Error purging caches:', err);
         });
       }
     </script>

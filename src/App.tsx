@@ -7,6 +7,7 @@ import { SecuritySentinel } from './components/SecuritySentinel';
 import { DirectoryTab } from './components/DirectoryTab';
 
 const API_KEY =
+  (typeof window !== 'undefined' && (window as any).ENV?.GOOGLE_MAPS_PLATFORM_KEY) ||
   process.env.GOOGLE_MAPS_PLATFORM_KEY ||
   (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
   (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||

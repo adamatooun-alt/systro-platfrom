@@ -1394,7 +1394,35 @@ async function startServer() {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      res.sendFile(path.join(distPath, 'index.html'));
+      
+      try {
+        const indexPath = path.join(distPath, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          let html = fs.readFileSync(indexPath, 'utf8');
+          
+          // Inject production-ready runtime environment keys from container variables
+          const runtimeEnv = {
+            VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY,
+            VITE_FIREBASE_AUTH_DOMAIN: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+            VITE_FIREBASE_PROJECT_ID: process.env.VITE_FIREBASE_PROJECT_ID,
+            VITE_FIREBASE_STORAGE_BUCKET: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+            VITE_FIREBASE_MESSAGING_SENDER_ID: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+            VITE_FIREBASE_APP_ID: process.env.VITE_FIREBASE_APP_ID,
+            VITE_FIREBASE_DATABASE_ID: process.env.VITE_FIREBASE_DATABASE_ID,
+            GOOGLE_MAPS_PLATFORM_KEY: process.env.GOOGLE_MAPS_PLATFORM_KEY
+          };
+
+          const envScript = `<script>window.ENV = ${JSON.stringify(runtimeEnv)};</script>`;
+          html = html.replace('<head>', `<head>${envScript}`);
+          
+          res.send(html);
+        } else {
+          res.sendFile(indexPath);
+        }
+      } catch (err) {
+        console.error("Error serving and injecting index.html:", err);
+        res.sendFile(path.join(distPath, 'index.html'));
+      }
     });
   }
 
