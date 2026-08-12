@@ -9,7 +9,8 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "deploy": "gcloud run deploy systro-live --source . --region europe-west1 --allow-unauthenticated"
+    "deploy": "gcloud run deploy systro-live --source . --region europe-west1 --allow-unauthenticated",
+    "deploy:hosting": "npm run build && npx firebase deploy --only hosting --project nexwork-75325"
   },
   "dependencies": {
     "@google-pay/button-react": "^4.0.1",
