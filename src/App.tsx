@@ -5264,7 +5264,7 @@ export default function App() {
               }}
               className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'world' || isLeftMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
             >
-              {lang === 'ar' ? 'عامة 🌐' : lang === 'he' ? 'עולם 🌐' : 'World 🌐'}
+              {lang === 'ar' ? 'عامة 🌐' : lang === 'he' ? 'عامة 🌐' : 'World 🌐'}
             </button>
             <button 
               onClick={() => {
@@ -7619,7 +7619,7 @@ export default function App() {
                 <div className="flex items-center gap-2 bg-blue-500/15 px-3 py-1.5 rounded-full border border-blue-500/30">
                   <img src="/icon.svg" alt="Systro Logo" className="w-6 h-6 rounded-lg object-contain shadow-sm" />
                   <h3 className="text-base font-black text-sky-300 flex items-center gap-1.5">
-                    <span>{lang === 'ar' ? 'عامة سيسترو' : lang === 'he' ? 'עולם سيستרו' : 'Systro General'}</span>
+                    <span>{lang === 'ar' ? 'عامة سيسترو' : lang === 'he' ? 'عامة سيسترو' : 'Systro General'}</span>
                   </h3>
                 </div>
               </div>
@@ -7898,7 +7898,7 @@ export default function App() {
           className={`flex flex-col items-center gap-0.5 transition-all ${activeTab === 'world' || isLeftMenuOpen ? 'text-amber-400 font-black scale-105' : 'text-gray-400 font-bold hover:text-white'}`}
         >
           <Globe className="w-5 h-5" />
-          <span className="text-[10px]">{lang === 'ar' ? 'عامة 🌐' : 'World 🌐'}</span>
+          <span className="text-[10px]">{lang === 'ar' ? 'عامة 🌐' : lang === 'he' ? 'عامة 🌐' : 'World 🌐'}</span>
         </button>
 
         <button
