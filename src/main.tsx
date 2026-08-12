@@ -3,21 +3,37 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Purge any registered service worker caches on load to ensure live updates reflect instantly
+// Register the PWA service worker and ensure auto-updates
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    for (const registration of registrations) {
-      registration.unregister().catch(() => {});
-    }
-  }).catch((err) => {
-    console.log('getRegistrations bypassed or failed: ', err);
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((registration) => {
+      console.log('Service Worker registered successfully:', registration.scope);
+      
+      // Check for updates on every page load
+      registration.update();
+      
+      registration.onupdatefound = () => {
+        const installingWorker = registration.installing;
+        if (installingWorker) {
+          installingWorker.onstatechange = () => {
+            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New update available, wait for it to activate
+              console.log('New update available. Service worker is installing...');
+            }
+          };
+        }
+      };
+    }).catch((error) => {
+      console.error('Service Worker registration failed:', error);
+    });
   });
-}
 
-if ('caches' in window) {
-  caches.keys().then((names) => {
-    for (const name of names) {
-      caches.delete(name);
+  // Automatically refresh the page when the new service worker takes control (via skipWaiting)
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
     }
   });
 }

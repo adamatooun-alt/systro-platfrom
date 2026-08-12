@@ -1,8 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, setLogLevel } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import firebaseAppletConfig from '../firebase-applet-config.json';
-
 const getMetaEnv = () => {
   const globalEnv = (typeof window !== 'undefined' && (window as any).ENV) || {};
   const viteEnv = (import.meta as any).env || {};
@@ -20,12 +18,12 @@ const getMetaEnv = () => {
 const metaEnv = getMetaEnv();
 
 const rawConfig = {
-  apiKey: metaEnv.VITE_FIREBASE_API_KEY || firebaseAppletConfig.apiKey,
-  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || firebaseAppletConfig.authDomain,
-  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId,
-  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || firebaseAppletConfig.storageBucket,
-  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig.messagingSenderId,
-  appId: metaEnv.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId,
+  apiKey: metaEnv.VITE_FIREBASE_API_KEY,
+  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: metaEnv.VITE_FIREBASE_APP_ID,
 };
 
 // Safe default/placeholder values to prevent SDK initialization from throwing when API key or config is empty
@@ -50,7 +48,7 @@ let auth: any;
 
 try {
   app = initializeApp(config);
-  const dbId = metaEnv.VITE_FIREBASE_DATABASE_ID || firebaseAppletConfig.firestoreDatabaseId || '(default)';
+  const dbId = metaEnv.VITE_FIREBASE_DATABASE_ID || '(default)';
   db = initializeFirestore(app, {
     experimentalForceLongPolling: true
   }, dbId);
