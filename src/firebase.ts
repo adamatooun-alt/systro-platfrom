@@ -19,7 +19,7 @@ const getMetaEnv = () => {
 
 const metaEnv = getMetaEnv();
 
-const config = {
+const rawConfig = {
   apiKey: metaEnv.VITE_FIREBASE_API_KEY || firebaseAppletConfig.apiKey,
   authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || firebaseAppletConfig.authDomain,
   projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId,
@@ -28,21 +28,55 @@ const config = {
   appId: metaEnv.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId,
 };
 
+// Safe default/placeholder values to prevent SDK initialization from throwing when API key or config is empty
+const config = {
+  apiKey: rawConfig.apiKey && rawConfig.apiKey.trim() !== '' ? rawConfig.apiKey : 'AIzaSyPlaceholderKeyToPreventStartupCrash123',
+  authDomain: rawConfig.authDomain && rawConfig.authDomain.trim() !== '' ? rawConfig.authDomain : 'placeholder-project-id.firebaseapp.com',
+  projectId: rawConfig.projectId && rawConfig.projectId.trim() !== '' ? rawConfig.projectId : 'placeholder-project-id',
+  storageBucket: rawConfig.storageBucket && rawConfig.storageBucket.trim() !== '' ? rawConfig.storageBucket : 'placeholder-project-id.appspot.com',
+  messagingSenderId: rawConfig.messagingSenderId && rawConfig.messagingSenderId.trim() !== '' ? rawConfig.messagingSenderId : '123456789012',
+  appId: rawConfig.appId && rawConfig.appId.trim() !== '' ? rawConfig.appId : '1:123456789012:web:abcdef1234567890',
+};
+
 try {
   setLogLevel('silent');
 } catch (e) {
   // Ignore if setLogLevel is already initialized
 }
 
-const app = initializeApp(config);
+let app: any;
+let db: any;
+let auth: any;
 
-const dbId = metaEnv.VITE_FIREBASE_DATABASE_ID || firebaseAppletConfig.firestoreDatabaseId || '(default)';
-
-const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true
-}, dbId);
-
-const auth = getAuth(app);
+try {
+  app = initializeApp(config);
+  const dbId = metaEnv.VITE_FIREBASE_DATABASE_ID || firebaseAppletConfig.firestoreDatabaseId || '(default)';
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true
+  }, dbId);
+  auth = getAuth(app);
+} catch (error) {
+  console.error("Firebase startup initialization failed, fallback mock active:", error);
+  app = {};
+  db = new Proxy({}, {
+    get: () => () => {
+      return {
+        id: 'dummy',
+        onSnapshot: () => () => {},
+        subscribe: () => () => {},
+      };
+    }
+  });
+  auth = new Proxy({
+    currentUser: null,
+    app: { options: { apiKey: '' } }
+  }, {
+    get: (target, prop) => {
+      if (prop in target) return (target as any)[prop];
+      return () => Promise.resolve({});
+    }
+  });
+}
 
 export { db, auth };
 
