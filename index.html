@@ -5,6 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>system systro نظام سيسترو - منصة للأعمال والخدمات</title>
     
+    <!-- SEO Optimization: Set canonical URL to main domain -->
+    <link rel="canonical" href="https://systro.live/" />
+
+    <!-- Anti-indexing script for non-primary domains (prevents Google from indexing preview/staging links) -->
+    <script>
+      (function() {
+        var hostname = window.location.hostname;
+        // If it's not our primary domain and not localhost/127.0.0.1
+        if (hostname !== 'systro.live' && hostname !== 'www.systro.live' && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+          var meta = document.createElement('meta');
+          meta.name = 'robots';
+          meta.content = 'noindex, nofollow';
+          document.getElementsByTagName('head')[0].appendChild(meta);
+          console.log('🛡️ Non-primary domain detected. Search engine indexing disabled for this URL.');
+        }
+      })();
+    </script>
+    
     <!-- Suppress benign Vite HMR WebSocket warnings/errors in sandboxed dev environment -->
     <script>
       (function() {
