@@ -166,50 +166,20 @@ export default function LoginPortal({
         setFallbackOtpSent(true);
         setResendCooldown(600); // 10 minutes
         setFallbackOtpCode('');
-        if (data.simulatedCode) {
-          setSimulatedCode(data.simulatedCode);
-          triggerToast(
-            lang === 'ar' 
-              ? `تم إصدار رمز التحقق بنجاح: (${data.simulatedCode}) ✉️ يرجى إدخاله في خانة الرمز للتحقق.` 
-              : `Verification code generated: (${data.simulatedCode}) ✉️ Please enter it in the code field to verify.`, 
-            'info'
-          );
-        } else {
-          triggerToast(
-            lang === 'ar' 
-              ? 'تم إرسال رمز التحقق لبريدك الإلكتروني بنجاح! ✉️ يرجى إدخاله في خانة الرمز للتحقق.' 
-              : lang === 'he'
-              ? 'קוד האימות נשלח לאימייל שלך בהצלחה! ✉️'
-              : 'Verification code sent to your email inbox successfully! ✉️ Please enter it in the code field.', 
-            'success'
-          );
-        }
-      } else {
-        const localCode = Math.floor(100000 + Math.random() * 900000).toString();
-        setClientSimulatedCode(localCode);
-        setFallbackOtpSent(true);
-        setResendCooldown(60);
-        setFallbackOtpCode('');
         triggerToast(
-          lang === 'ar'
-            ? `⚠️ تم تفعيل وضع التخطي الآمن المباشر! رمز المرور المؤقت الخاص بك هو: (${localCode})`
-            : `⚠️ Standby bypass mode active! Your temporary code is: (${localCode})`,
-          'info'
+          lang === 'ar' 
+            ? 'تم إرسال رمز التحقق لبريدك الإلكتروني بنجاح! ✉️ يرجى إدخاله في خانة الرمز للتحقق.' 
+            : lang === 'he'
+            ? 'קוד האימות נשלח לאימייל שלך בהצלחה! ✉️'
+            : 'Verification code sent to your email inbox successfully! ✉️ Please enter it in the code field.', 
+          'success'
         );
+      } else {
+        triggerToast(data.error || (lang === 'ar' ? 'فشل إرسال رمز التحقق!' : 'Failed to send verification code!'), 'error');
       }
     } catch (err) {
       console.error("Error sending fallback OTP:", err);
-      const localCode = Math.floor(100000 + Math.random() * 900000).toString();
-      setClientSimulatedCode(localCode);
-      setFallbackOtpSent(true);
-      setResendCooldown(60);
-      setFallbackOtpCode('');
-      triggerToast(
-        lang === 'ar'
-          ? `⚠️ تم تفعيل وضع التخطي الآمن المباشر! رمز المرور المؤقت الخاص بك هو: (${localCode})`
-          : `⚠️ Standby bypass mode active! Your temporary code is: (${localCode})`,
-        'info'
-      );
+      triggerToast(lang === 'ar' ? 'فشل في الاتصال بالخادم لإرسال الرمز!' : 'Failed to connect to server to send code!', 'error');
     } finally {
       setFallbackOtpSending(false);
     }
@@ -222,30 +192,13 @@ export default function LoginPortal({
 
     if (!enteredCode) {
       triggerToast(
-        lang === 'ar' ? 'يرجى إدخال رمز التحقق المستلم!' : lang === 'he' ? 'אנא הזן את קוד האימות שהתקבל!' : 'Please enter the verification code!', 
+        lang === 'ar' ? 'يرجى إدخال رمز التحقق المستلم!' : lang === 'he' ? 'אנא הזן את קود האימות שהתקבל!' : 'Please enter the verification code!', 
         'warning'
       );
       return;
     }
 
     setFallbackOtpVerifying(true);
-
-    if (clientSimulatedCode && (enteredCode === clientSimulatedCode || enteredCode === '1234' || enteredCode === '123456')) {
-      sessionStorage.setItem('systro_saved_google_email', trimmedEmail);
-      sessionStorage.setItem('systro_saved_google_name', trimmedName);
-      setShowGoogleFallbackModal(false);
-      await handleGoogleSignIn(trimmedEmail, trimmedName, true);
-      triggerToast(
-        lang === 'ar' 
-          ? `تم التحقق من حسابك وتأكيده بنجاح! 🔐` 
-          : lang === 'he'
-          ? `חשבונך אומת והתחברת בהצלחה! 🔐`
-          : `Account verified and logged in successfully! 🔐`, 
-        'success'
-      );
-      setFallbackOtpVerifying(false);
-      return;
-    }
 
     try {
       const response = await fetch('/api/verify-otp', {
@@ -270,22 +223,11 @@ export default function LoginPortal({
           'success'
         );
       } else {
-        triggerToast(data.error || (lang === 'ar' ? 'رمز التحقق غير صحيح!' : lang === 'he' ? 'קود האימות אינו תקין!' : 'Incorrect verification code!'), 'error');
+        triggerToast(data.error || (lang === 'ar' ? 'رمز التحقق غير صحيح!' : lang === 'he' ? 'קוד האימות אינו תקין!' : 'Incorrect verification code!'), 'error');
       }
     } catch (err) {
       console.error("Error verifying fallback OTP:", err);
-      if (enteredCode === '1234' || enteredCode === '123456' || (simulatedCode && enteredCode === simulatedCode)) {
-        sessionStorage.setItem('systro_saved_google_email', trimmedEmail);
-        sessionStorage.setItem('systro_saved_google_name', trimmedName);
-        setShowGoogleFallbackModal(false);
-        await handleGoogleSignIn(trimmedEmail, trimmedName, true);
-        triggerToast(
-          lang === 'ar' ? 'تم الدخول عبر وضع التخطي الآمن الاحتياطي! 🔐' : 'Logged in via secure backup bypass! 🔐',
-          'success'
-        );
-      } else {
-        triggerToast(lang === 'ar' ? 'خطأ في الاتصال بالخادم!' : lang === 'he' ? 'שגיאת חיבור לשרת!' : 'Server connection error!', 'error');
-      }
+      triggerToast(lang === 'ar' ? 'خطأ في الاتصال بالخادم!' : lang === 'he' ? 'שגיאת חיבור לשרת!' : 'Server connection error!', 'error');
     } finally {
       setFallbackOtpVerifying(false);
     }
@@ -629,16 +571,7 @@ export default function LoginPortal({
                     <p className="font-mono text-xs text-slate-700 font-bold break-all bg-white py-1 px-3.5 rounded-lg inline-block border border-slate-100">
                       {customEmail}
                     </p>
-                    {simulatedCode && (
-                      <div className="bg-amber-500/10 border border-amber-500/30 p-2 rounded-xl text-center space-y-0.5 mt-2">
-                        <p className="text-[11px] text-amber-700 font-black">
-                          {lang === 'ar' ? '🔑 رمز التحقق التجريبي:' : '🔑 Demo Verification Code:'}
-                        </p>
-                        <p className="font-mono text-base font-black text-amber-800 tracking-widest">
-                          {simulatedCode}
-                        </p>
-                      </div>
-                    )}
+                    {/* Removed simulatedCode block */}
                   </div>
 
                   <div className="space-y-1.5">
@@ -847,35 +780,25 @@ export default function LoginPortal({
                             body: JSON.stringify({ email: trimmedAppleEmail })
                           });
                           const data = await response.json();
-                          setAppleOtpSent(true);
-                          setAppleOtpCode('');
-                          if (data.simulatedCode) {
-                            setAppleSimulatedCode(data.simulatedCode);
-                            triggerToast(
-                              lang === 'ar' 
-                                ? `تم إصدار رمز التحقق بنجاح: (${data.simulatedCode}) ✉️ يرجى كتابته للتحقق.` 
-                                : `Verification code generated: (${data.simulatedCode}) ✉️`, 
-                              'info'
-                            );
-                          } else {
+                          if (response.ok && data.success) {
+                            setAppleOtpSent(true);
+                            setAppleOtpCode('');
                             triggerToast(
                               lang === 'ar' 
                                 ? `تم إرسال رمز التحقق إلى حساب Apple ID (${trimmedAppleEmail}) بنجاح! ✉️` 
                                 : `Verification code sent to Apple ID (${trimmedAppleEmail})! ✉️`, 
                               'success'
                             );
+                          } else {
+                            triggerToast(data.error || (lang === 'ar' ? 'فشل إرسال رمز التحقق!' : 'Failed to send verification code!'), 'error');
                           }
                         } catch (err) {
                           console.error("Error sending Apple OTP:", err);
-                          const localCode = Math.floor(100000 + Math.random() * 900000).toString();
-                          setClientAppleSimulatedCode(localCode);
-                          setAppleOtpSent(true);
-                          setAppleOtpCode('');
                           triggerToast(
                             lang === 'ar' 
-                              ? `⚠️ تم تفعيل وضع التخطي الاحتياطي لـ Apple! رمز الدخول هو: (${localCode})` 
-                              : `⚠️ Standby bypass mode active! Your temporary code is: (${localCode})`, 
-                            'info'
+                              ? 'فشل في الاتصال بالخادم لإرسال الرمز!' 
+                              : 'Failed to connect to server to send code!', 
+                            'error'
                           );
                         } finally {
                           setAppleOtpSending(false);
@@ -907,16 +830,7 @@ export default function LoginPortal({
                     <p className="font-mono text-xs text-white font-bold break-all bg-black py-1 px-3.5 rounded-lg inline-block border border-neutral-800">
                       {appleEmail}
                     </p>
-                    {(appleSimulatedCode || clientAppleSimulatedCode) && (
-                      <div className="bg-amber-500/10 border border-amber-500/30 p-2 rounded-xl text-center space-y-0.5 mt-2">
-                        <p className="text-[11px] text-amber-400 font-black">
-                          {lang === 'ar' ? '🔑 رمز التحقق لـ Apple ID:' : '🔑 Apple ID Verification Code:'}
-                        </p>
-                        <p className="font-mono text-base font-black text-amber-300 tracking-widest">
-                          {clientAppleSimulatedCode || appleSimulatedCode}
-                        </p>
-                      </div>
-                    )}
+                    {/* Removed Apple ID simulated code display */}
                   </div>
 
                   <div className="space-y-1.5">
@@ -941,21 +855,6 @@ export default function LoginPortal({
                       setAppleOtpVerifying(true);
                       const enteredCode = appleOtpCode.trim();
 
-                      if (clientAppleSimulatedCode && (enteredCode === clientAppleSimulatedCode || enteredCode === '1234' || enteredCode === '123456')) {
-                        if (handleRealAppleSignIn) {
-                          await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
-                        } else {
-                          await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', true);
-                          if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
-                        }
-                        triggerToast(
-                          lang === 'ar' ? 'تم تسجيل الدخول بنجاح عبر حساب Apple الاحتياطي! ' : 'Signed in successfully via backup Apple ID! ',
-                          'success'
-                        );
-                        setAppleOtpVerifying(false);
-                        return;
-                      }
-
                       try {
                         const response = await fetch('/api/verify-otp', {
                           method: 'POST',
@@ -978,20 +877,8 @@ export default function LoginPortal({
                           triggerToast(data.error || (lang === 'ar' ? 'رمز التحقق غير صحيح!' : 'Invalid code!'), 'error');
                         }
                       } catch (err) {
-                        if (enteredCode === '1234' || enteredCode === '123456' || (appleSimulatedCode && enteredCode === appleSimulatedCode)) {
-                          if (handleRealAppleSignIn) {
-                            await handleRealAppleSignIn(true, appleEmail.trim(), appleName.trim() || 'Apple User');
-                          } else {
-                            await handleGoogleSignIn(appleEmail.trim(), appleName.trim() || 'Apple User', true);
-                            if (setShowAppleFallbackModal) setShowAppleFallbackModal(false);
-                          }
-                          triggerToast(
-                            lang === 'ar' ? 'تم تسجيل الدخول بنجاح عبر حساب Apple الاحتياطي! ' : 'Signed in successfully via backup Apple ID! ',
-                            'success'
-                          );
-                        } else {
-                          triggerToast(lang === 'ar' ? 'خطأ أثناء التحقق!' : 'Error verifying code!', 'error');
-                        }
+                        console.error("Error verifying Apple ID OTP:", err);
+                        triggerToast(lang === 'ar' ? 'خطأ أثناء التحقق!' : 'Error verifying code!', 'error');
                       } finally {
                         setAppleOtpVerifying(false);
                       }

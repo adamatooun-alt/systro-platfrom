@@ -111,7 +111,7 @@ async function startServer() {
   app.post('/api/send-otp', async (req, res) => {
     const { email } = req.body;
     if (!email || !email.includes('@')) {
-      res.status(400).json({ error: 'Please provide a valid email address' });
+      res.status(400).json({ error: req.headers['accept-language']?.includes('ar') ? 'يرجى إدخال بريد إلكتروني صحيح' : 'Please provide a valid email address' });
       return;
     }
 
@@ -134,12 +134,9 @@ async function startServer() {
     });
 
     if (!host || !user || !pass || isPlaceholderUser || isPlaceholderPass) {
-      console.log(`[EMAIL OTP VERIFICATION] SMTP not configured. Code for ${normalizedEmail}: ${code}`);
-      res.json({
-        success: true,
-        sentViaSmtp: false,
-        simulatedCode: code,
-        message: 'تم إصدار رمز التحقق بنجاح!'
+      console.error(`[EMAIL OTP VERIFICATION] SMTP not configured. Tried to send code to ${normalizedEmail}`);
+      res.status(400).json({ 
+        error: 'خادم البريد SMTP غير مهيأ بعد أو يحتوي على قيم افتراضية. يرجى تهيئة إعدادات SMTP لإرسال الرموز الحقيقية.' 
       });
       return;
     }
@@ -147,12 +144,9 @@ async function startServer() {
     const sent = await sendVerificationEmail(normalizedEmail, code);
 
     if (!sent) {
-      console.warn(`[EMAIL OTP VERIFICATION] SMTP dispatch failed. Code for ${normalizedEmail}: ${code}`);
-      res.json({
-        success: true,
-        sentViaSmtp: false,
-        simulatedCode: code,
-        message: 'تم إصدار رمز التحقق بنجاح!'
+      console.error(`[EMAIL OTP VERIFICATION] SMTP dispatch failed for ${normalizedEmail}`);
+      res.status(500).json({ 
+        error: 'فشل إرسال رمز التحقق إلى بريدك الإلكتروني. يرجى مراجعة إعدادات الـ SMTP وبيانات الاتصال.' 
       });
       return;
     }
@@ -160,7 +154,7 @@ async function startServer() {
     res.json({
       success: true,
       sentViaSmtp: true,
-      message: 'OTP code sent via email'
+      message: 'تم إرسال رمز التحقق بنجاح!'
     });
   });
 
