@@ -1,51 +1,36 @@
-name: Deploy to Google Cloud Run
+name: Build and Deploy to Cloud Run
 
 on:
   push:
     branches:
       - main
-      - master
-
-env:
-  PROJECT_ID: nexwork-75325
-  SERVICE: systro-live
-  REGION: europe-west1
-  IMAGE_NAME: gcr.io/nexwork-75325/systro-live
 
 jobs:
   deploy:
-    name: Build and Deploy to Cloud Run
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Google Auth
-      id: auth
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v2
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
-    - name: Configure Docker authentication
-      run: |
-        gcloud auth configure-docker gcr.io --quiet
+      - name: Configure Docker
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
 
-    - name: Build and Tag Docker Image
-      run: |
-        docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} -t ${{ env.IMAGE_NAME }}:latest .
+      - name: Build and Push Docker Image
+        run: |
+          gcloud builds submit --tag europe-west1-docker.pkg.dev/nexwork-75325/cloud-run-source-deploy/systro-live:latest .
 
-    - name: Push Docker Image to GCR
-      run: |
-        docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
-        docker push ${{ env.IMAGE_NAME }}:latest
-
-    - name: Deploy to Cloud Run
-      uses: google-github-actions/deploy-cloudrun@v2
-      with:
-        service: ${{ env.SERVICE }}
-        region: ${{ env.REGION }}
-        image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy systro-live \
+            --image europe-west1-docker.pkg.dev/nexwork-75325/cloud-run-source-deploy/systro-live:latest \
+            --region europe-west1 \
+            --platform managed \
+            --allow-unauthenticated
