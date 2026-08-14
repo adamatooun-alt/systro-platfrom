@@ -10,7 +10,6 @@ export const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ lang, trigge
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
   const [showBanner, setShowBanner] = useState<boolean>(true);
-  const [showPermissionModal, setShowPermissionModal] = useState<boolean>(false);
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
   const [isIOS, setIsIOS] = useState<boolean>(false);
   const [isInIframe, setIsInIframe] = useState<boolean>(false);
@@ -59,30 +58,12 @@ export const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ lang, trigge
     };
   }, [lang, triggerToast]);
 
-  const handleInstallClick = () => {
-    setShowPermissionModal(true);
-  };
-
-  const executeAllowAndInstall = async () => {
-    setShowPermissionModal(false);
-
-    // Request notification permission if available
-    try {
-      if ('Notification' in window && Notification.permission === 'default') {
-        await Notification.requestPermission();
-      }
-    } catch (e) {
-      console.log('Notification permission check:', e);
-    }
-
-    triggerToast(
-      lang === 'ar' ? 'تم منح السماح! جاري إضافة التطبيق إلى الشاشة الرئيسية... 📲' : 'Permission granted! Adding app to home screen... 📲',
-      'success'
-    );
-
+  const handleInstallClick = async () => {
     if (deferredPrompt) {
       try {
+        // Trigger the browser's native install prompt directly
         deferredPrompt.prompt();
+        
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') {
           triggerToast(
@@ -92,6 +73,7 @@ export const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ lang, trigge
           setIsInstalled(true);
           setShowBanner(false);
         } else {
+          // If they dismissed/declined the browser prompt, show the backup manual guide
           setShowGuideModal(true);
         }
         setDeferredPrompt(null);
@@ -100,7 +82,8 @@ export const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ lang, trigge
         setShowGuideModal(true);
       }
     } else {
-      // Prompt not captured automatically (e.g. inside iframe preview or browser restriction)
+      // If prompt is not captured automatically (e.g., inside preview iframe or iOS device),
+      // open the clean manual installation instructions.
       setShowGuideModal(true);
     }
   };
@@ -156,79 +139,6 @@ export const PwaInstallBanner: React.FC<PwaInstallBannerProps> = ({ lang, trigge
           </button>
         </div>
       </div>
-
-      {/* Explicit User Download & Install Permission Modal */}
-      {showPermissionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fade-in text-right rtl:text-right ltr:text-left">
-          <div className="bg-gradient-to-b from-slate-900 to-slate-950 rounded-3xl max-w-md w-full p-6 space-y-5 border border-amber-500/30 shadow-[0_20px_50px_rgba(245,158,11,0.25)] relative text-white animate-scale-up">
-            
-            {/* Top Close Button */}
-            <button
-              onClick={() => setShowPermissionModal(false)}
-              className="absolute top-4 right-4 rtl:right-4 ltr:left-4 p-2 text-slate-400 hover:text-white bg-slate-800/80 rounded-full transition-all cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Icon & Title Header */}
-            <div className="text-center space-y-3 pt-2">
-              <img src="/icon.svg" alt="Systro Logo" className="w-16 h-16 rounded-2xl mx-auto shadow-xl shadow-sky-500/30 object-contain border border-sky-400/30" />
-
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-black">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                <span>{lang === 'ar' ? 'طلب السماح بالتنزيل والتثبيت' : 'Download & Install Permission'}</span>
-              </div>
-
-              <h3 className="text-xl font-black text-white leading-snug">
-                {lang === 'ar' ? 'هل تسمح بتنزيل وتثبيت تطبيق Systro على شاشة هاتفك؟' : 'Allow downloading & installing Systro on your phone?'}
-              </h3>
-            </div>
-
-            {/* Card Content & Features */}
-            <div className="bg-slate-800/60 rounded-2xl p-4 border border-slate-700/80 space-y-3 text-xs text-slate-300">
-              <p className="font-semibold leading-relaxed text-slate-200">
-                {lang === 'ar' 
-                  ? 'عند الضغط على "سماح وتثبيت"، سيتم إضافة أيقونة تطبيق سيسترو مباشرة إلى شاشة هاتفك الرئيسية للوصول السريع بدون متجر.'
-                  : 'By clicking "Allow & Install", the Systro app icon will be added directly to your home screen for quick access.'}
-              </p>
-
-              <div className="space-y-2 pt-1 font-bold text-slate-200">
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <Check className="w-4 h-4 shrink-0" />
-                  <span>{lang === 'ar' ? 'وصول مباشر وسريع بلمسة واحدة دون فتح المتصفح' : 'Fast one-touch access directly from home screen'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <Check className="w-4 h-4 shrink-0" />
-                  <span>{lang === 'ar' ? 'تفعيل الإشعارات الفورية للإنقاذ والخدمات والطلبات' : 'Instant notifications for rescue, taxi and orders'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <Check className="w-4 h-4 shrink-0" />
-                  <span>{lang === 'ar' ? 'تطبيق آمن، مشفر وخفيف جداً على الذاكرة والبطارية' : 'Secure, encrypted & ultra lightweight application'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-2.5 pt-1">
-              <button
-                onClick={executeAllowAndInstall}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-2xl shadow-xl shadow-amber-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-95"
-              >
-                <Download className="w-5 h-5 text-slate-950" />
-                <span>{lang === 'ar' ? 'سماح وتثبيت الآن على الهاتف 📲' : 'Allow & Install Now 📲'}</span>
-              </button>
-
-              <button
-                onClick={() => setShowPermissionModal(false)}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold text-xs rounded-xl transition-all cursor-pointer text-center"
-              >
-                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
       {/* Detailed Guide Modal - حل مشكلة عدم نزول التطبيق فوراً */}
       {showGuideModal && (
