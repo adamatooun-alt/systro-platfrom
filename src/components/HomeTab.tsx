@@ -369,46 +369,46 @@ export default function HomeTab({
       </section>
 
       {/* DYNAMIC REAL-TIME STATS PANEL (Image 6 layout) */}
-      <section className="border-y border-[#1E293B]/60 bg-[#0A0B10]">
+      <section className="border-y border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 divide-y-2 lg:divide-y-0 lg:divide-x-2 lg:divide-x-reverse divide-[#1E293B]/40">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 divide-y-2 lg:divide-y-0 lg:divide-x-2 lg:divide-x-reverse divide-slate-200">
             
             {/* Active Technicians */}
             <div className="text-center space-y-2 p-4 lg:p-0">
-              <div className="text-4xl md:text-5xl font-black text-amber-500 font-mono tracking-tight">
+              <div className="text-4xl md:text-5xl font-black text-amber-600 font-mono tracking-tight">
                 {stats.activeTechnicians} / {stats.maxTechnicians}
               </div>
-              <div className="text-xs md:text-sm font-bold text-gray-400">
+              <div className="text-xs md:text-sm font-bold text-slate-500">
                 {t.statActiveTechs}
               </div>
             </div>
 
             {/* Completed Rescues */}
             <div className="text-center space-y-2 p-4 lg:p-0 pt-8 lg:pt-0">
-              <div className="text-4xl md:text-5xl font-black text-white font-mono tracking-tight">
+              <div className="text-4xl md:text-5xl font-black text-slate-800 font-mono tracking-tight">
                 {stats.completedRescues}
               </div>
-              <div className="text-xs md:text-sm font-bold text-gray-400">
+              <div className="text-xs md:text-sm font-bold text-slate-500">
                 {t.statCompletedRescues}
               </div>
             </div>
 
             {/* Satisfaction Rate */}
             <div className="text-center space-y-2 p-4 lg:p-0">
-              <div className="text-4xl md:text-5xl font-black text-blue-400 font-mono tracking-tight">
+              <div className="text-4xl md:text-5xl font-black text-blue-600 font-mono tracking-tight">
                 {stats.satisfactionRate}%
               </div>
-              <div className="text-xs md:text-sm font-bold text-gray-400">
+              <div className="text-xs md:text-sm font-bold text-slate-500">
                 {t.statSatisfaction}
               </div>
             </div>
 
             {/* Active Emergencies */}
             <div className="text-center space-y-2 p-4 lg:p-0 pt-8 lg:pt-0">
-              <div className="text-4xl md:text-5xl font-black text-emerald-400 font-mono tracking-tight">
+              <div className="text-4xl md:text-5xl font-black text-emerald-600 font-mono tracking-tight">
                 {stats.activeEmergencies}
               </div>
-              <div className="text-xs md:text-sm font-bold text-gray-400">
+              <div className="text-xs md:text-sm font-bold text-slate-500">
                 {t.statActiveEmergencies}
               </div>
             </div>
@@ -418,106 +418,106 @@ export default function HomeTab({
       </section>
 
       {/* FINANCIAL INNOVATION & ESCROW SAFEKEEPING (Images 2 & 3) */}
-      <section className="py-16 md:py-24 bg-[#0A0B10] border-t border-gray-900 px-4 md:px-8">
+      <section className="py-16 md:py-24 bg-white border-t border-slate-200 px-4 md:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
           {/* Left text instructions (Image 2) */}
           <div className="lg:col-span-5 space-y-6">
-            <span className="text-xs md:text-sm font-black text-amber-500 uppercase tracking-widest block">
+            <span className="text-xs md:text-sm font-black text-amber-600 uppercase tracking-widest block">
               {t.finPre}
             </span>
             
-            <h3 className="text-3xl md:text-4xl font-black text-white leading-tight">
+            <h3 className="text-3xl md:text-4xl font-black text-slate-850 leading-tight">
               {t.finTitle}
             </h3>
 
-            <p className="text-sm md:text-base text-slate-200 leading-relaxed font-semibold">
+            <p className="text-sm md:text-base text-slate-600 leading-relaxed font-semibold">
               {t.finDesc}
             </p>
 
             {/* Sub features list */}
             <div className="space-y-4">
               {/* Customer Protection */}
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#0F1424] border border-gray-800 hover:border-gray-700 transition-colors shadow-sm">
-                <div className="p-3 bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl mt-1 shrink-0">
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-700 rounded-xl mt-1 shrink-0">
                   <ThumbsUp className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-sm font-extrabold text-white">{t.custProtectionTitle}</h4>
-                  <p className="text-xs text-slate-300 leading-relaxed font-semibold">{t.custProtectionDesc}</p>
+                  <h4 className="text-sm font-extrabold text-slate-800">{t.custProtectionTitle}</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed font-semibold">{t.custProtectionDesc}</p>
                 </div>
               </div>
 
               {/* Technician Protection */}
-              <div className="flex items-start gap-4 p-4 rounded-2xl bg-[#0F1424] border border-gray-800 hover:border-gray-700 transition-colors shadow-sm">
-                <div className="p-3 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-xl mt-1 shrink-0">
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-700 rounded-xl mt-1 shrink-0">
                   <Lock className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-sm font-extrabold text-white">{t.techRightTitle}</h4>
-                  <p className="text-xs text-slate-300 leading-relaxed font-semibold">{t.techRightDesc}</p>
+                  <h4 className="text-sm font-extrabold text-slate-800">{t.techRightTitle}</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed font-semibold">{t.techRightDesc}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Right Escrow Vault graphical model card (Image 3) */}
-          <div className="lg:col-span-7 bg-[#111827] border border-gray-700/80 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative text-right rtl:text-right ltr:text-left">
+          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-3xl p-6 md:p-8 space-y-6 shadow-xl relative text-right rtl:text-right ltr:text-left">
             <div className="absolute -top-3 left-6">
-              <span className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+              <span className="bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
                 {t.vaultSecureBadge}
               </span>
             </div>
 
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h4 className="text-lg md:text-xl font-black text-white drop-shadow-sm">{t.vaultTitle}</h4>
-                <p className="text-xs md:text-sm text-amber-300 font-extrabold mt-1 leading-relaxed">{t.vaultSub}</p>
+                <h4 className="text-lg md:text-xl font-black text-slate-800 drop-shadow-sm">{t.vaultTitle}</h4>
+                <p className="text-xs md:text-sm text-amber-600 font-extrabold mt-1 leading-relaxed">{t.vaultSub}</p>
               </div>
-              <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30 shrink-0">
+              <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-2xl border border-emerald-500/20 shrink-0">
                 <ShieldCheck className="w-7 h-7 animate-pulse" />
               </div>
             </div>
 
-            <hr className="border-gray-800" />
+            <hr className="border-slate-100" />
 
             {/* Vault Locked holding simulation display */}
-            <div className="p-5 bg-[#0B0F19] border border-gray-700 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-inner">
+            <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-inner">
               <div className="space-y-1">
-                <span className="text-xs text-slate-300 font-black block uppercase tracking-wider">{t.vaultResValue}</span>
-                <span className="text-3xl font-black text-amber-400 font-mono drop-shadow">150 ₪ <span className="text-xs text-slate-200 font-extrabold font-sans">({lang === 'ar' ? 'شيكل' : lang === 'he' ? 'שקל' : 'Shekel'})</span></span>
+                <span className="text-xs text-slate-500 font-black block uppercase tracking-wider">{t.vaultResValue}</span>
+                <span className="text-3xl font-black text-amber-600 font-mono">150 ₪ <span className="text-xs text-slate-500 font-extrabold font-sans">({lang === 'ar' ? 'شيكل' : lang === 'he' ? 'שקל' : 'Shekel'})</span></span>
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                <span className="bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-black px-3.5 py-1.5 rounded-full uppercase shadow-sm">
+                <span className="bg-amber-100 border border-amber-300 text-amber-800 text-xs font-black px-3.5 py-1.5 rounded-full uppercase shadow-sm">
                   {t.vaultReservedBadge}
                 </span>
-                <span className="text-xs text-slate-200 font-black">{t.vaultAwaiting}</span>
+                <span className="text-xs text-slate-500 font-black">{t.vaultAwaiting}</span>
               </div>
             </div>
 
             {/* 3 columns list detailing payouts - Stack on mobile, grid on desktop */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Partner Technician details */}
-              <div className="p-4 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1.5">
-                <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultPartnerTech}</span>
-                <span className="text-sm font-black text-white block truncate">رائد مسعود</span>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-1.5">
+                <span className="text-[11px] font-black text-slate-500 uppercase block">{t.vaultPartnerTech}</span>
+                <span className="text-sm font-black text-slate-800 block truncate">رائد مسعود</span>
               </div>
 
               {/* Systro Commission */}
-              <div className="p-4 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1.5">
-                <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultCommission}</span>
-                <span className="text-sm font-black text-amber-400 font-mono block">20% (30 ₪)</span>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-1.5">
+                <span className="text-[11px] font-black text-slate-500 uppercase block">{t.vaultCommission}</span>
+                <span className="text-sm font-black text-amber-600 font-mono block">20% (30 ₪)</span>
               </div>
 
               {/* Net Profit */}
-              <div className="p-4 bg-[#0B0F19] border border-gray-700 rounded-xl text-center space-y-1.5">
-                <span className="text-[11px] font-black text-slate-300 uppercase block">{t.vaultNetEarnings}</span>
-                <span className="text-sm font-black text-emerald-400 font-mono block">120 ₪</span>
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-1.5">
+                <span className="text-[11px] font-black text-slate-500 uppercase block">{t.vaultNetEarnings}</span>
+                <span className="text-sm font-black text-emerald-600 font-mono block">120 ₪</span>
               </div>
             </div>
 
             {/* Bulbed mechanism guide */}
-            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex gap-3 text-xs leading-relaxed text-slate-100 font-bold">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 text-xs leading-relaxed text-slate-700 font-bold">
               <Lightbulb className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-bounce" />
               <p>
                 <span className="font-extrabold text-amber-400">{t.vaultMechanismTitle}: </span>
@@ -532,20 +532,20 @@ export default function HomeTab({
 
 
       {/* NEW INTERACTIVE ROAD SAFETY & COST ESTIMATOR UTILITY SECTIONS */}
-      <section className="py-16 md:py-24 bg-[#080B14] border-t border-gray-900 px-4 md:px-8 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-sky-500/5 rounded-full blur-3xl pointer-events-none"></div>
+      <section className="py-16 md:py-24 bg-slate-50 border-t border-slate-200 px-4 md:px-8 relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
         
         <div className="max-w-7xl mx-auto space-y-12 relative z-10">
           
           {/* Header */}
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <span className="text-xs md:text-sm font-black text-amber-500 uppercase tracking-widest block">
+            <span className="text-xs md:text-sm font-black text-amber-600 uppercase tracking-widest block">
               {lang === 'ar' ? '🛠️ أدوات السلامة والمساعدة الذكية' : lang === 'he' ? '🛠️ כלי בטיחות ועזר חכמים' : '🛠️ SMART SAFETY & ESTIMATION TOOLS'}
             </span>
-            <h3 className="text-2xl md:text-4xl font-black text-white leading-tight">
+            <h3 className="text-2xl md:text-4xl font-black text-slate-850 leading-tight">
               {lang === 'ar' ? 'تفاعل، احسب تكلفتك، وتأكد من سلامتك' : lang === 'he' ? 'חשב עלויות, ודא בטיחות בדרכים' : 'Interact, Calculate Costs, & Stay Safe'}
             </h3>
-            <p className="text-xs md:text-sm text-gray-400 font-medium">
+            <p className="text-xs md:text-sm text-slate-500 font-medium">
               {lang === 'ar' ? 'نقدم لك نظاماً تفاعلياً متكاملاً لمساعدتك في لحظات الطوارئ وتقدير التكاليف الحقيقية ومدة الوصول بذكاء.' : lang === 'he' ? 'אנו מציעים מערכת אינטראקטיבית שתעזור לך להעריך עלויות וזמנים ולהישאר بטוח בזמן אمت.' : 'We provide an integrated interactive assistant to help you estimate service costs, calculate arrival times, and follow safety protocols.'}
             </p>
           </div>
@@ -553,24 +553,24 @@ export default function HomeTab({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             {/* 1. Roadside Safety Checklist */}
-            <div className="lg:col-span-6 bg-[#0E1322] border border-gray-800 p-6 md:p-8 rounded-3xl space-y-6 shadow-xl text-right rtl:text-right ltr:text-left">
+            <div className="lg:col-span-6 bg-white border border-slate-200 p-6 md:p-8 rounded-3xl space-y-6 shadow-sm text-right rtl:text-right ltr:text-left">
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-1">
-                  <h4 className="text-lg font-black text-white flex items-center gap-2 justify-start">
+                  <h4 className="text-lg font-black text-slate-800 flex items-center gap-2 justify-start">
                     <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
                     {lang === 'ar' ? 'دليل الأمان التفاعلي على الطريق' : lang === 'he' ? 'מדריך בטיחות אינטראקטיבי' : 'Interactive Road Safety Guide'}
                   </h4>
-                  <p className="text-xs text-gray-400 font-semibold">
+                  <p className="text-xs text-slate-500 font-semibold">
                     {lang === 'ar' ? 'أكمل الخطوات لضمان سلامتك وسلامة عائلتك على الطريق المزدحم' : lang === 'he' ? 'השלם את השלב כדי להבטיח בטיחות' : 'Complete these vital safety steps while waiting for your rescue.'}
                   </p>
                 </div>
-                <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-black">
+                <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-black">
                   {Math.round((safetyChecklist.filter(t => t.done).length / safetyChecklist.length) * 100)}%
                 </div>
               </div>
 
               {/* Progress Bar */}
-              <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div 
                   className="bg-emerald-500 h-full transition-all duration-500 rounded-full"
                   style={{ width: `${(safetyChecklist.filter(t => t.done).length / safetyChecklist.length) * 100}%` }}
@@ -593,15 +593,15 @@ export default function HomeTab({
                     }}
                     className={`w-full text-right p-3.5 rounded-xl border transition-all flex items-center justify-between gap-4 cursor-pointer ${
                       item.done 
-                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' 
-                        : 'bg-[#0B0E19] border-gray-800 hover:border-gray-700 text-slate-200'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                        : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-700'
                     }`}
                   >
                     <span className="text-xs font-bold leading-relaxed">
                       {lang === 'ar' ? item.textAr : lang === 'he' ? item.textHe : item.textEn}
                     </span>
                     <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
-                      item.done ? 'bg-emerald-500 border-emerald-400 text-black' : 'border-gray-600 bg-transparent'
+                      item.done ? 'bg-emerald-500 border-emerald-400 text-white' : 'border-slate-300 bg-white'
                     }`}>
                       {item.done && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                     </div>
@@ -611,7 +611,7 @@ export default function HomeTab({
 
               {/* Checklist Summary Footer */}
               {safetyChecklist.every(t => t.done) && (
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-3 text-xs leading-relaxed text-emerald-300 font-extrabold animate-bounce">
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-xs leading-relaxed text-emerald-800 font-extrabold animate-bounce">
                   <ShieldCheck className="w-5 h-5 shrink-0" />
                   <p>
                     {lang === 'ar' 
@@ -623,13 +623,13 @@ export default function HomeTab({
             </div>
 
             {/* 2. Price & ETA Estimator Slider Calculator */}
-            <div className="lg:col-span-6 bg-white border border-slate-200 p-6 md:p-8 rounded-3xl space-y-6 shadow-xl text-right rtl:text-right ltr:text-left">
+            <div className="lg:col-span-6 bg-white border border-slate-200 p-6 md:p-8 rounded-3xl space-y-6 shadow-sm text-right rtl:text-right ltr:text-left">
               <div className="space-y-1">
-                <h4 className="text-lg font-black text-slate-900 flex items-center gap-2 justify-start">
+                <h4 className="text-lg font-black text-slate-800 flex items-center gap-2 justify-start">
                   <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
                   {lang === 'ar' ? 'حاسبة التكلفة الفورية ومؤقت ETA' : lang === 'he' ? 'מחשבון עלויות וזמנים מיידי' : 'Instant Cost & ETA Estimator'}
                 </h4>
-                <p className="text-xs text-slate-600 font-semibold">
+                <p className="text-xs text-slate-500 font-semibold">
                   {lang === 'ar' ? 'حدد نوع الخدمة والمسافة للحصول على تقدير فوري للتكلفة وضمان سيسترو المالي' : lang === 'he' ? 'בחר סוג שירות ומרחק כדי לקבל הערכת מחיר מיידית' : 'Adjust the options below to get live price structures and travel duration.'}
                 </p>
               </div>
@@ -737,70 +737,24 @@ export default function HomeTab({
                   <span className="text-2xl font-black text-blue-600 font-mono block">
                     {calcEta} {lang === 'ar' ? 'دقيقة' : 'MINS'}
                   </span>
-                  <span className="text-[9px] text-sky-600 font-extrabold block">
-                    ⚡ {lang === 'ar' ? 'أقرب فني نشط بالمنطقة' : 'Nearest dispatch active'}
+                  <span className="text-[9px] text-slate-500 font-bold block">
+                    {lang === 'ar' ? 'دقة حسابية 98%' : '98% accuracy'}
                   </span>
                 </div>
               </div>
 
             </div>
-
-          </div>
-
-        </div>
-      </section>
-
-
-
-      {/* Dynamic Support & Contact Section */}
-      <section id="support-contact-section" className="bg-[#0D0F1A] border-t border-gray-900 py-16 px-4 md:px-8 relative overflow-hidden">
-        {/* Subtle decorative glows */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-          
-          {/* Left Column: Help / Explanatory Copy & Direct Admin Contact */}
-          <div className="lg:col-span-5 space-y-6 text-right rtl:text-right ltr:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full text-xs font-bold uppercase tracking-wider">
-              <HeartHandshake className="w-4 h-4 text-amber-500" />
-              <span>
-                {lang === 'ar' 
-                  ? 'فريق الدعم والمساندة الفنية' 
-                  : lang === 'he'
-                  ? 'צוות תמיכה וסיוע טכני'
-                  : 'Support & Technical Assistance'}
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-2xl md:text-3xl font-black text-white leading-tight">
-                {lang === 'ar' 
-                  ? 'هل تواجه أي مشاكل أو أعطال في المنصة؟' 
-                  : lang === 'he'
-                  ? 'נתקלת בבעיה או תקלה בפלטפורמה?'
-                  : 'Facing any issues or bugs on the platform?'}
-              </h3>
-              <p className="text-sm text-gray-400 font-medium leading-relaxed">
-                {lang === 'ar' 
-                  ? 'ملاحظاتك تهمنا كثيراً لتطوير الخدمة! إذا صادفتك أي مشكلة برمجية، تأخير، أو خطأ في النظام، يرجى كتابتها فوراً ليصل تقريرك مباشرة إلى فريق الدعم والمتابعة الفورية.' 
-                  : lang === 'he'
-                  ? 'המשוב שלך חשוב לנו מאוד לפיתוח השירות! אם נתקלת בבעיית תוכנה, עיכוב או שגיאת מערכת, אנא דווח עליה כאן כדי להגיע לצוות התמיכה באופן מיידי לטיפול פתרון.'
-                  : 'Your feedback is extremely valuable to us! If you encounter any software bugs, delays, or system errors, please report them here to reach our support team immediately for resolving.'}
-              </p>
-            </div>
-
-            {/* Direct Contact Card */}
-            <div className="bg-[#0A0B10]/90 border border-gray-800 p-6 rounded-3xl space-y-5 shadow-xl">
+                 {/* Direct Contact Card */}
+            <div className="bg-white border border-slate-200 p-6 rounded-3xl space-y-5 shadow-sm">
               <div className="space-y-1">
-                <h4 className="text-sm font-black text-white">
+                <h4 className="text-sm font-black text-slate-800">
                   {lang === 'ar' 
                     ? 'للتواصل الهاتفي الفوري والطارئ:' 
                     : lang === 'he'
                     ? 'ליצירת קשר טלפוני מיידי ודחוף:'
                     : 'Direct Phone & Instant WhatsApp:'}
                 </h4>
-                <p className="text-xs text-gray-500 font-semibold">
+                <p className="text-xs text-slate-500 font-semibold">
                   {lang === 'ar' 
                     ? 'يمكنك التحدث مباشرة مع الإدارة والدعم الفني على مدار الساعة.' 
                     : lang === 'he'
@@ -810,16 +764,16 @@ export default function HomeTab({
               </div>
 
               {/* Phone display */}
-              <div className="flex items-center gap-3 bg-[#0F1424] px-4 py-3 border border-gray-800 rounded-xl justify-between">
+              <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 border border-slate-200 rounded-xl justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
-                    <Phone className="w-4 h-4 text-amber-500" />
+                  <div className="p-2 bg-amber-500/10 text-amber-600 rounded-lg">
+                    <Phone className="w-4 h-4 text-amber-600" />
                   </div>
                   <span className="text-sm font-black text-slate-900 font-mono tracking-wider" dir="ltr">
                     +972 53-831-6779
                   </span>
                 </div>
-                <span className="text-[10px] font-bold text-amber-500 uppercase font-mono bg-amber-500/10 px-2 py-0.5 rounded animate-pulse">
+                <span className="text-[10px] font-bold text-amber-700 uppercase font-mono bg-amber-500/10 px-2 py-0.5 rounded animate-pulse">
                   {lang === 'ar' ? 'نشط الآن' : lang === 'he' ? 'פעיל כעת' : 'LIVE SUPPORT'}
                 </span>
               </div>
@@ -847,9 +801,9 @@ export default function HomeTab({
           </div>
 
           {/* Right Column: Interactive Report Issue Form */}
-          <div className="lg:col-span-7 bg-[#0A0B10]/75 border border-gray-800 p-8 rounded-3xl space-y-6 shadow-2xl relative text-right rtl:text-right ltr:text-left">
+          <div className="lg:col-span-7 bg-white border border-slate-200 p-8 rounded-3xl space-y-6 shadow-sm relative text-right rtl:text-right ltr:text-left">
             <div className="space-y-1">
-              <h4 className="text-lg font-black text-white flex items-center gap-2 justify-start">
+              <h4 className="text-lg font-black text-slate-800 flex items-center gap-2 justify-start">
                 <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
                 <span>
                   {lang === 'ar' 
@@ -859,7 +813,7 @@ export default function HomeTab({
                     : 'Direct Issue Report Form'}
                 </span>
               </h4>
-              <p className="text-xs text-gray-400 font-semibold">
+              <p className="text-xs text-slate-500 font-semibold">
                 {lang === 'ar' 
                   ? 'سيتم إرسال هذا التقرير فوراً إلى لوحة تحكم المسؤول.' 
                   : lang === 'he'
@@ -871,7 +825,7 @@ export default function HomeTab({
             <form onSubmit={handleSubmitIssue} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     {lang === 'ar' 
                       ? 'اسمك الكريم (اختياري):' 
                       : lang === 'he'
@@ -883,12 +837,12 @@ export default function HomeTab({
                     value={reporterName}
                     onChange={(e) => setReporterName(e.target.value)}
                     placeholder={lang === 'ar' ? 'مثال: أحمد العبد' : lang === 'he' ? 'לדוגמה: ישראל ישראלי' : 'e.g. John Doe'}
-                    className="w-full px-4 py-3 bg-[#0F1424] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-amber-500 outline-none text-slate-800 font-bold text-xs transition-colors rounded-xl"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     {lang === 'ar' 
                       ? 'رقم هاتفك للتواصل (اختياري):' 
                       : lang === 'he'
@@ -900,13 +854,13 @@ export default function HomeTab({
                     value={reporterPhone}
                     onChange={(e) => setReporterPhone(e.target.value)}
                     placeholder={lang === 'ar' ? 'مثال: +972 59-123-4567' : lang === 'he' ? 'לדוגמה: +972 50-123-4567' : 'e.g. +972 59-123-4567'}
-                    className="w-full px-4 py-3 bg-[#0F1424] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs transition-colors rounded-xl"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-amber-500 outline-none text-slate-800 font-bold text-xs transition-colors rounded-xl"
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   {lang === 'ar' 
                     ? 'تفاصيل العطل أو المشكلة بدقة:' 
                     : lang === 'he'
@@ -925,7 +879,7 @@ export default function HomeTab({
                       ? 'תאר את הבעיה בה נתקלת, היכן היא התרחשה ומה הופיע על המסך בפירוט...'
                       : 'Please describe the bug or issue, where did it happen, and any errors displayed...'
                   }
-                  className="w-full px-4 py-3 bg-[#0F1424] border border-gray-800 focus:border-amber-500 outline-none text-white font-medium text-xs transition-colors rounded-xl resize-none"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-amber-500 outline-none text-slate-800 font-medium text-xs transition-colors rounded-xl resize-none"
                 />
               </div>
 
@@ -960,33 +914,36 @@ export default function HomeTab({
               </button>
             </form>
           </div>
+
         </div>
       </section>
 
       {/* FOOTER SECTION (Image 1 layout) */}
-      <footer className="bg-[#0A0B10] border-t border-gray-800 py-12 px-4 md:px-8 select-none">
+      <footer className="bg-white border-t border-slate-200 py-12 px-4 md:px-8 select-none">
         <div className="max-w-7xl mx-auto space-y-8">
           
           {/* Primary Footer Block */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8 border-b border-gray-800 pb-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 border-b border-slate-200 pb-8">
             
             {/* Brand and Description */}
             <div className="text-center md:text-right rtl:md:text-right ltr:md:text-left space-y-3">
               <div className="flex items-center justify-center md:justify-start gap-3">
-                <img src="/icon.svg" alt="Systro Logo" className="w-8 h-8 rounded-xl object-contain border border-sky-400/30 shadow-md" />
-                <h4 className="text-lg font-black text-sky-400 font-mono">
+                <img src="/icon.svg" alt="Systro Logo" className="w-8 h-8 rounded-xl object-contain border border-sky-400/30 shadow-sm" />
+                <h4 className="text-lg font-black text-sky-600 font-mono">
                   systro
                 </h4>
               </div>
-              <p className="text-xs text-gray-400 font-medium max-w-md">
-                systro
+              <p className="text-xs text-slate-500 font-medium max-w-md">
+                {lang === 'ar' 
+                  ? 'سيسترو - منصتكم الموثوقة لخدمات الإنقاذ والمساعدة الذكية على الطرق بأسعار عادلة وضمان مالي.' 
+                  : 'systro - Your trusted intelligent roadside rescue & emergency on-demand platform'}
               </p>
             </div>
 
             {/* Navigation lists */}
-            <div className="flex flex-wrap items-center justify-center gap-6 text-xs md:text-sm font-bold text-gray-200">
-              <button onClick={() => setActiveTab('home')} className="hover:text-amber-400 transition-colors cursor-pointer">{t.home}</button>
-              <button onClick={() => setActiveTab('client')} className="hover:text-amber-400 transition-colors cursor-pointer">{lang === 'ar' ? 'صفحة العميل 👤' : 'Client Page'}</button>
+            <div className="flex flex-wrap items-center justify-center gap-6 text-xs md:text-sm font-bold text-slate-600">
+              <button onClick={() => setActiveTab('home')} className="hover:text-amber-600 transition-colors cursor-pointer">{t.home}</button>
+              <button onClick={() => setActiveTab('client')} className="hover:text-amber-600 transition-colors cursor-pointer">{lang === 'ar' ? 'صفحة العميل 👤' : 'Client Page'}</button>
               <button 
                 onClick={() => {
                   setActiveTab('simulator');
@@ -999,7 +956,7 @@ export default function HomeTab({
                     'success'
                   );
                 }} 
-                className="hover:text-amber-400 transition-colors cursor-pointer"
+                className="hover:text-amber-600 transition-colors cursor-pointer"
               >
                 {t.simulator}
               </button>
@@ -1008,7 +965,7 @@ export default function HomeTab({
           </div>
 
           {/* Bottom Copyright & admin access gateway pill button */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-xs md:text-sm font-black text-amber-300">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-xs md:text-sm font-black text-slate-500">
             <p>
               {lang === 'ar' 
                 ? 'جميع الحقوق محفوظة سيسترو 2026 ©' 
@@ -1018,13 +975,12 @@ export default function HomeTab({
             </p>
 
             <div className="flex flex-wrap items-center gap-3">
-              {/* Note: Verification domain (TrustPortal) trigger removed from client footer completely as requested */}
               {/* Pill Gate */}
               <button 
                 onClick={() => setActiveTab('admin')}
-                className="px-5 py-2.5 bg-[#121625] hover:bg-[#1A2035] border border-amber-500/30 text-amber-400 hover:text-white transition-all rounded-full flex items-center gap-2 cursor-pointer font-bold shadow-sm"
+                className="px-5 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 transition-all rounded-full flex items-center gap-2 cursor-pointer font-bold shadow-sm"
               >
-                <Lock className="w-3.5 h-3.5" />
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
                 <span>{t.adminGateway}</span>
               </button>
             </div>
@@ -1032,7 +988,6 @@ export default function HomeTab({
 
         </div>
       </footer>
-
     </div>
   );
 }
