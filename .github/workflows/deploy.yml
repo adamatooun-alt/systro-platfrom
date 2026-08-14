@@ -33,4 +33,5 @@ jobs:
             --image europe-west1-docker.pkg.dev/nexwork-75325/cloud-run-source-deploy/systro-live:latest \
             --region europe-west1 \
             --platform managed \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --set-env-vars="SMTP_HOST=smtp.gmail.com,SMTP_PORT=587,SMTP_USER=adam.atooun@gmail.com,SMTP_PASS=yvgaoynlnpiklwrg,SMTP_FROM=Systro"

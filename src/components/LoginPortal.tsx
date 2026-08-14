@@ -54,10 +54,6 @@ export default function LoginPortal({
   const [fallbackOtpCode, setFallbackOtpCode] = React.useState('');
   const [fallbackOtpSending, setFallbackOtpSending] = React.useState(false);
   const [fallbackOtpVerifying, setFallbackOtpVerifying] = React.useState(false);
-  const [simulatedCode, setSimulatedCode] = React.useState('');
-  const [appleSimulatedCode, setAppleSimulatedCode] = React.useState('');
-  const [clientSimulatedCode, setClientSimulatedCode] = React.useState('');
-  const [clientAppleSimulatedCode, setClientAppleSimulatedCode] = React.useState('');
   const [resendCooldown, setResendCooldown] = React.useState(0);
 
   const handleEmailChange = (val: string) => {
@@ -80,14 +76,12 @@ export default function LoginPortal({
       setCustomEmail(sessionStorage.getItem('systro_saved_google_email') || '');
       setFallbackOtpSent(false);
       setFallbackOtpCode('');
-      setSimulatedCode('');
       setResendCooldown(0);
     } else {
       setCustomName('');
       setCustomEmail('');
       setFallbackOtpSent(false);
       setFallbackOtpCode('');
-      setSimulatedCode('');
       setResendCooldown(0);
     }
   }, [showGoogleFallbackModal]);
@@ -98,13 +92,11 @@ export default function LoginPortal({
       setAppleEmail(sessionStorage.getItem('systro_saved_apple_email') || '');
       setAppleOtpSent(false);
       setAppleOtpCode('');
-      setAppleSimulatedCode('');
     } else {
       setAppleName('');
       setAppleEmail('');
       setAppleOtpSent(false);
       setAppleOtpCode('');
-      setAppleSimulatedCode('');
     }
   }, [showAppleFallbackModal]);
 
@@ -153,7 +145,6 @@ export default function LoginPortal({
     }
 
     setFallbackOtpSending(true);
-    setClientSimulatedCode('');
     try {
       const response = await fetch('/api/send-otp', {
         method: 'POST',
@@ -768,7 +759,7 @@ export default function LoginPortal({
                           return;
                         }
                         setAppleOtpSending(true);
-                        setClientAppleSimulatedCode('');
+
                         const trimmedAppleEmail = appleEmail.trim();
                         sessionStorage.setItem('systro_saved_apple_email', trimmedAppleEmail);
                         sessionStorage.setItem('systro_saved_apple_name', appleName.trim() || 'Apple User');
