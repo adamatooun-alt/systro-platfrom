@@ -5183,59 +5183,6 @@ export default function App() {
             </button>
           )}
 
-          {/* Center Navigation Links (Visible on all devices with horizontal scroll on mobile) */}
-          <nav className="flex items-center gap-1 bg-gradient-to-r from-blue-900 via-blue-700 to-sky-700 p-1 rounded-xl border border-blue-400/40 shrink-0 shadow-lg shadow-blue-500/15 overflow-x-auto max-w-[70vw] md:max-w-none scrollbar-none">
-            <button 
-              onClick={() => setActiveTab('home')}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'home' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
-            >
-              {t.home}
-            </button>
-            <button 
-              onClick={() => {
-                setUserRole('client');
-                sessionStorage.setItem('systro_user_role', 'client');
-                setActiveTab('client');
-              }}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'client' ? 'bg-amber-500 text-slate-950 font-black shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
-            >
-              {lang === 'ar' ? 'صفحة عميل 👤' : lang === 'he' ? 'דף לקוח 👤' : 'Client Page 👤'}
-            </button>
-            <button 
-              onClick={() => {
-                setUserRole('technician');
-                sessionStorage.setItem('systro_user_role', 'technician');
-                setActiveTab('simulator');
-              }}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 relative ${activeTab === 'simulator' ? 'bg-amber-500 text-slate-950 font-black shadow-sm' : 'text-amber-300 hover:text-white hover:bg-white/10'}`}
-            >
-              <span>{lang === 'ar' ? 'العمليات (الفني) 🛠️' : t.simulator}</span>
-              {allRequests.filter(isPendingForTechnician).length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-mono font-black rounded-full px-1.5 py-0.2 animate-bounce">
-                  {allRequests.filter(isPendingForTechnician).length}
-                </span>
-              )}
-            </button>
-
-            <button 
-              onClick={() => {
-                setActiveTab('world');
-                setIsLeftMenuOpen(true);
-              }}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'world' || isLeftMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
-            >
-              {lang === 'ar' ? 'عامة 🌐' : lang === 'he' ? 'عامة 🌐' : 'World 🌐'}
-            </button>
-            <button 
-              onClick={() => {
-                setActiveTab('store');
-              }}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'store' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
-            >
-              {lang === 'ar' ? 'المتجر 🛒' : lang === 'he' ? 'חנות 🛒' : 'Store 🛒'}
-            </button>
-          </nav>
-
           {/* Right actions (Sign in, language toggle, Admin portal yellow) */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Notification Bell Icon */}
