@@ -546,7 +546,7 @@ export default function HomeTab({
               {lang === 'ar' ? 'تفاعل، احسب تكلفتك، وتأكد من سلامتك' : lang === 'he' ? 'חשב עלויות, ודא בטיחות בדרכים' : 'Interact, Calculate Costs, & Stay Safe'}
             </h3>
             <p className="text-xs md:text-sm text-gray-400 font-medium">
-              {lang === 'ar' ? 'نقدم لك نظاماً تفاعلياً متكاملاً لمساعدتك في لحظات الطوارئ وتقدير التكاليف الحقيقية ومدة الوصول بذكاء.' : lang === 'he' ? 'אנו מציעים מערכת אינטראקטיבית שתעזור לך להעריך עלויות וזמנים ולהישאר בטוח בזמן אמת.' : 'We provide an integrated interactive assistant to help you estimate service costs, calculate arrival times, and follow safety protocols.'}
+              {lang === 'ar' ? 'نقدم لك نظاماً تفاعلياً متكاملاً لمساعدتك في لحظات الطوارئ وتقدير التكاليف الحقيقية ومدة الوصول بذكاء.' : lang === 'he' ? 'אנו מציעים מערכת אינטראקטיבית שתעזור לך להעריך עלויות וזמנים ולהישאר بטוח בזמן אمت.' : 'We provide an integrated interactive assistant to help you estimate service costs, calculate arrival times, and follow safety protocols.'}
             </p>
           </div>
 
@@ -561,7 +561,7 @@ export default function HomeTab({
                     {lang === 'ar' ? 'دليل الأمان التفاعلي على الطريق' : lang === 'he' ? 'מדריך בטיחות אינטראקטיבי' : 'Interactive Road Safety Guide'}
                   </h4>
                   <p className="text-xs text-gray-400 font-semibold">
-                    {lang === 'ar' ? 'أكمل الخطوات لضمان سلامتك وسلامة عائلتك على الطريق المزدحم' : lang === 'he' ? 'השלם את השלבים כדי להבטיח את בטיחותך בצד הדרך' : 'Complete these vital safety steps while waiting for your rescue.'}
+                    {lang === 'ar' ? 'أكمل الخطوات لضمان سلامتك وسلامة عائلتك على الطريق المزدحم' : lang === 'he' ? 'השלם את השלב כדי להבטיח בטיחות' : 'Complete these vital safety steps while waiting for your rescue.'}
                   </p>
                 </div>
                 <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-black">
@@ -623,13 +623,13 @@ export default function HomeTab({
             </div>
 
             {/* 2. Price & ETA Estimator Slider Calculator */}
-            <div className="lg:col-span-6 bg-[#0E1322] border border-gray-800 p-6 md:p-8 rounded-3xl space-y-6 shadow-xl text-right rtl:text-right ltr:text-left">
+            <div className="lg:col-span-6 bg-white border border-slate-200 p-6 md:p-8 rounded-3xl space-y-6 shadow-xl text-right rtl:text-right ltr:text-left">
               <div className="space-y-1">
-                <h4 className="text-lg font-black text-white flex items-center gap-2 justify-start">
+                <h4 className="text-lg font-black text-slate-900 flex items-center gap-2 justify-start">
                   <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
                   {lang === 'ar' ? 'حاسبة التكلفة الفورية ومؤقت ETA' : lang === 'he' ? 'מחשבון עלויות וזמנים מיידי' : 'Instant Cost & ETA Estimator'}
                 </h4>
-                <p className="text-xs text-gray-400 font-semibold">
+                <p className="text-xs text-slate-600 font-semibold">
                   {lang === 'ar' ? 'حدد نوع الخدمة والمسافة للحصول على تقدير فوري للتكلفة وضمان سيسترو المالي' : lang === 'he' ? 'בחר סוג שירות ומרחק כדי לקבל הערכת מחיר מיידית' : 'Adjust the options below to get live price structures and travel duration.'}
                 </p>
               </div>
@@ -639,13 +639,13 @@ export default function HomeTab({
                 
                 {/* Service Selector */}
                 <div className="flex flex-col gap-1.5 text-right">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     {lang === 'ar' ? 'نوع الخدمة المطلوبة:' : lang === 'he' ? 'סוג השירות המבוקש:' : 'Select Service Type:'}
                   </label>
                   <select
                     value={estimatorService}
                     onChange={(e) => setEstimatorService(e.target.value as ServiceType)}
-                    className="w-full px-4 py-3 bg-[#0B0E19] border border-gray-800 focus:border-amber-500 outline-none text-white font-bold text-xs rounded-xl"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-300 focus:border-amber-500 outline-none text-slate-900 font-bold text-xs rounded-xl cursor-pointer"
                   >
                     <option value="towing">{lang === 'ar' ? '🚚 سحب ونقل سيارات (توتنج)' : '🚚 Towing / Rescue'}</option>
                     <option value="mechanic">{lang === 'ar' ? '🛠️ ميكانيكي طوارئ وصيانة' : '🛠️ Emergency Mechanic'}</option>
@@ -659,10 +659,10 @@ export default function HomeTab({
                 {/* Distance Slider */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                       {lang === 'ar' ? 'المسافة التقريبية بالفني:' : 'Estimated Distance:'}
                     </span>
-                    <span className="text-xs font-black text-amber-400 font-mono">
+                    <span className="text-xs font-black text-amber-600 font-mono">
                       {estimatorDistance} {lang === 'ar' ? 'كم' : 'KM'}
                     </span>
                   </div>
@@ -672,9 +672,9 @@ export default function HomeTab({
                     max="100"
                     value={estimatorDistance}
                     onChange={(e) => setEstimatorDistance(Number(e.target.value))}
-                    className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
-                  <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold">
                     <span>1 {lang === 'ar' ? 'كم' : 'KM'}</span>
                     <span>50 {lang === 'ar' ? 'كم' : 'KM'}</span>
                     <span>100 {lang === 'ar' ? 'كم' : 'KM'}</span>
@@ -688,8 +688,8 @@ export default function HomeTab({
                     onClick={() => setEstimatorNightShift(!estimatorNightShift)}
                     className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
                       estimatorNightShift 
-                        ? 'bg-amber-500/10 border-amber-500/40 text-amber-400 font-extrabold' 
-                        : 'bg-[#0B0E19] border-gray-800 text-slate-300 font-bold'
+                        ? 'bg-amber-100 border-amber-400 text-amber-950 font-extrabold shadow-sm' 
+                        : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100 font-bold'
                     }`}
                   >
                     <span className="text-sm">🌙</span>
@@ -701,8 +701,8 @@ export default function HomeTab({
                     onClick={() => setEstimatorEmergency(!estimatorEmergency)}
                     className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
                       estimatorEmergency 
-                        ? 'bg-red-500/10 border-red-500/40 text-red-400 font-extrabold' 
-                        : 'bg-[#0B0E19] border-gray-800 text-slate-300 font-bold'
+                        ? 'bg-red-100 border-red-400 text-red-950 font-extrabold shadow-sm' 
+                        : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100 font-bold'
                     }`}
                   >
                     <span className="text-sm">⚡</span>
@@ -712,32 +712,32 @@ export default function HomeTab({
 
               </div>
 
-              <hr className="border-gray-800" />
+              <hr className="border-slate-200" />
 
               {/* Dynamic Outputs displays */}
               <div className="grid grid-cols-2 gap-3 text-center">
                 {/* Price Result Block */}
-                <div className="p-3 bg-[#0B0E19] border border-gray-800 rounded-2xl space-y-1">
-                  <span className="text-[10px] font-black text-gray-400 block uppercase">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                  <span className="text-[10px] font-black text-slate-500 block uppercase">
                     {lang === 'ar' ? 'السعر المقدر النهائي' : 'ESTIMATED PRICE'}
                   </span>
-                  <span className="text-2xl font-black text-amber-400 font-mono block">
+                  <span className="text-2xl font-black text-amber-600 font-mono block">
                     {calcFinalPrice} ₪
                   </span>
-                  <span className="text-[9px] text-emerald-400 font-extrabold block">
+                  <span className="text-[9px] text-emerald-600 font-extrabold block">
                     + {calcEscrowFee} ₪ {lang === 'ar' ? 'ضمان أمان مسترجع' : 'Escrow Sec.'}
                   </span>
                 </div>
 
                 {/* ETA Result Block */}
-                <div className="p-3 bg-[#0B0E19] border border-gray-800 rounded-2xl space-y-1">
-                  <span className="text-[10px] font-black text-gray-400 block uppercase">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                  <span className="text-[10px] font-black text-slate-500 block uppercase">
                     {lang === 'ar' ? 'الوقت المتوقع للوصول' : 'ESTIMATED ETA'}
                   </span>
-                  <span className="text-2xl font-black text-blue-400 font-mono block">
+                  <span className="text-2xl font-black text-blue-600 font-mono block">
                     {calcEta} {lang === 'ar' ? 'دقيقة' : 'MINS'}
                   </span>
-                  <span className="text-[9px] text-sky-400 font-extrabold block">
+                  <span className="text-[9px] text-sky-600 font-extrabold block">
                     ⚡ {lang === 'ar' ? 'أقرب فني نشط بالمنطقة' : 'Nearest dispatch active'}
                   </span>
                 </div>
