@@ -10,6 +10,7 @@ env:
   PROJECT_ID: nexwork-75325
   SERVICE: systro-live
   REGION: europe-west1
+  IMAGE_NAME: gcr.io/nexwork-75325/systro-live
 
 jobs:
   deploy:
@@ -29,9 +30,22 @@ jobs:
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
 
+    - name: Configure Docker authentication
+      run: |
+        gcloud auth configure-docker gcr.io --quiet
+
+    - name: Build and Tag Docker Image
+      run: |
+        docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} -t ${{ env.IMAGE_NAME }}:latest .
+
+    - name: Push Docker Image to GCR
+      run: |
+        docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ env.IMAGE_NAME }}:latest
+
     - name: Deploy to Cloud Run
       uses: google-github-actions/deploy-cloudrun@v2
       with:
         service: ${{ env.SERVICE }}
         region: ${{ env.REGION }}
-        source: ./
+        image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
