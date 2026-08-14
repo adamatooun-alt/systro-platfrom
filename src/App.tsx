@@ -5166,38 +5166,16 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
           
           {/* Logo Brand matching Images */}
-          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
-            <img src="/icon.svg" alt="Systro Logo" className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-md shadow-sky-500/30 object-contain shrink-0 border-2 border-sky-400/40 bg-slate-900/50 p-1" />
-            
+          <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setActiveTab('home')}>
+            <img src="/icon.svg" alt="Systro Logo" className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl shadow-md shadow-sky-500/30 object-contain shrink-0 border-2 border-sky-400/40 bg-slate-900/50 p-1" />
             <span className="text-sm sm:text-base font-black tracking-wider text-sky-400 font-mono">systro</span>
-
-            {/* Compact User Name Badge Box */}
-            <div 
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isLoggedIn) {
-                  setShowProfileModal(true);
-                } else {
-                  handleRealGoogleSignIn();
-                }
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-[11px] font-black text-sky-300 bg-blue-500/15 border border-blue-500/30 hover:border-blue-500/60 hover:bg-blue-500/25 shadow-sm rounded-lg max-w-[160px] sm:max-w-[220px] truncate select-none transition-all cursor-pointer"
-              title={isLoggedIn ? (loggedInUserName || loggedInUserEmail) : (lang === 'ar' ? 'اضغط لتسجيل الدخول' : 'Click to sign in')}
-            >
-              <span className={`w-2 h-2 rounded-full shrink-0 ${isLoggedIn ? 'bg-emerald-400 animate-pulse' : 'bg-sky-400'}`}></span>
-              <span className="truncate">
-                {isLoggedIn 
-                  ? (loggedInUserName || loggedInUserEmail || (lang === 'ar' ? 'المستخدم' : 'User'))
-                  : (lang === 'ar' ? '👤 تسجيل الدخول' : lang === 'he' ? '👤 התחבר' : '👤 Sign In')}
-              </span>
-            </div>
           </div>
 
           {/* Live Secure Domain Indicator - Hidden from customers, visible only when viewing the unlocked Admin panel */}
           {activeTab === 'admin' && isAdminUnlocked && (
             <button 
               onClick={() => setIsTrustPortalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl text-[9px] sm:text-[10px] font-black transition-all cursor-pointer shrink-0 animate-fade-in"
+              className="flex items-center gap-1.5 px-2 px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl text-[9px] sm:text-[10px] font-black transition-all cursor-pointer shrink-0 animate-fade-in"
             >
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse shrink-0"></span>
               <span className="hidden sm:inline">{lang === 'ar' ? `نطاق موثق: ${customDomain}` : lang === 'he' ? `דומיין מאומת: ${customDomain}` : `Verified: ${customDomain}`}</span>
@@ -5206,7 +5184,7 @@ export default function App() {
           )}
 
           {/* Center Navigation Links (Visible on all devices with horizontal scroll on mobile) */}
-          <nav className="flex items-center gap-1 bg-gradient-to-r from-blue-900 via-blue-700 to-sky-700 p-1 rounded-xl border border-blue-400/40 shrink-0 shadow-lg shadow-blue-500/15 overflow-x-auto max-w-[55vw] md:max-w-none scrollbar-none">
+          <nav className="flex items-center gap-1 bg-gradient-to-r from-blue-900 via-blue-700 to-sky-700 p-1 rounded-xl border border-blue-400/40 shrink-0 shadow-lg shadow-blue-500/15 overflow-x-auto max-w-[70vw] md:max-w-none scrollbar-none">
             <button 
               onClick={() => setActiveTab('home')}
               className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-black transition-all cursor-pointer shrink-0 ${activeTab === 'home' ? 'bg-white/20 text-white shadow-sm' : 'text-sky-100/80 hover:text-white hover:bg-white/10'}`}
