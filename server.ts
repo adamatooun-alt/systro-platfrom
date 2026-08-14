@@ -15,11 +15,11 @@ const activeUserSessions = new Map<string, {
 }>();
 
 async function sendVerificationEmail(email: string, code: string): Promise<boolean> {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  let from = process.env.SMTP_FROM || 'Systro Rescue Network <no-reply@systro.live>';
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = process.env.SMTP_PORT || '587';
+  const user = process.env.SMTP_USER || 'adam.atooun@gmail.com';
+  const pass = process.env.SMTP_PASS || 'yvgaoynlnpiklwrg';
+  let from = process.env.SMTP_FROM || 'Systro Rescue Network <adam.atooun@gmail.com>';
 
   if (from && !from.includes('<') && user && user.includes('@')) {
     from = `${from} <${user}>`;
@@ -118,9 +118,9 @@ async function startServer() {
     const normalizedEmail = email.trim().toLowerCase();
     
     // Check if SMTP is configured before proceeding
-    const host = process.env.SMTP_HOST;
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const user = process.env.SMTP_USER || 'adam.atooun@gmail.com';
+    const pass = process.env.SMTP_PASS || 'yvgaoynlnpiklwrg';
 
     const isPlaceholderUser = /[\u0600-\u06FF]/.test(user || '') || (user && (user.includes('البريد') || user.includes('المرسل')));
     const isPlaceholderPass = /[\u0600-\u06FF]/.test(pass || '') || (pass && (pass.includes('كلمة') || pass.includes('مرور')));
