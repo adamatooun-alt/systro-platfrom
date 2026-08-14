@@ -5159,25 +5159,7 @@ export default function App() {
       {/* FLOATING PWA INSTALLATION BANNER */}
       <PwaInstallBanner lang={lang === 'he' ? 'en' : (lang as any)} triggerToast={triggerToast} />
 
-      {/* TOP PERSISTENT INSTANT REFRESH & CACHE WIPE BAR */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-slate-950 px-3 py-1.5 text-center text-xs font-black flex items-center justify-between gap-2 shadow-md relative z-50 border-b border-emerald-400 select-none">
-        <div className="flex items-center justify-center gap-2 mx-auto flex-wrap text-white">
-          <span className="w-2.5 h-2.5 bg-amber-300 rounded-full animate-ping shrink-0"></span>
-          <span className="text-[11px] sm:text-xs">
-            {lang === 'ar'
-              ? '💡 خاصية التحديث الفوري المباشر: اضغط لتفريغ الذاكرة ورؤية التغييرات فوراً:'
-              : '💡 Instant Refresh Feature: Tap to clear cache & load changes immediately:'}
-          </span>
-          <button
-            type="button"
-            onClick={handleInstantForceUpdate}
-            className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-3 py-1 rounded-xl font-black text-xs transition-all cursor-pointer shadow-lg flex items-center gap-1.5 active:scale-95 border border-amber-200"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-slate-950 animate-spin-slow shrink-0" />
-            <span>{lang === 'ar' ? 'تحديث فوري للموقع 🔄' : 'Instant Refresh 🔄'}</span>
-          </button>
-        </div>
-      </div>
+
 
       {/* TOP NAVBAR HEADER */}
       <header className="sticky top-0 z-40 bg-[#0A0B10]/95 backdrop-blur-md border-b border-[#1E293B]/70 select-none">
@@ -7901,14 +7883,7 @@ export default function App() {
           <span className="text-[10px]">{lang === 'ar' ? 'عامة 🌐' : lang === 'he' ? 'عامة 🌐' : 'World 🌐'}</span>
         </button>
 
-        <button
-          onClick={handleInstantForceUpdate}
-          className="flex flex-col items-center gap-0.5 transition-all text-emerald-400 font-bold hover:scale-110 active:scale-95"
-          title={lang === 'ar' ? 'تحديث فوري وتفريغ الكاش' : 'Instant Refresh'}
-        >
-          <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin-slow" />
-          <span className="text-[10px] text-emerald-400 font-black">{lang === 'ar' ? 'تحديث 🔄' : 'Refresh 🔄'}</span>
-        </button>
+
 
         <button
           onClick={() => setActiveTab('store')}
